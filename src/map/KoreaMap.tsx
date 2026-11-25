@@ -40,10 +40,10 @@ function elevColor(m: number): string {
   return 'rgb(220,215,205)';
 }
 
-export interface MapLayers { landmarks: boolean; rivers: boolean; roads: boolean; labels: boolean; relief: boolean }
-export const DEFAULT_LAYERS: MapLayers = { landmarks: true, rivers: true, roads: true, labels: true, relief: true };
+export interface MapLayers { landmarks: boolean; rivers: boolean; roads: boolean; labels: boolean; relief: boolean; battles: boolean }
+export const DEFAULT_LAYERS: MapLayers = { landmarks: true, rivers: true, roads: true, labels: true, relief: true, battles: true };
 export const LAYER_LABELS: { key: keyof MapLayers; label: string }[] = [
-  { key: 'relief', label: '음영 기복' }, { key: 'rivers', label: '강' }, { key: 'roads', label: '길' }, { key: 'landmarks', label: '거점' }, { key: 'labels', label: '시·군 이름' },
+  { key: 'relief', label: '음영 기복' }, { key: 'rivers', label: '강' }, { key: 'roads', label: '길' }, { key: 'landmarks', label: '거점' }, { key: 'labels', label: '시·군 이름' }, { key: 'battles', label: '최근 전투' },
 ];
 
 interface Props {
@@ -110,6 +110,9 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
       onPointerLeave={onUp}
     >
       <defs>
+        <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M0,0L10,5L0,10z" fill="context-stroke" />
+        </marker>
         <clipPath id={mini ? 'land-mini' : 'land'}>
           <path d={LAND_PATH} />
         </clipPath>
@@ -215,6 +218,25 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
                   <circle r={5.5} fill="#1d1a14" fillOpacity={0.7} stroke="#d8c27a" strokeWidth={0.8} />
                   <text y={3} textAnchor="middle" fontSize={7}>{icon}</text>
                   {view.k >= 1.4 && <text y={13} textAnchor="middle" fontSize={6.5} fill="#ffe7a8" stroke="#1d1a14" strokeWidth={1.6} paintOrder="stroke">{l.name}</text>}
+                </g>
+              );
+            })}
+
+            {/* v2.5 최근 전투 화살표: 최근 1년(4턴)의 공격, 오래될수록 옅게 */}
+            {layers.battles && state.lastBattles.filter((b) => b.turn >= state.turn - 3).map((b, i) => {
+              const a = state.cities[b.fromCity], t = state.cities[b.toCity];
+              if (!a || !t) return null;
+              const [x1, y1] = project([a.lon, a.lat]);
+              const [x2, y2] = project([t.lon, t.lat]);
+              const mx = (x1 + x2) / 2 - (y2 - y1) * 0.18, my = (y1 + y2) / 2 + (x2 - x1) * 0.18;
+              const len = Math.hypot(x2 - x1, y2 - y1);
+              const ex = x2 - ((x2 - mx) / len) * 12, ey = y2 - ((y2 - my) / len) * 12;
+              const col = state.factions[b.attackerFaction]?.color ?? '#ccc';
+              return (
+                <g key={'bt' + i} className="battle-arrow" pointerEvents="visiblePainted">
+                  <title>{`${state.factions[b.attackerFaction]?.name}군 ${state.generals[b.generalId]?.name ?? ''}: ${a.name} → ${t.name} ${b.won ? '함락' : '실패'} (${b.attackerTroops.toLocaleString()} vs ${b.defenderTroops.toLocaleString()})`}</title>
+                  <path d={`M${x1},${y1}Q${mx},${my} ${ex},${ey}`} fill="none" stroke={col} strokeWidth={b.turn >= state.turn - 1 ? 3 : 2} strokeOpacity={Math.max(0.3, 0.95 - (state.turn - b.turn) * 0.2)} strokeDasharray={b.won ? undefined : '5 3'} markerEnd="url(#arrowhead)" />
+                  <text x={mx} y={my} textAnchor="middle" fontSize={10} pointerEvents="none">{b.won ? '⚔️' : '✖'}</text>
                 </g>
               );
             })}
