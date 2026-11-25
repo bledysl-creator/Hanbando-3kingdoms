@@ -101,6 +101,7 @@ export function checkOutcome(s: GameState) {
 /** 플레이어가 "턴 진행"을 눌렀을 때. 상태를 직접 수정한다. */
 export function endTurnMut(s: GameState) {
   if (s.outcome !== 'playing') return;
+  s.aiTrace = [];
   for (const fid of Object.keys(s.factions)) {
     if (fid === s.playerFactionId) continue;
     runFactionAI(s, fid);

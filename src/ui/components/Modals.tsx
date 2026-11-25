@@ -275,7 +275,41 @@ export function SettingsModal({ state, onClose, onLoad, onNewGame }: { state: Ga
         <label className="file-btn">📥 JSON 불러오기<input type="file" accept="application/json" onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} /></label>
         <button onClick={() => { onNewGame(); onClose(); }}>🆕 타이틀로</button>
       </div>
+      <h4>개발자 모드</h4>
+      <label><input type="checkbox" defaultChecked={localStorage.getItem('hanbando.dev') === '1'} onChange={(e) => { localStorage.setItem('hanbando.dev', e.target.checked ? '1' : '0'); window.dispatchEvent(new Event('hanbando-dev')); }} /> AI 판단 근거 보기 버튼 표시 (화면 왼쪽 아래)</label>
       {msg && <p className="hint">{msg}</p>}
+    </Modal>
+  );
+}
+
+export function DevModal({ state, onClose }: { state: GameState; onClose: () => void }) {
+  const trace = state.aiTrace ?? [];
+  const factions = [...new Set(trace.map((t) => t.faction))];
+  const [fid, setFid] = useState(factions[0] ?? '');
+  const rows = trace.filter((t) => t.faction === fid);
+  return (
+    <Modal title="🛠 개발자 모드 — AI 판단 근거 (지난 턴)" onClose={onClose} wide>
+      <p className="muted">장수마다 Utility 점수 상위 후보와 실제 실행된 명령(★)입니다. 위 후보가 실패하면 다음 후보를 시도합니다. 계산식은 SIMULATION_RULES.md 8장.</p>
+      {trace.length === 0 ? <p className="muted">아직 기록이 없습니다. 턴을 진행하면 AI 세력의 판단이 기록됩니다.</p> : (
+        <>
+          <div className="tabs">
+            {factions.map((f) => <button key={f} className={f === fid ? 'active' : ''} onClick={() => setFid(f)}>{state.factions[f]?.name ?? f}</button>)}
+          </div>
+          <table className="table dev-table">
+            <thead><tr><th>장수</th><th>위치</th><th>후보 (점수)</th><th>결과</th></tr></thead>
+            <tbody>
+              {rows.map((t, i) => (
+                <tr key={i}>
+                  <td>{state.generals[t.general]?.name}</td>
+                  <td>{state.cities[t.city]?.name}</td>
+                  <td>{t.options.length === 0 ? '—' : t.options.map((o, k) => <div key={k} className={k === t.chosen ? 'good' : 'muted'}>{k === t.chosen ? '★ ' : ''}{o.why} <small>({o.cmd} · {o.score})</small></div>)}</td>
+                  <td className="small">{t.result}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
     </Modal>
   );
 }

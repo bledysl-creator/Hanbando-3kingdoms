@@ -2,12 +2,12 @@
 import { useMemo, useRef, useState } from 'react';
 import type { GameState } from '../core';
 import { WEATHER_ICON, WEATHER_LABEL, visibleTroops } from '../core';
-import { LANDMARKS } from '../core';
+import { LANDMARKS, isConnectedToCapital, supplyRatio } from '../core';
 import { CITY_AREAS, LAND_PATH, REGIONS, REGION_PATHS, RIDGES, RIVERS, VIEW_H, VIEW_W, mountainGlyphs, project, toPath } from './geo';
 
 const LM_LABEL = { pass: '고개', ford: '나루터', port: '항구', fortress: '산성' } as const;
 
-export type MapMode = 'political' | 'terrain' | 'economy' | 'population' | 'military' | 'order' | 'weather';
+export type MapMode = 'political' | 'terrain' | 'economy' | 'population' | 'military' | 'order' | 'supply' | 'weather';
 export const MAP_MODES: { key: MapMode; label: string }[] = [
   { key: 'political', label: '정치' },
   { key: 'terrain', label: '지형' },
@@ -15,6 +15,7 @@ export const MAP_MODES: { key: MapMode; label: string }[] = [
   { key: 'population', label: '인구' },
   { key: 'military', label: '병력' },
   { key: 'order', label: '민심' },
+  { key: 'supply', label: '보급' },
   { key: 'weather', label: '기후' },
 ];
 
@@ -160,6 +161,7 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
               else if (mode === 'population') fill = ramp(pc.population / 100000);
               else if (mode === 'military') { const v = visibleTroops(state, state.playerFactionId, pc.id).value; fill = v === null ? '#4a4f58' : ramp(v / 40000); }
               else if (mode === 'order') fill = ramp(pc.order / 100);
+              else if (mode === 'supply') fill = pc.owner ? ramp(isConnectedToCapital(state, pc.owner, pc.id) ? supplyRatio(state, pc.owner) : 0.15) : '#4a4f58';
               else if (mode === 'weather') fill = WEATHER_COLOR[state.weather[pc.id] ?? 'clear'];
             }
             return (

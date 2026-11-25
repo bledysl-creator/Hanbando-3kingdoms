@@ -7,9 +7,9 @@ import { VERSION } from '../version';
 import { CityPanel } from './components/CityPanel';
 import { DiplomacyModal, OffersModal } from './components/Diplomacy';
 import { CommandBar, EventLog, MiniMap, MissionPanel, RulerCard, SideMenu, TopBar, TurnButton, type BarKey, type MenuKey } from './components/Hud';
-import { SimStatsModal, BattleReportView, BattlesModal, ArmyModal, TacticsModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
+import { SimStatsModal, BattleReportView, BattlesModal, ArmyModal, TacticsModal, DevModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
 
-type ModalKey = 'tactics' | 'army' | 'generals' | 'cities' | 'chronicle' | 'factions' | 'battles' | 'settings' | 'help' | 'diplomacy' | null;
+type ModalKey = 'dev' | 'tactics' | 'army' | 'generals' | 'cities' | 'chronicle' | 'factions' | 'battles' | 'settings' | 'help' | 'diplomacy' | null;
 
 export function App() {
   const [state, setState] = useState<GameState | null>(null);
@@ -83,6 +83,8 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
   const [auto, setAuto] = useState(false);
   const [offersHidden, setOffersHidden] = useState(false);
   const [mapMode, setMapMode] = useState<MapMode>('political');
+  const [dev, setDev] = useState(() => localStorage.getItem('hanbando.dev') === '1');
+  useEffect(() => { const h = () => setDev(localStorage.getItem('hanbando.dev') === '1'); window.addEventListener('hanbando-dev', h); return () => window.removeEventListener('hanbando-dev', h); }, []);
   const [layers, setLayers] = useState<MapLayers>(() => {
     try { return { ...DEFAULT_LAYERS, ...JSON.parse(localStorage.getItem('hanbando.layers') ?? '{}') }; } catch { return DEFAULT_LAYERS; }
   });
@@ -160,7 +162,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
           </div>
           {mapMode !== 'political' && (
             <div className="legend">
-              {mapMode === 'terrain' ? <><span className="lg terrain" /> 저지대 → 고산 <small>(실측 고도 음영)</small></> : mapMode === 'weather' ? <span>☀️맑음 🌧️비 ⛈️폭우 🌀태풍 🌨️눈 ❄️폭설 🥶한파 🏜️가뭄 🌫️안개</span> : <><span className="lg ramp" /> 낮음 → 높음</>}
+              {mapMode === 'terrain' ? <><span className="lg terrain" /> 저지대 → 고산 <small>(실측 고도 음영)</small></> : mapMode === 'weather' ? <span>☀️맑음 🌧️비 ⛈️폭우 🌀태풍 🌨️눈 ❄️폭설 🥶한파 🏜️가뭄 🌫️안개</span> : mapMode === 'supply' ? <><span className="lg ramp" /> 끊김·부족 → 충분 <small>(본거지 연결 × 군량)</small></> : <><span className="lg ramp" /> 낮음 → 높음</>}
             </div>
           )}
         </div>
@@ -215,6 +217,8 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
         <OffersModal state={state} onClose={() => setOffersHidden(true)} onRespond={(i, a) => { const r = respondOffer(state, pf, i, a); setState(r.state); flash(r.result.ok ? r.result.message : r.result.error, r.result.ok); }} />
       )}
       {modal === 'help' && <HelpModal onClose={() => setModal(null)} />}
+      {modal === 'dev' && <DevModal state={state} onClose={() => setModal(null)} />}
+      {dev && <button className="dev-btn" onClick={() => setModal('dev')}>🛠 AI 판단</button>}
       {modal === 'settings' && <SettingsModal state={state} onClose={() => setModal(null)} onLoad={(s) => { setState(s); setSelected(null); }} onNewGame={onQuit} />}
 
       {state.outcome !== 'playing' && (

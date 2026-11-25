@@ -571,3 +571,14 @@ describe('산불 (v2.8)', () => {
     expect(r.result.ok && r.state.cities.hanyang.fire).toBe(0);
   });
 });
+
+describe('개발자 모드 (v3.0)', () => {
+  it('턴을 진행하면 AI 세력 장수마다 판단 근거가 남는다', () => {
+    const s = newGame(3, 'shu');
+    endTurnMut(s);
+    const t = s.aiTrace ?? [];
+    expect(t.length).toBeGreaterThan(5);
+    expect(t.every((x) => x.faction !== 'shu')).toBe(true);
+    expect(t.some((x) => x.chosen >= 0 && x.options[x.chosen].why.length > 0)).toBe(true);
+  });
+});

@@ -277,3 +277,5 @@ button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 .wx-flash { animation: wx-flash 1.8s steps(1) infinite; }
 @keyframes wx-flash { 0%, 80% { opacity: 0; } 82%, 90% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .wx-fall, .wx-fog, .wx-drought, .wx-fire-tint, .wx-flicker, .wx-smoke, .wx-spin, .wx-flash { animation: none; } }
+.dev-btn { position: fixed; left: 16px; bottom: 140px; z-index: 30; padding: 6px 10px; font-size: 12px; background: #2a2416; border: 1px solid #c9a24e; color: #ffe7a8; border-radius: 6px; }
+.dev-table td { vertical-align: top; font-size: 12px; }

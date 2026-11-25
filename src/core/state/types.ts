@@ -143,6 +143,18 @@ export interface BattleReport {
   reasons: string[];
 }
 
+export interface AiTraceEntry {
+  turn: number;
+  faction: FactionId;
+  general: GeneralId;
+  city: CityId;
+  /** 점수 높은 순 후보 (최대 5개) */
+  options: { why: string; score: number; cmd: string }[];
+  /** 실제로 실행된 후보 (options 인덱스), 없으면 -1 */
+  chosen: number;
+  result: string;
+}
+
 export type DiplomaticStatus = 'war' | 'truce' | 'alliance';
 export interface Treaty {
   status: DiplomaticStatus;
@@ -182,6 +194,8 @@ export interface GameState {
   intel: Record<FactionId, Record<CityId, { turn: number; troops: number; false?: boolean }>>; // 첩보 (v1.1) // 후계 순위 (v1.0)
   diplomacy: Record<string, Treaty>; // key: 'a|b' (사전순)
   offers: DiplomaticOffer[]; // AI → 플레이어 제안 (플레이어 응답 대기)
+  /** 개발자 모드: 지난 턴 AI 판단 근거 (v3.0, 선택 — 저장해도 무방) */
+  aiTrace?: AiTraceEntry[];
   outcome: 'playing' | 'won' | 'lost' | 'unified';
   winner: FactionId | null;
 }

@@ -173,10 +173,17 @@ export function runFactionAI(s: GameState, fid: string) {
   for (const g of gens) {
     if (g.acted || g.faction !== fid || s.cities[g.city].owner !== fid) continue;
     const opts = optionsFor(s, fid, g).sort((a, b) => b.score - a.score);
-    for (const o of opts) {
-      const r = executeCommand(s, fid, o.cmd);
-      if (r.ok) break;
+    let chosen = -1, result = '할 일 없음';
+    for (let i = 0; i < opts.length; i++) {
+      const r = executeCommand(s, fid, opts[i].cmd);
+      if (r.ok) { chosen = i; result = r.message; break; }
+      result = r.error;
     }
+    // v3.0 개발자 모드: 판단 근거 기록 (후보 상위 5개 + 실행 결과)
+    (s.aiTrace ??= []).push({
+      turn: s.turn, faction: fid, general: g.id, city: g.city, chosen, result,
+      options: opts.slice(0, Math.max(5, chosen + 1)).map((o) => ({ why: o.why, score: Math.round(o.score * 10) / 10, cmd: o.cmd.type })),
+    });
   }
 }
 
