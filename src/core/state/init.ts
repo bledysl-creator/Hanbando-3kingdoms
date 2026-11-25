@@ -11,7 +11,7 @@ export const SAVE_VERSION = 9;
 export function createGame(
   data: GameData,
   scenario: ScenarioDef,
-  opts: { seed?: number; playerFactionId?: string | null } = {},
+  opts: { seed?: number; playerFactionId?: string | null; allGenerals?: boolean } = {},
 ): GameState {
   const s: GameState = {
     saveVersion: SAVE_VERSION,
@@ -62,6 +62,15 @@ export function createGame(
   for (const g of data.generals) {
     const sg = scenario.generals[g.id];
     const db = scenario.debuts?.[g.id];
+    if (!sg && db && opts.allGenerals) {
+      // v3.1 "모든 장수 등장": 등장 예정 장수도 처음부터 성인으로 나온다 (가상 설정)
+      const birth = Math.min(g.birth, scenario.year - BALANCE.allGeneralsMinAge);
+      const fac = db.faction && s.factions[db.faction] ? db.faction : null;
+      const rulerCity = fac ? scenario.generals[s.factions[fac].rulerId]?.city : undefined;
+      const city = fac && s.cities[db.city]?.owner !== fac && rulerCity ? rulerCity : db.city;
+      s.generals[g.id] = { ...g, birth, stats: { ...g.stats }, persona: { ...g.persona }, faction: fac, city, loyalty: fac ? 70 : 0, acted: false, alive: true };
+      continue;
+    }
     if (!sg && db) {
       // 아직 등장하지 않은 장수 (성인이 되면 등장)
       s.generals[g.id] = { ...g, stats: { ...g.stats }, persona: { ...g.persona }, faction: null, city: db.city, loyalty: 0, acted: false, alive: false, debut: { ...db } };

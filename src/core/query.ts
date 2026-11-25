@@ -19,14 +19,22 @@ export function citiesOf(s: GameState, f: FactionId): City[] {
   return Object.values(s.cities).filter((c) => c.owner === f);
 }
 
+/** 장수 목록 캐시 (v3.1 성능): s.generals 객체가 같으면 값 배열을 재사용한다. 키 추가·삭제는 createGame에서만 일어난다. */
+const generalListCache = new WeakMap<object, General[]>();
+export function allGenerals(s: GameState): General[] {
+  let list = generalListCache.get(s.generals);
+  if (!list) { list = Object.values(s.generals); generalListCache.set(s.generals, list); }
+  return list;
+}
+
 export function generalsIn(s: GameState, cityId: CityId, faction?: FactionId | null): General[] {
-  return Object.values(s.generals).filter(
-    (g) => g.alive && g.city === cityId && (faction === undefined || g.faction === faction),
-  );
+  const out: General[] = [];
+  for (const g of allGenerals(s)) if (g.alive && g.city === cityId && (faction === undefined || g.faction === faction)) out.push(g);
+  return out;
 }
 
 export function generalsOf(s: GameState, f: FactionId): General[] {
-  return Object.values(s.generals).filter((g) => g.alive && g.faction === f);
+  return allGenerals(s).filter((g) => g.alive && g.faction === f);
 }
 
 export function freeGeneralsIn(s: GameState, cityId: CityId): General[] {

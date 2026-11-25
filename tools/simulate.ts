@@ -12,7 +12,7 @@ let unfinished = 0;
 let turnSum = 0;
 
 for (let i = 0; i < runs; i++) {
-  const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1000 + i, playerFactionId: null });
+  const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1000 + i, playerFactionId: null, allGenerals: process.argv[4] === 'all' });
   while (s.outcome === 'playing' && s.turn <= maxTurns) endTurnMut(s);
   if (s.winner) { wins[s.winner] = (wins[s.winner] ?? 0) + 1; turnSum += s.turn; } else unfinished++;
   for (const f of Object.values(s.factions)) if (f.alive) survive[f.id] = (survive[f.id] ?? 0) + 1;

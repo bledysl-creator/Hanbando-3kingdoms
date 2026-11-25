@@ -582,3 +582,26 @@ describe('개발자 모드 (v3.0)', () => {
     expect(t.some((x) => x.chosen >= 0 && x.options[x.chosen].why.length > 0)).toBe(true);
   });
 });
+
+describe('모든 장수 (v3.1)', () => {
+  it('장수가 150명 이상이고, 시나리오가 참조하는 장수·도시가 모두 있다', () => {
+    expect(DATA.generals.length).toBeGreaterThanOrEqual(150);
+    const sc = SCENARIOS['197_sabun'];
+    const ids = new Set(DATA.generals.map((g) => g.id));
+    const cities = new Set(DATA.cities.map((c) => c.id));
+    for (const [id, v] of Object.entries(sc.generals)) { expect(ids.has(id)).toBe(true); expect(cities.has(v.city)).toBe(true); }
+    for (const [id, v] of Object.entries(sc.debuts ?? {})) { expect(ids.has(id)).toBe(true); expect(cities.has(v.city)).toBe(true); }
+    expect(new Set(DATA.generals.map((g) => g.id)).size).toBe(DATA.generals.length);
+  });
+  it('"모든 장수 등장"이면 등장 예정 장수도 처음부터 살아 있고 성인이다', () => {
+    const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1, playerFactionId: 'shu', allGenerals: true });
+    const all = Object.values(s.generals);
+    expect(all.length).toBe(DATA.generals.length);
+    expect(all.every((g) => g.alive)).toBe(true);
+    const debutIds = Object.keys(SCENARIOS['197_sabun'].debuts ?? {});
+    expect(debutIds.every((id) => s.year - s.generals[id].birth >= 18)).toBe(true);
+    expect(s.generals.jiang_wei.alive).toBe(true);
+    const normal = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1, playerFactionId: 'shu' });
+    expect(normal.generals.jiang_wei.alive).toBe(false);
+  });
+});

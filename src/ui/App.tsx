@@ -21,11 +21,12 @@ function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
   const [hasAuto, setHasAuto] = useState(false);
   const [pick, setPick] = useState(false);
   const [stats, setStats] = useState(false);
+  const [allGen, setAllGen] = useState(() => localStorage.getItem('hanbando.allGenerals') !== '0');
   useEffect(() => { indexedDbRepo.list().then((l) => setHasAuto(l.some((m) => m.slot === 'auto'))).catch(() => {}); }, []);
   const sc = SCENARIOS['197_sabun'];
-  const preview = useMemo(() => createGame(DATA, sc), [sc]);
+  const preview = useMemo(() => createGame(DATA, sc, { allGenerals: allGen }), [sc, allGen]);
   const start = (fid: string | null) =>
-    onStart(createGame(DATA, sc, { seed: Math.floor(Date.now() % 2147483647), playerFactionId: fid }));
+    onStart(createGame(DATA, sc, { seed: Math.floor(Date.now() % 2147483647), playerFactionId: fid, allGenerals: allGen }));
   return (
     <div className="title-screen">
       <div className="title-bg"><KoreaMap state={preview} mini /></div>
@@ -63,6 +64,7 @@ function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
                 );
               })}
             </div>
+            <label className="opt-line"><input type="checkbox" checked={allGen} onChange={(e) => { setAllGen(e.target.checked); localStorage.setItem('hanbando.allGenerals', e.target.checked ? '1' : '0'); }} /> 모든 장수 등장 — 후대 인물(사마의·강유·육항 등)도 처음부터 성인으로 등장 (가상 설정). 끄면 실제 생년에 맞춰 차례로 등장</label>
             <div className="actions row"><button onClick={() => setPick(false)}>← 뒤로</button></div>
           </>
         )}

@@ -2,7 +2,7 @@ import { TACTICS, tacticChance, type TacticKind } from '../battle/tactics';
 // 규칙 기반 + Utility AI (Game.md 5-5). 플레이어와 같은 명령만 사용한다.
 import { BALANCE } from '../config';
 import { executeCommand, foodPrice, type Command } from '../commands/commands';
-import { freeGeneralsIn, generalsIn, neighbors } from '../query';
+import { allGenerals, freeGeneralsIn, generalsIn, neighbors } from '../query';
 import type { City, GameState, General, Road } from '../state/types';
 import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/diplomacy';
 import { chance } from '../rng/rng';
@@ -22,6 +22,13 @@ function isFrontierCity(s: GameState, fid: string, cityId: string): boolean {
 }
 
 /** 아군 도시마다 '공격 가능한 적 도시'까지의 거리 (v1.8 후방 병력 전진용) */
+let frontCache: { s: GameState; turn: number; fid: string; d: Record<string, number> } | null = null;
+/** 한 세력의 AI 차례 동안은 전선 거리를 한 번만 계산한다 (v3.1 성능) */
+function frontDistanceCached(s: GameState, fid: string) {
+  if (!frontCache || frontCache.s !== s || frontCache.turn !== s.turn || frontCache.fid !== fid) frontCache = { s, turn: s.turn, fid, d: frontDistance(s, fid) };
+  return frontCache.d;
+}
+
 export function frontDistance(s: GameState, fid: string): Record<string, number> {
   const dist: Record<string, number> = {};
   const q: string[] = [];
@@ -101,7 +108,7 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
   }
   // v1.8 후방 병력 전진: 공격할 적이 없는 후방 도시는 여유 병력을 전선 쪽 이웃으로 보낸다 (장기전 해소)
   if (!isFrontier || !enemyNs.some((n) => canAttack(s, fid, n.city.owner))) {
-    const dist = frontDistance(s, fid);
+    const dist = frontDistanceCached(s, fid);
     const here = dist[city.id];
     const spare = city.troops - BALANCE.aiRearGarrison;
     if (here !== undefined && here > 0 && spare > 2000) {
@@ -129,7 +136,7 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
     const tgt = enemyNs.filter((n) => n.city.owner && canAttack(s, fid, n.city.owner)).sort((a, b) => a.city.troops - b.city.troops)[0];
     if (tgt) {
       opts.push({ score: 25 + g.stats.intellect / 20, cmd: { type: 'rumor', generalId: g.id, cityId: tgt.city.id }, why: '유언비어' });
-      const victim = Object.values(s.generals).find((x) => x.alive && x.city === tgt.city.id && x.faction === tgt.city.owner && x.loyalty < 75 && x.id !== s.factions[x.faction!].rulerId);
+      const victim = allGenerals(s).find((x) => x.alive && x.city === tgt.city.id && x.faction === tgt.city.owner && x.loyalty < 75 && x.id !== s.factions[x.faction!].rulerId);
       if (victim) opts.push({ score: 30, cmd: { type: 'discord', generalId: g.id, targetId: victim.id }, why: '이간' });
     }
   }
