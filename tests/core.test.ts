@@ -138,3 +138,45 @@ describe('세력 선택 (v0.3)', () => {
     expect(applyCommand(s, 'lu', { type: 'develop', generalId: 'chen_gong', field: 'agriculture' }).result.ok).toBe(true);
   });
 });
+
+import { respondOffer } from '../src/core';
+import { setTreaty, statusOf, acceptanceChance } from '../src/core/diplomacy/diplomacy';
+
+describe('외교 (v0.4)', () => {
+  it('휴전 중인 세력은 공격할 수 없다', () => {
+    const s = newGame();
+    setTreaty(s, 'shu', 'wei', 'truce', 8);
+    const r = applyCommand(s, 'shu', { type: 'march', generalId: 'guan_yu', toCityId: 'kaesong', troops: 10000 });
+    expect(r.result.ok).toBe(false);
+  });
+  it('제안은 사신의 행동과 예물을 소모하고, 결과는 시드로 재현된다', () => {
+    const run = () => applyCommand(newGame(5), 'shu', { type: 'diplomacy', generalId: 'zhuge_liang', targetFactionId: 'wu', proposal: 'truce', gold: 1000 });
+    const a = run(), b = run();
+    expect(a.result).toEqual(b.result);
+    expect(a.state.generals.zhuge_liang.acted).toBe(true);
+    expect(a.state.factions.shu.gold).toBe(newGame(5).factions.shu.gold - 1000);
+  });
+  it('예물이 많을수록 수락률이 오른다', () => {
+    const s = newGame();
+    expect(acceptanceChance(s, 'shu', 'wu', 'truce', 'zhuge_liang', 2000).p).toBeGreaterThan(acceptanceChance(s, 'shu', 'wu', 'truce', 'zhuge_liang', 0).p);
+  });
+  it('맹약 파기 후에는 다시 공격할 수 있다', () => {
+    let s = newGame();
+    setTreaty(s, 'shu', 'wei', 'alliance', null);
+    s = applyCommand(s, 'shu', { type: 'breakTreaty', generalId: 'jian_yong', targetFactionId: 'wei' }).state;
+    expect(statusOf(s, 'shu', 'wei')).toBe('war');
+  });
+  it('AI 제안을 받아들이면 휴전이 성립한다', () => {
+    const s = newGame();
+    s.offers.push({ from: 'wu', to: 'shu', proposal: 'truce', gold: 500, turn: s.turn });
+    const r = respondOffer(s, 'shu', 0, true);
+    expect(statusOf(r.state, 'shu', 'wu')).toBe('truce');
+    expect(r.state.factions.shu.gold).toBe(s.factions.shu.gold + 500);
+  });
+  it('휴전은 기한이 지나면 끝난다', () => {
+    const s = newGame(1, null);
+    setTreaty(s, 'wei', 'lu', 'truce', 2);
+    endTurnMut(s); endTurnMut(s); endTurnMut(s);
+    expect(statusOf(s, 'wei', 'lu')).toBe('war');
+  });
+});

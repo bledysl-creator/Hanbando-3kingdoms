@@ -60,7 +60,7 @@ const MENU: { key: MenuKey; icon: string; ready: boolean }[] = [
   { key: '내정', icon: '🏯', ready: true },
   { key: '군사', icon: '⚔️', ready: true },
   { key: '인재', icon: '👥', ready: true },
-  { key: '외교', icon: '🤝', ready: false },
+  { key: '외교', icon: '🤝', ready: true },
   { key: '계략', icon: '🗡️', ready: false },
   { key: '정보', icon: '📜', ready: true },
 ];
@@ -127,7 +127,7 @@ const BAR: { key: BarKey; icon: string; ready: boolean }[] = [
   { key: '도시', icon: '🏯', ready: true },
   { key: '부대', icon: '🚩', ready: false },
   { key: '계책', icon: '🖌️', ready: false },
-  { key: '외교', icon: '🤝', ready: false },
+  { key: '외교', icon: '🤝', ready: true },
   { key: '연표', icon: '📜', ready: true },
 ];
 

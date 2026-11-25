@@ -4,6 +4,7 @@ import { resolveBattle } from '../battle/battle';
 import { chance, pick } from '../rng/rng';
 import { generalsIn, neighbors, roadBetween } from '../query';
 import type { GameState, LogKind } from '../state/types';
+import { canAttack, pairKey, statusOf, tryProposal, type Proposal } from '../diplomacy/diplomacy';
 
 export type DevelopField = 'agriculture' | 'commerce' | 'wall';
 
@@ -13,7 +14,9 @@ export type Command =
   | { type: 'march'; generalId: string; toCityId: string; troops: number }
   | { type: 'transfer'; generalId: string; toCityId: string; troops: number }
   | { type: 'recruit'; generalId: string; targetId: string }
-  | { type: 'reward'; generalId: string; targetId: string };
+  | { type: 'reward'; generalId: string; targetId: string }
+  | { type: 'diplomacy'; generalId: string; targetFactionId: string; proposal: Proposal; gold: number }
+  | { type: 'breakTreaty'; generalId: string; targetFactionId: string };
 
 export type CommandResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -79,6 +82,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       const road = roadBetween(s, city.id, cmd.toCityId);
       if (!to || !road) return { ok: false, error: '인접한 도시가 아닙니다.' };
       if (to.owner === factionId) return { ok: false, error: '우리 도시는 공격할 수 없습니다.' };
+      if (!canAttack(s, factionId, to.owner)) return { ok: false, error: `${s.factions[to.owner!].name}과(와)는 ${statusOf(s, factionId, to.owner) === 'truce' ? '휴전' : '동맹'} 중이라 공격할 수 없습니다. 먼저 맹약을 파기하세요.` };
       const troops = Math.min(Math.floor(cmd.troops), city.troops - 500);
       if (troops < 1000) return { ok: false, error: '출진 병력은 1,000명 이상이어야 합니다 (도시에 500명은 남겨야 함).' };
       const foodNeed = Math.ceil(troops * BALANCE.foodPerTroop);
@@ -151,6 +155,38 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       g.acted = true;
       return { ok: true, message: `${t.name}에게 포상했습니다. (충성 ${t.loyalty})` };
     }
+    case 'diplomacy': {
+      const t = s.factions[cmd.targetFactionId];
+      if (!t || !t.alive || t.id === factionId) return { ok: false, error: '외교 상대가 아닙니다.' };
+      const cur = statusOf(s, factionId, t.id);
+      if (cur === cmd.proposal) return { ok: false, error: '이미 맺은 맹약입니다.' };
+      if (cur === 'alliance') return { ok: false, error: '이미 동맹 중입니다.' };
+      const gold = Math.max(0, Math.floor(cmd.gold));
+      if (f.gold < gold) return { ok: false, error: '금이 부족합니다.' };
+      f.gold -= gold;
+      g.acted = true;
+      const r = tryProposal(s, factionId, t.id, cmd.proposal, g.id, gold);
+      const what = cmd.proposal === 'truce' ? '휴전' : '동맹';
+      if (r.accepted) {
+        if (gold > 0) t.gold += gold;
+        log(s, `${f.name}과(와) ${t.name}이(가) ${what}을 맺었습니다.`, 'good', factionId);
+        return { ok: true, message: `${t.name}이(가) ${what}을 받아들였습니다! (수락률 ${Math.round(r.p * 100)}%)` };
+      }
+      log(s, `${t.name}이(가) ${f.name}의 ${what} 제안을 거절했습니다.`, 'warn', factionId);
+      return { ok: true, message: `${t.name}이(가) 거절했습니다. 예물은 돌려받지 못했습니다. (수락률 ${Math.round(r.p * 100)}%)` };
+    }
+    case 'breakTreaty': {
+      const t = s.factions[cmd.targetFactionId];
+      if (!t || statusOf(s, factionId, t.id) === 'war') return { ok: false, error: '맺은 맹약이 없습니다.' };
+      delete s.diplomacy[pairKey(factionId, t.id)];
+      g.acted = true;
+      // 신의를 저버리면 의리 높은 장수들이 실망한다
+      for (const x of Object.values(s.generals)) {
+        if (x.faction === factionId && x.id !== f.rulerId && x.persona.righteousness >= 80) x.loyalty = Math.max(0, x.loyalty - BALANCE.breakTreatyLoyaltyLoss);
+      }
+      log(s, `${f.name}이(가) ${t.name}과(와)의 맹약을 깨고 선전포고했습니다!`, 'danger', factionId);
+      return { ok: true, message: `${t.name}에 선전포고했습니다. 의리를 중시하는 장수들이 실망했습니다.` };
+    }
   }
 }
 
@@ -168,5 +204,28 @@ export function checkFactionDestroyed(s: GameState, factionId: string | null) {
 export function applyCommand(state: GameState, factionId: string, cmd: Command): { state: GameState; result: CommandResult } {
   const draft = structuredClone(state);
   const result = executeCommand(draft, factionId, cmd);
+  return { state: result.ok ? draft : state, result };
+}
+
+/** AI가 플레이어에게 보낸 제안에 답한다 (장수 행동 소모 없음) */
+export function respondOfferMut(s: GameState, factionId: string, index: number, accept: boolean): CommandResult {
+  const o = s.offers[index];
+  if (!o || o.to !== factionId) return { ok: false, error: '제안을 찾을 수 없습니다.' };
+  s.offers.splice(index, 1);
+  const from = s.factions[o.from];
+  const what = o.proposal === 'truce' ? '휴전' : '동맹';
+  if (!accept) {
+    log(s, `${s.factions[factionId].name}이(가) ${from.name}의 ${what} 제안을 거절했습니다.`, 'warn', factionId);
+    return { ok: true, message: `${from.name}의 제안을 거절했습니다.` };
+  }
+  s.diplomacy[pairKey(o.from, o.to)] = { status: o.proposal, until: o.proposal === 'truce' ? s.turn + BALANCE.truceTurns : null };
+  s.factions[factionId].gold += o.gold;
+  log(s, `${s.factions[factionId].name}과(와) ${from.name}이(가) ${what}을 맺었습니다.`, 'good', factionId);
+  return { ok: true, message: `${from.name}과(와) ${what}을 맺었습니다.${o.gold ? ` 예물 금 ${o.gold.toLocaleString()}을 받았습니다.` : ''}` };
+}
+
+export function respondOffer(state: GameState, factionId: string, index: number, accept: boolean) {
+  const draft = structuredClone(state);
+  const result = respondOfferMut(draft, factionId, index, accept);
   return { state: result.ok ? draft : state, result };
 }

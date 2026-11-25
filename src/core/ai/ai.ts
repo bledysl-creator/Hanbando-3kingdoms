@@ -3,6 +3,9 @@ import { BALANCE } from '../config';
 import { executeCommand, type Command } from '../commands/commands';
 import { freeGeneralsIn, generalsIn, neighbors } from '../query';
 import type { City, GameState, General } from '../state/types';
+import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/diplomacy';
+import { chance } from '../rng/rng';
+import { log } from '../commands/commands';
 
 interface Option { score: number; cmd: Command; why: string }
 
@@ -19,7 +22,7 @@ function estimateRatio(s: GameState, g: General, from: City, to: City, troops: n
 
 /** 적대 세력(중립 제외) 인접 병력 합 */
 function threatOf(s: GameState, fid: string, cityId: string): number {
-  return neighbors(s, cityId).reduce((a, n) => a + (n.city.owner && n.city.owner !== fid ? n.city.troops : 0), 0);
+  return neighbors(s, cityId).reduce((a, n) => a + (n.city.owner && n.city.owner !== fid && statusOf(s, fid, n.city.owner) === 'war' ? n.city.troops : 0), 0);
 }
 function isFrontierCity(s: GameState, fid: string, cityId: string): boolean {
   return neighbors(s, cityId).some((n) => n.city.owner !== fid);
@@ -39,6 +42,7 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
     const troops = city.troops - Math.max(500, Math.round(threat * 0.25));
     for (const n of enemyNs) {
       if (troops < 1000) break;
+      if (!canAttack(s, fid, n.city.owner)) continue;
       const ratio = estimateRatio(s, g, city, n.city, troops);
       if (ratio > BALANCE.aiAttackRatio) {
         const value = (n.city.population / 10000 + n.city.agriculture / 20 + n.city.commerce / 20) * (n.city.owner === null ? 0.8 : 1);
@@ -88,6 +92,7 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
 export function runFactionAI(s: GameState, fid: string) {
   const f = s.factions[fid];
   if (!f?.alive) return;
+  runFactionDiplomacy(s, fid);
   // 무력·통솔 높은 장수부터 (공격 기회를 먼저 잡도록)
   const gens = Object.values(s.generals)
     .filter((g) => g.alive && g.faction === fid && !g.acted)
@@ -100,4 +105,29 @@ export function runFactionAI(s: GameState, fid: string) {
       if (r.ok) break;
     }
   }
+}
+
+/** AI 외교: 양면 전쟁이면 가장 강한 적에게 휴전을 제안한다 */
+function runFactionDiplomacy(s: GameState, fid: string) {
+  const f = s.factions[fid];
+  if (!chance(s, BALANCE.aiProposalChance)) return;
+  const target = Object.keys(s.factions).find((o) => o !== fid && s.factions[o].alive && statusOf(s, fid, o) === 'war' && aiWantsTruce(s, fid, o));
+  if (!target) return;
+  const envoy = Object.values(s.generals)
+    .filter((g) => g.alive && g.faction === fid && !g.acted && s.cities[g.city].owner === fid && g.id !== f.rulerId)
+    .sort((a, b) => b.stats.charm + b.stats.intellect - (a.stats.charm + a.stats.intellect))[0];
+  if (!envoy) return;
+  const gold = Math.min(Math.floor(f.gold * 0.2), 1500);
+  if (target === s.playerFactionId) {
+    if (s.offers.some((o) => o.from === fid)) return;
+    envoy.acted = true;
+    f.gold -= gold;
+    s.offers.push({ from: fid, to: target, proposal: 'truce', gold, turn: s.turn });
+    log(s, `${f.name}의 사신 ${envoy.name}이(가) 휴전을 청해 왔습니다.`, 'warn', target);
+    return;
+  }
+  envoy.acted = true;
+  f.gold -= gold;
+  const r = tryProposal(s, fid, target, 'truce', envoy.id, gold);
+  if (r.accepted) { s.factions[target].gold += gold; log(s, `${f.name}과(와) ${s.factions[target].name}이(가) 휴전을 맺었습니다.`, 'info'); }
 }

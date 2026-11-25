@@ -119,6 +119,19 @@ export interface BattleReport {
   reasons: string[];
 }
 
+export type DiplomaticStatus = 'war' | 'truce' | 'alliance';
+export interface Treaty {
+  status: DiplomaticStatus;
+  until: number | null; // 만료 턴 (null = 무기한)
+}
+export interface DiplomaticOffer {
+  from: FactionId;
+  to: FactionId;
+  proposal: 'truce' | 'alliance';
+  gold: number;
+  turn: number;
+}
+
 export interface GameState {
   saveVersion: number;
   scenarioId: string;
@@ -138,6 +151,8 @@ export interface GameState {
   recruits: Record<FactionId, number>;
   log: LogEntry[];
   lastBattles: BattleReport[];
+  diplomacy: Record<string, Treaty>; // key: 'a|b' (사전순)
+  offers: DiplomaticOffer[]; // AI → 플레이어 제안 (플레이어 응답 대기)
   outcome: 'playing' | 'won' | 'lost' | 'unified';
   winner: FactionId | null;
 }

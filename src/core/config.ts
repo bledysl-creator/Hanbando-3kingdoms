@@ -36,6 +36,14 @@ export const BALANCE = {
   defectAmbition: 60,
   defectChance: 0.25,
 
+  // 외교 (v0.4)
+  truceBase: 0.35,
+  allianceBase: 0.2,
+  truceTurns: 8, // 2년
+  diplomacyGoldPerPercent: 50, // 금 50당 수락률 +1%
+  breakTreatyLoyaltyLoss: 6, // 맹약 파기 시 의리 높은 장수 충성 하락
+  aiProposalChance: 0.35,
+
   // AI
   failedAttackAttrition: 0.45, // 공격 실패 시에도 수비 측이 입는 소모 비율
   aiAttackRatio: 0.95,

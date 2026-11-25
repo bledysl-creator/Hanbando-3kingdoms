@@ -5,6 +5,7 @@ import { log } from '../commands/commands';
 import { chance, randRange } from '../rng/rng';
 import { relationBetween } from '../query';
 import type { GameState } from '../state/types';
+import { expireTreaties } from '../diplomacy/diplomacy';
 
 export function processEconomy(s: GameState) {
   for (const f of Object.values(s.factions)) {
@@ -94,10 +95,13 @@ export function endTurnMut(s: GameState) {
   processLoyalty(s);
   checkOutcome(s);
 
+  // 지난 턴의 미응답 제안은 사라진다
+  s.offers = s.offers.filter((o) => o.turn >= s.turn);
   s.season = (s.season + 1) % 4;
   if (s.season === 0) s.year += 1;
   s.turn += 1;
   for (const g of Object.values(s.generals)) g.acted = false;
+  expireTreaties(s, (t) => log(s, t, 'info'));
   if (s.outcome === 'playing') log(s, `${s.year}년 ${SEASONS[s.season]}이 되었습니다.`, 'info');
 }
 

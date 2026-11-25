@@ -15,8 +15,8 @@
       "iron": 32000
     },
     "lu": {
-      "gold": 3500,
-      "food": 50000,
+      "gold": 5000,
+      "food": 75000,
       "wood": 26000,
       "iron": 22000
     },
@@ -68,11 +68,11 @@
     },
     "hamhung": {
       "owner": "lu",
-      "troops": 26000
+      "troops": 30000
     },
     "wonsan": {
       "owner": "lu",
-      "troops": 16000
+      "troops": 18000
     },
     "hanyang": {
       "owner": "shu",

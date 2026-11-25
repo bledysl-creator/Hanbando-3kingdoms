@@ -1,7 +1,7 @@
 import type { GameData, ScenarioDef } from '../data';
 import type { GameState } from './types';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
 export function createGame(
@@ -28,6 +28,8 @@ export function createGame(
     recruits: {},
     log: [],
     lastBattles: [],
+    diplomacy: {},
+    offers: [],
     outcome: 'playing',
     winner: null,
   };

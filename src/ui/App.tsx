@@ -1,14 +1,15 @@
 // 앱 루트: 타이틀 → 메인 지도 화면. 게임 상태는 core 함수로만 바꾼다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { applyCommand, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
+import { applyCommand, respondOffer, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
 import { KoreaMap } from '../map/KoreaMap';
 import { indexedDbRepo } from '../save/saveRepository';
 import { VERSION } from '../version';
 import { CityPanel } from './components/CityPanel';
+import { DiplomacyModal, OffersModal } from './components/Diplomacy';
 import { CommandBar, EventLog, MiniMap, MissionPanel, RulerCard, SideMenu, TopBar, TurnButton, type BarKey, type MenuKey } from './components/Hud';
 import { BattleReportView, BattlesModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
 
-type ModalKey = 'generals' | 'cities' | 'chronicle' | 'factions' | 'battles' | 'settings' | 'help' | null;
+type ModalKey = 'generals' | 'cities' | 'chronicle' | 'factions' | 'battles' | 'settings' | 'help' | 'diplomacy' | null;
 
 export function App() {
   const [state, setState] = useState<GameState | null>(null);
@@ -77,6 +78,8 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
   const [hover, setHover] = useState<string[]>([]);
   const [report, setReport] = useState<number | null>(null);
   const [auto, setAuto] = useState(false);
+  const [offersHidden, setOffersHidden] = useState(false);
+  useEffect(() => setOffersHidden(false), [state.turn]);
 
   const flash = (text: string, ok = true) => { setToast({ text, ok }); setTimeout(() => setToast(null), 2600); };
 
@@ -105,6 +108,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
 
   const onMenu = (k: MenuKey) => {
     if (k === '정보') return setModal('factions');
+    if (k === '외교') return setModal('diplomacy');
     setTab(k);
     if (!selected || state.cities[selected].owner !== pf) {
       const first = pf ? citiesOf(state, pf)[0] : undefined;
@@ -115,6 +119,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
     if (k === '장수') setModal('generals');
     else if (k === '도시') setModal('cities');
     else if (k === '연표') setModal('chronicle');
+    else if (k === '외교') setModal('diplomacy');
   };
 
   const idle = pf ? Object.values(state.generals).filter((g) => g.alive && g.faction === pf && !g.acted && state.cities[g.city].owner === pf).length : 0;
@@ -164,6 +169,10 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
       {modal === 'chronicle' && <ChronicleModal state={state} onClose={() => setModal(null)} />}
       {modal === 'factions' && <FactionsModal state={state} onClose={() => setModal(null)} />}
       {modal === 'battles' && <BattlesModal state={state} onClose={() => setModal(null)} />}
+      {modal === 'diplomacy' && pf && <DiplomacyModal state={state} onClose={() => setModal(null)} onCommand={onCommand} />}
+      {pf && state.offers.some((o) => o.to === pf) && !offersHidden && (
+        <OffersModal state={state} onClose={() => setOffersHidden(true)} onRespond={(i, a) => { const r = respondOffer(state, pf, i, a); setState(r.state); flash(r.result.ok ? r.result.message : r.result.error, r.result.ok); }} />
+      )}
       {modal === 'help' && <HelpModal onClose={() => setModal(null)} />}
       {modal === 'settings' && <SettingsModal state={state} onClose={() => setModal(null)} onLoad={(s) => { setState(s); setSelected(null); }} onNewGame={onQuit} />}
 

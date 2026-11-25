@@ -1,7 +1,7 @@
 // 목록·보고서 창: 장수, 도시, 연표, 세력 정보, 전투 보고, 설정/저장, 도움말
 import { useEffect, useState, type ReactNode } from 'react';
 import type { BattleReport, GameState } from '../../core';
-import { SEASONS, citiesOf, factionPower, generalsOf, totalTroops } from '../../core';
+import { SEASONS, citiesOf, factionPower, generalsOf, statusOf, totalTroops } from '../../core';
 import { exportJson, indexedDbRepo, migrate, type SaveMeta } from '../../save/saveRepository';
 import { Portrait } from './Portrait';
 
@@ -103,7 +103,7 @@ export function FactionsModal({ state, onClose }: { state: GameState; onClose: (
   return (
     <Modal title="천하 정세" onClose={onClose}>
       <table className="table">
-        <thead><tr><th>세력</th><th>군주</th><th>세력력</th><th>도시</th><th>장수</th><th>병력</th></tr></thead>
+        <thead><tr><th>세력</th><th>군주</th><th>세력력</th><th>도시</th><th>장수</th><th>병력</th><th>맹약</th></tr></thead>
         <tbody>
           {fs.map((f) => (
             <tr key={f.id} className={f.alive ? '' : 'dead'}>
@@ -113,6 +113,7 @@ export function FactionsModal({ state, onClose }: { state: GameState; onClose: (
               <td>{citiesOf(state, f.id).length}</td>
               <td>{generalsOf(state, f.id).length}</td>
               <td>{fmt(totalTroops(state, f.id))}</td>
+              <td className="small">{Object.values(state.factions).filter((o) => o.id !== f.id && statusOf(state, f.id, o.id) !== 'war').map((o) => `${o.hanja}${statusOf(state, f.id, o.id) === 'truce' ? '휴전' : '동맹'}`).join(' ') || '-'}</td>
             </tr>
           ))}
         </tbody>
@@ -194,7 +195,8 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <li><b>지형</b>: 강을 건너는 도하 공격, 고개, 해로, 겨울 행군은 불리. 산성·산악 도시는 수비 유리.</li>
         <li><b>인재</b>: 재야 장수 등용(매력), 포상(충성 상승). 충성이 낮고 야망이 큰 장수는 떠날 수 있습니다.</li>
         <li><b>군량</b>: 병사는 매 계절 곡식을 먹습니다. 부족하면 탈영이 일어납니다.</li>
-        <li>지도는 마우스 휠로 확대, 드래그로 이동합니다. 외교·계략·부대·계책은 준비 중입니다.</li>
+        <li><b>외교</b>: 사신과 예물로 휴전(2년)·동맹을 제안합니다. 맹약 중인 세력은 공격할 수 없고, 파기하면 의리 높은 장수가 실망합니다.</li>
+        <li>지도는 마우스 휠로 확대, 드래그로 이동합니다. 계략·부대·계책은 준비 중입니다.</li>
       </ul>
     </Modal>
   );

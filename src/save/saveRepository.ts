@@ -18,6 +18,8 @@ export function migrate(raw: unknown): GameState {
   const s = raw as GameState;
   if (!s || typeof s !== 'object' || typeof s.saveVersion !== 'number') throw new Error('세이브 파일 형식이 아닙니다.');
   if (s.saveVersion > SAVE_VERSION) throw new Error('더 새로운 버전의 세이브입니다.');
+  // v1 → v2: 외교 추가
+  if (s.saveVersion < 2) { s.diplomacy = {}; s.offers = []; s.saveVersion = 2; }
   return s;
 }
 
