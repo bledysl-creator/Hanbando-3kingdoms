@@ -23,8 +23,8 @@ export const BALANCE = {
   rewardLoyalty: 8,
 
   // 전투
-  winterAttackPenalty: 0.85,
-  summerRainPenalty: 0.92,
+  winterAttackPenalty: 0.95, // 겨울 보급 난이도 (날씨와 별도)
+  summerRainPenalty: 1, // v0.7부터 날씨 시스템으로 대체
   roadAttackModifier: { land: 1, river: 0.8, pass: 0.85, sea: 0.75 } as Record<string, number>,
   mountainDefenseBonus: 1.2,
   fortressWallMultiplier: 1.5,
@@ -35,6 +35,10 @@ export const BALANCE = {
   defectLoyalty: 35,
   defectAmbition: 60,
   defectChance: 0.25,
+
+  // 날씨 (v0.7): 목표 도시 날씨에 따른 공격력 배율
+  weatherAttack: { clear: 1, rain: 0.92, storm: 0.78, typhoon: 0.65, snow: 0.9, blizzard: 0.7, cold: 0.88, drought: 1, fog: 0.95 } as Record<string, number>,
+  droughtHarvestLoss: 0.3, // 가뭄 1계절당 가을 수확 감소율
 
   // 외교 (v0.4)
   truceBase: 0.35,

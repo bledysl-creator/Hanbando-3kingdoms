@@ -1,9 +1,10 @@
 // 한반도 전략 지도 (SVG). 세력 영역은 도시 기준 보로노이 분할을 해안선으로 잘라 칠한다.
 import { useMemo, useRef, useState } from 'react';
 import type { GameState } from '../core';
+import { WEATHER_ICON, WEATHER_LABEL } from '../core';
 import { LAND_PATH, REGIONS, REGION_PATHS, RIDGES, RIVERS, VIEW_H, VIEW_W, mountainGlyphs, project, toPath } from './geo';
 
-export type MapMode = 'political' | 'terrain' | 'economy' | 'population' | 'military' | 'order';
+export type MapMode = 'political' | 'terrain' | 'economy' | 'population' | 'military' | 'order' | 'weather';
 export const MAP_MODES: { key: MapMode; label: string }[] = [
   { key: 'political', label: '정치' },
   { key: 'terrain', label: '지형' },
@@ -11,7 +12,10 @@ export const MAP_MODES: { key: MapMode; label: string }[] = [
   { key: 'population', label: '인구' },
   { key: 'military', label: '병력' },
   { key: 'order', label: '민심' },
+  { key: 'weather', label: '기후' },
 ];
+
+const WEATHER_COLOR: Record<string, string> = { clear: '#c9b36a', rain: '#4f7fa8', storm: '#2f4f8a', typhoon: '#6a3fa0', snow: '#c8d6e0', blizzard: '#eef4f8', cold: '#7fb0c8', drought: '#c0733a', fog: '#8a9098' };
 
 // 값(0~1) → 색 (어두운 남색 → 금색 → 붉은색)
 function ramp(t: number): string {
@@ -136,6 +140,7 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
               else if (mode === 'population') fill = ramp(pc.population / 100000);
               else if (mode === 'military') fill = ramp(pc.troops / 40000);
               else if (mode === 'order') fill = ramp(pc.order / 100);
+              else if (mode === 'weather') fill = WEATHER_COLOR[state.weather[pc.id] ?? 'clear'];
             }
             return (
               <path
@@ -194,6 +199,9 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
                   {(sel || hl) && <circle r={sel ? 16 : 13} fill="none" stroke={sel ? '#ffe08a' : '#ff6b5b'} strokeWidth={2} filter="url(#glow)" className="pulse" />}
                   <rect x={-7} y={-7} width={14} height={14} rx={c.fortress ? 2 : 7} fill={f?.color ?? '#9a9080'} stroke="#f3e2b0" strokeWidth={1.4} />
                   {c.fortress && <path d="M-5,-7v-3h2v2h2v-2h2v2h2v-2h2v3" fill="none" stroke="#f3e2b0" strokeWidth={1} />}
+                  {state.weather[c.id] && state.weather[c.id] !== 'clear' && (
+                    <text x={10} y={-6} fontSize={11} pointerEvents="none"><title>{WEATHER_LABEL[state.weather[c.id]]}</title>{WEATHER_ICON[state.weather[c.id]]}</text>
+                  )}
                   <g transform="translate(0,19)">
                     <rect x={-c.name.length * 7 - 6} y={-9} width={c.name.length * 14 + 12} height={18} rx={4} fill="#141a22" fillOpacity={0.85} stroke={sel ? '#ffe08a' : '#a88d4f'} strokeWidth={0.9} />
                     <text textAnchor="middle" dy={4.5} fontSize={12} fill="#f5ecd6" fontWeight={600}>{c.name}</text>

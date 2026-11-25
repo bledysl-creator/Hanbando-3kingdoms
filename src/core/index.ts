@@ -8,3 +8,4 @@ export { missionProgress } from './systems/missions';
 export * from './query';
 export { DATA, SCENARIOS } from './data';
 export { BALANCE, SEASONS } from './config';
+export { WEATHER_ICON, WEATHER_LABEL } from './systems/weather';

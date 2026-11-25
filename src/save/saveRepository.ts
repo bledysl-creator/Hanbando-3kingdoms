@@ -20,6 +20,8 @@ export function migrate(raw: unknown): GameState {
   if (s.saveVersion > SAVE_VERSION) throw new Error('더 새로운 버전의 세이브입니다.');
   // v1 → v2: 외교 추가
   if (s.saveVersion < 2) { s.diplomacy = {}; s.offers = []; s.saveVersion = 2; }
+  // v2 → v3: 날씨 추가
+  if (s.saveVersion < 3) { s.weather = {}; for (const id of Object.keys(s.cities)) s.weather[id] = 'clear'; s.saveVersion = 3; }
   return s;
 }
 

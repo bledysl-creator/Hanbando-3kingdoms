@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Command, GameState, General } from '../../core';
-import { BALANCE, freeGeneralsIn, generalsIn, neighbors } from '../../core';
+import { BALANCE, WEATHER_ICON, WEATHER_LABEL, freeGeneralsIn, generalsIn, neighbors } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -52,6 +52,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
         <Bar label="상업" v={c.commerce} />
         <Bar label="성벽" v={c.wall} />
         <span>특산</span><b>목재 {c.wood} · 철 {c.iron}</b>
+        <span>날씨</span><b>{WEATHER_ICON[state.weather[c.id] ?? 'clear']} {WEATHER_LABEL[state.weather[c.id] ?? 'clear']}</b>
       </div>
 
       <p className="regions-line"><span className="muted">관할 시·군 {REGIONS.filter((r) => r.parent === c.id).length}곳:</span> {REGIONS.filter((r) => r.parent === c.id).map((r) => r.name).join(' · ')}</p>

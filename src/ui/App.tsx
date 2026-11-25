@@ -146,7 +146,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
           ))}
           {mapMode !== 'political' && (
             <div className="legend">
-              {mapMode === 'terrain' ? <><span className="lg terrain" /> 저지대 → 고산 <small>(추정 고도)</small></> : <><span className="lg ramp" /> 낮음 → 높음</>}
+              {mapMode === 'terrain' ? <><span className="lg terrain" /> 저지대 → 고산 <small>(추정 고도)</small></> : mapMode === 'weather' ? <span>☀️맑음 🌧️비 ⛈️폭우 🌀태풍 🌨️눈 ❄️폭설 🥶한파 🏜️가뭄 🌫️안개</span> : <><span className="lg ramp" /> 낮음 → 높음</>}
             </div>
           )}
         </div>

@@ -2,8 +2,10 @@
 import { BALANCE } from '../config';
 import { randRange, type RngHolder } from '../rng/rng';
 import type { City, General, Road } from '../state/types';
+import { weatherAttackModifier } from '../systems/weather';
 
 export interface BattleInput {
+  weather?: import('../state/types').WeatherKind;
   attackerTroops: number;
   attackerGeneral: General;
   defenderCity: City;
@@ -36,11 +38,11 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   atk *= roadMod;
   if (b.season === 3) {
     atk *= BALANCE.winterAttackPenalty;
-    reasons.push('겨울 행군으로 공격력 감소');
-  } else if (b.season === 1) {
-    atk *= BALANCE.summerRainPenalty;
-    reasons.push('장마철 진흙길로 공격력 소폭 감소');
+    reasons.push('겨울 보급난으로 공격력 소폭 감소');
   }
+  const wm = weatherAttackModifier(b.weather, b.road.type);
+  if (wm.reason) { atk *= wm.mul; reasons.push(wm.reason); }
+  if (b.weather === 'fog' && b.attackerGeneral.stats.intellect >= 85) { atk *= 1.12; reasons.push(`안개를 이용한 ${b.attackerGeneral.name}의 기습 +12%`); }
 
   const city = b.defenderCity;
   const best = b.defenderGenerals.reduce<General | null>(

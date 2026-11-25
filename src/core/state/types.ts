@@ -54,6 +54,7 @@ export interface City {
   troops: number;
   wood: number; // 목재 생산 등급
   iron: number; // 철 생산 등급
+  droughtTurns?: number; // 이번 해 가뭄을 겪은 계절 수 (가을 수확 감소)
 }
 
 export interface Road {
@@ -82,6 +83,8 @@ export interface Relation {
   b: GeneralId;
   type: RelationType;
 }
+
+export type WeatherKind = 'clear' | 'rain' | 'storm' | 'typhoon' | 'snow' | 'blizzard' | 'cold' | 'drought' | 'fog';
 
 export type LogKind = 'info' | 'warn' | 'danger' | 'good';
 export interface LogEntry {
@@ -151,6 +154,7 @@ export interface GameState {
   recruits: Record<FactionId, number>;
   log: LogEntry[];
   lastBattles: BattleReport[];
+  weather: Record<CityId, WeatherKind>; // 이번 계절 도시별 날씨 (v0.7)
   diplomacy: Record<string, Treaty>; // key: 'a|b' (사전순)
   offers: DiplomaticOffer[]; // AI → 플레이어 제안 (플레이어 응답 대기)
   outcome: 'playing' | 'won' | 'lost' | 'unified';

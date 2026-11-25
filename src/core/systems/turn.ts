@@ -6,6 +6,7 @@ import { chance, randRange } from '../rng/rng';
 import { relationBetween } from '../query';
 import type { GameState } from '../state/types';
 import { expireTreaties } from '../diplomacy/diplomacy';
+import { applyWeatherEffects, rollWeather } from './weather';
 
 export function processEconomy(s: GameState) {
   for (const f of Object.values(s.factions)) {
@@ -16,7 +17,10 @@ export function processEconomy(s: GameState) {
       const k = c.population / 1000;
       const orderMul = 0.5 + c.order / 200;
       gold += c.commerce * k * BALANCE.goldPerCommerce * orderMul;
-      if (s.season === 2) harvest += c.agriculture * k * BALANCE.harvestPerAgriculture * orderMul;
+      if (s.season === 2) {
+        const dry = Math.max(0, 1 - (c.droughtTurns ?? 0) * BALANCE.droughtHarvestLoss);
+        harvest += c.agriculture * k * BALANCE.harvestPerAgriculture * orderMul * dry;
+      }
       wood += c.wood * BALANCE.woodPerLevel;
       iron += c.iron * BALANCE.ironPerLevel;
       troops += c.troops;
@@ -91,7 +95,9 @@ export function endTurnMut(s: GameState) {
     checkOutcome(s);
     if (s.outcome !== 'playing') return;
   }
+  applyWeatherEffects(s, (t, fid) => { if (fid === s.playerFactionId) log(s, t, 'warn', fid); });
   processEconomy(s);
+  if (s.season === 2) for (const c of Object.values(s.cities)) c.droughtTurns = 0;
   processLoyalty(s);
   checkOutcome(s);
 
@@ -101,6 +107,7 @@ export function endTurnMut(s: GameState) {
   if (s.season === 0) s.year += 1;
   s.turn += 1;
   for (const g of Object.values(s.generals)) g.acted = false;
+  rollWeather(s);
   expireTreaties(s, (t) => log(s, t, 'info'));
   if (s.outcome === 'playing') log(s, `${s.year}년 ${SEASONS[s.season]}이 되었습니다.`, 'info');
 }

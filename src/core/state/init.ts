@@ -1,7 +1,8 @@
 import type { GameData, ScenarioDef } from '../data';
 import type { GameState } from './types';
+import { rollWeather } from '../systems/weather';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
 export function createGame(
@@ -28,6 +29,7 @@ export function createGame(
     recruits: {},
     log: [],
     lastBattles: [],
+    weather: {},
     diplomacy: {},
     offers: [],
     outcome: 'playing',
@@ -75,6 +77,7 @@ export function createGame(
       return { ...m };
     });
 
+  rollWeather(s);
   s.log.push({ turn: 1, year: s.year, season: s.season, kind: 'info', text: `${scenario.name} — ${scenario.description}` });
   return s;
 }

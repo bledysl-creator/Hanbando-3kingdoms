@@ -5,6 +5,7 @@ import { freeGeneralsIn, generalsIn, neighbors } from '../query';
 import type { City, GameState, General } from '../state/types';
 import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/diplomacy';
 import { chance } from '../rng/rng';
+import { weatherAttackModifier } from '../systems/weather';
 import { log } from '../commands/commands';
 
 interface Option { score: number; cmd: Command; why: string }
@@ -12,7 +13,8 @@ interface Option { score: number; cmd: Command; why: string }
 function estimateRatio(s: GameState, g: General, from: City, to: City, troops: number): number {
   const road = neighbors(s, from.id).find((n) => n.city.id === to.id)?.road;
   const roadMod = road ? BALANCE.roadAttackModifier[road.type] ?? 1 : 1;
-  const atk = troops * (0.5 + g.stats.leadership / 100) * (0.7 + g.stats.war / 333) * roadMod;
+  const wm = weatherAttackModifier(s.weather[to.id], road?.type ?? 'land').mul;
+  const atk = troops * (0.5 + g.stats.leadership / 100) * (0.7 + g.stats.war / 333) * roadMod * wm;
   const defs = generalsIn(s, to.id).filter((x) => x.faction === to.owner);
   const best = defs.reduce<number>((a, x) => Math.max(a, x.stats.leadership), BALANCE.neutralLeadership);
   const wallMul = 1 + (to.wall / 200) * (to.fortress ? BALANCE.fortressWallMultiplier : 1);

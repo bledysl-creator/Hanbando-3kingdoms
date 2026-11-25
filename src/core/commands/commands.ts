@@ -94,7 +94,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       const defenderFaction = to.owner;
       const defenders = generalsIn(s, to.id).filter((x) => x.faction === defenderFaction);
       const out = resolveBattle(s, {
-        attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season,
+        attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id],
       });
       s.lastBattles.push({
         turn: s.turn, attackerFaction: factionId, defenderFaction, fromCity: city.id, toCity: to.id, generalId: g.id,

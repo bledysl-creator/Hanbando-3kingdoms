@@ -202,3 +202,24 @@ describe('지형 고도 (v0.6)', () => {
     expect(get('삼지연')).toBeGreaterThan(get('김제시'));
   });
 });
+
+import { rollWeather } from '../src/core/systems/weather';
+import { resolveBattle } from '../src/core/battle/battle';
+describe('날씨 (v0.7)', () => {
+  it('모든 도시에 날씨가 있고, 겨울 북부엔 눈·한파가 잦다', () => {
+    const s = newGame(9);
+    expect(Object.keys(s.weather).length).toBe(DATA.cities.length);
+    s.season = 3;
+    let cold = 0;
+    for (let i = 0; i < 50; i++) { rollWeather(s); if (['snow', 'blizzard', 'cold'].includes(s.weather.hyesan)) cold++; }
+    expect(cold).toBeGreaterThan(30);
+  });
+  it('폭설 속 공격은 맑은 날보다 약하다', () => {
+    const s = newGame();
+    const base = { attackerTroops: 20000, attackerGeneral: s.generals.guan_yu, defenderCity: s.cities.kaesong, defenderGenerals: [], road: { from: 'hanyang', to: 'kaesong', type: 'land' as const }, season: 0 };
+    const a = resolveBattle({ rng: 1 }, { ...base, weather: 'clear' });
+    const b = resolveBattle({ rng: 1 }, { ...base, weather: 'blizzard' });
+    expect(b.attackerPower).toBeLessThan(a.attackerPower);
+    expect(b.reasons.join()).toContain('폭설');
+  });
+});
