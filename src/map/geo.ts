@@ -59,3 +59,26 @@ export function mountainGlyphs(pts: LonLat[], step = 14): [number, number][] {
   }
   return out;
 }
+
+// ── 전국 시·군 (v0.5) ── data/geo/regions.json (tools/geo/build_regions.py로 생성)
+import regionsJson from '../../data/geo/regions.json';
+
+export interface Region {
+  id: string;
+  name: string;
+  province: string;
+  lon: number;
+  lat: number;
+  parent: string; // 관할 게임 도시 id
+  rings: LonLat[][];
+}
+
+export const REGIONS = regionsJson as unknown as Region[];
+
+/** 시·군별 SVG path (투영 완료, 한 번만 계산) */
+export const REGION_PATHS: Record<string, string> = Object.fromEntries(
+  REGIONS.map((r) => [r.id, r.rings.map((ring) => toPath(ring, true)).join('')]),
+);
+
+/** 전체 육지 path (해안선) */
+export const LAND_PATH = Object.values(REGION_PATHS).join('');

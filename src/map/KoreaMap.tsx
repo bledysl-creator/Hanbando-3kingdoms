@@ -1,8 +1,7 @@
 // 한반도 전략 지도 (SVG). 세력 영역은 도시 기준 보로노이 분할을 해안선으로 잘라 칠한다.
-import { Delaunay } from 'd3-delaunay';
 import { useMemo, useRef, useState } from 'react';
 import type { GameState } from '../core';
-import { JEJU, PENINSULA, RIDGES, RIVERS, VIEW_H, VIEW_W, mountainGlyphs, project, toPath } from './geo';
+import { LAND_PATH, REGIONS, REGION_PATHS, RIDGES, RIVERS, VIEW_H, VIEW_W, mountainGlyphs, project, toPath } from './geo';
 
 interface Props {
   state: GameState;
@@ -12,15 +11,10 @@ interface Props {
   mini?: boolean;
 }
 
-const LAND_PATH = toPath(PENINSULA, true) + toPath(JEJU, true);
 
 export function KoreaMap({ state, selectedCityId, highlightCityIds = [], onSelectCity, mini }: Props) {
   const cities = useMemo(() => Object.values(state.cities), [state.cities]);
   const pts = useMemo(() => cities.map((c) => project([c.lon, c.lat])), [cities]);
-  const cells = useMemo(() => {
-    const v = Delaunay.from(pts).voronoi([-50, -50, VIEW_W + 50, VIEW_H + 50]);
-    return cities.map((_, i) => v.renderCell(i));
-  }, [pts, cities]);
   const glyphs = useMemo(() => RIDGES.flatMap((r) => mountainGlyphs(r.pts)), []);
 
   // 군주 깃발: 군주가 있는 도시
@@ -95,20 +89,26 @@ export function KoreaMap({ state, selectedCityId, highlightCityIds = [], onSelec
         {/* 육지 */}
         <path d={LAND_PATH} fill="url(#landShade)" stroke="#c9b37a" strokeWidth={mini ? 2 : 1.2} filter={mini ? undefined : 'url(#coast)'} />
 
-        {/* 세력 영역 */}
+        {/* 세력 영역: 전국 시·군을 관할 도시 소유 세력 색으로 */}
         <g clipPath={`url(#${mini ? 'land-mini' : 'land'})`}>
-          {cities.map((c, i) => {
-            const f = c.owner ? state.factions[c.owner] : null;
+          {REGIONS.map((r) => {
+            const owner = state.cities[r.parent]?.owner;
+            const f = owner ? state.factions[owner] : null;
+            const sel = r.parent === selectedCityId;
             return (
               <path
-                key={c.id}
-                d={cells[i]}
+                key={r.id}
+                d={REGION_PATHS[r.id]}
                 fill={f ? f.color : '#8a8070'}
-                fillOpacity={mini ? 0.9 : f ? 0.42 : 0.25}
+                fillOpacity={mini ? 0.9 : sel ? 0.62 : f ? 0.42 : 0.25}
                 stroke={mini ? 'none' : '#0d1420'}
-                strokeOpacity={0.35}
-                strokeWidth={0.8}
-              />
+                strokeOpacity={0.28}
+                strokeWidth={0.5}
+                onClick={mini ? undefined : () => click(r.parent)}
+                className={mini ? undefined : 'region'}
+              >
+                {!mini && <title>{`${r.name} (${r.province}) — 관할: ${state.cities[r.parent]?.name}`}</title>}
+              </path>
             );
           })}
           {!mini && (
@@ -127,6 +127,12 @@ export function KoreaMap({ state, selectedCityId, highlightCityIds = [], onSelec
 
         {!mini && (
           <>
+            {/* 시·군 이름 (확대 시) */}
+            {view.k >= 1.7 && REGIONS.map((r) => {
+              const [x, y] = project([r.lon, r.lat]);
+              return <text key={r.id} x={x} y={y} textAnchor="middle" fontSize={5.5 / Math.min(view.k / 1.7, 1.6)} fill="#f3e7cc" fillOpacity={0.75} pointerEvents="none">{r.name}</text>;
+            })}
+
             {/* 도로 */}
             {state.roads.map((r) => {
               const [x1, y1] = project([state.cities[r.from].lon, state.cities[r.from].lat]);

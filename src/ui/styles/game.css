@@ -208,3 +208,6 @@ select, input { font: inherit; }
 .dip-table button.danger { border-color: #c2463c; color: #ffb4aa; }
 .st-war { color: #ffb4aa; } .st-truce { color: var(--gold-hi); } .st-alliance { color: #b8e6b0; }
 .offer { padding: 8px; border: 1px solid #ffffff18; border-radius: 4px; margin-bottom: 8px; }
+.regions-line { font-size: 12px; line-height: 1.5; margin: 8px 0 0; max-height: 54px; overflow-y: auto; }
+.map .region { cursor: pointer; }
+.map .region:hover { fill-opacity: 0.58; }

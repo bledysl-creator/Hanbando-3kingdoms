@@ -180,3 +180,16 @@ describe('외교 (v0.4)', () => {
     expect(statusOf(s, 'wei', 'lu')).toBe('war');
   });
 });
+
+import regions from '../data/geo/regions.json';
+describe('전국 시·군 (v0.5)', () => {
+  it('330곳 이상이고 모두 존재하는 도시 관할이다', () => {
+    const ids = new Set(DATA.cities.map((c) => c.id));
+    expect(regions.length).toBeGreaterThanOrEqual(330);
+    for (const r of regions as { parent: string; name: string }[]) expect(ids.has(r.parent), r.name).toBe(true);
+  });
+  it('주요 시·군이 들어 있다', () => {
+    const names = new Set((regions as { name: string }[]).map((r) => r.name));
+    for (const n of ['서울특별시', '부산광역시', '수원시', '안동시', '울릉군', '서귀포시', '평양', '신의주시', '함흥시', '개성시']) expect(names.has(n), n).toBe(true);
+  });
+});

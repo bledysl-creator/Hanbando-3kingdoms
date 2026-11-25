@@ -4,6 +4,7 @@ import type { Command, GameState, General } from '../../core';
 import { BALANCE, freeGeneralsIn, generalsIn, neighbors } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
+import { REGIONS } from '../../map/geo';
 
 const fmt = (n: number) => Math.round(n).toLocaleString('ko-KR');
 const TERRAIN = { plain: '평지', mountain: '산악', coast: '해안', river: '강변' } as const;
@@ -53,6 +54,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
         <span>특산</span><b>목재 {c.wood} · 철 {c.iron}</b>
       </div>
 
+      <p className="regions-line"><span className="muted">관할 시·군 {REGIONS.filter((r) => r.parent === c.id).length}곳:</span> {REGIONS.filter((r) => r.parent === c.id).map((r) => r.name).join(' · ')}</p>
       <h4>장수 ({gens.length})</h4>
       <div className="gen-row">
         {gens.map((g) => (
