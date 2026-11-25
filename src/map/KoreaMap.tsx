@@ -168,9 +168,13 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
                 <path key={i} d={`M${x - 6},${y + 4}L${x},${y - 6}L${x + 6},${y + 4}`} fill="#3b3426" fillOpacity={0.55} stroke="#d8cba3" strokeOpacity={0.45} strokeWidth={0.8} />
               ))}
               {/* 강 */}
-              {RIVERS.map((r) => (
-                <path key={r.name} d={toPath(r.pts)} fill="none" stroke="#7fb6d6" strokeOpacity={0.8} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              {RIVERS.map((r, i) => (
+                <path key={i} d={toPath(r.pts)} fill="none" stroke="#7fb6d6" strokeOpacity={r.estimated ? 0.65 : 0.85} strokeWidth={r.name === '압록강' || r.name === '두만강' || r.name === '한강' || r.name === '낙동강' ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round"><title>{r.name + (r.estimated ? ' (추정선)' : '')}</title></path>
               ))}
+              {view.k >= 1.2 && RIVERS.filter((r, i) => RIVERS.findIndex((x) => x.name === r.name) === i).map((r) => {
+                const [x, y] = project(r.pts[Math.floor(r.pts.length / 2)]);
+                return <text key={'rl' + r.name} x={x + 4} y={y - 3} fontSize={6} fill="#a8d4ee" fontStyle="italic" pointerEvents="none" stroke="#14202a" strokeWidth={1.4} paintOrder="stroke">{r.name}</text>;
+              })}
             </>
           )}
         </g>
