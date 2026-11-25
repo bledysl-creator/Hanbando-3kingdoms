@@ -4,13 +4,14 @@ import { reliefFood } from '../systems/epidemic';
 import type { TacticKind } from '../battle/tactics';
 // 명령: 플레이어와 AI가 똑같이 사용한다 (CLAUDE.md 규칙 6).
 import { BALANCE } from '../config';
-import { resolveBattle } from '../battle/battle';
+import { resolveBattle, type BattleInput, type BattleOutcome } from '../battle/battle';
+import { beginSiege } from '../systems/siege';
 import { chance, pick } from '../rng/rng';
 import { estimateRatio } from '../battle/estimate';
 import { killGeneral } from '../systems/lifecycle';
 import { discord, rumor, scout, withinTwo } from '../systems/intrigue';
 import { generalsIn, isConnectedToCapital, lastStandBonus, minGarrison, minMarch, neighbors, roadBetween, supplyRatio } from '../query';
-import type { EventKind, GameState, LogKind } from '../state/types';
+import type { City, EventKind, GameState, General, LogKind, Road } from '../state/types';
 import { refuseChance, remember } from '../systems/persona';
 import { canAttack, pairKey, statusOf, tryProposal, type Proposal } from '../diplomacy/diplomacy';
 
@@ -142,70 +143,12 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       city.troops -= troops;
       g.acted = true;
 
-      const defenderFaction = to.owner;
-      const defenders = generalsIn(s, to.id).filter((x) => x.faction === defenderFaction);
-      const out = resolveBattle(s, {
-        attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: cmd.tactic, traitAttack: traitSum(f.traits, 'attack'), attackerShips: city.ships ?? 0, navalTrait: f.traits.includes('수군'),
-        attackerMorale: city.morale, attackerTraining: city.training, supply: supplyRatio(s, factionId) < BALANCE.lowSupplyThreshold ? supplyRatio(s, factionId) : undefined,
-        isolated: !isConnectedToCapital(s, factionId, city.id),
-        lastStand: lastStandBonus(s, defenderFaction),
-      });
-      s.lastBattles.push({
-        turn: s.turn, attackerFaction: factionId, defenderFaction, fromCity: city.id, toCity: to.id, generalId: g.id,
-        attackerTroops: troops, defenderTroops: to.troops, ...out,
-      });
-      if (s.lastBattles.length > 30) s.lastBattles.splice(0, s.lastBattles.length - 30);
-
-      const survivors = troops - out.attackerLoss;
-      const defName = defenderFaction ? s.factions[defenderFaction].name : '중립';
-      if (out.tactic?.kind === 'fire' && out.tactic.success) { igniteCity(s, to.id, 1); out.reasons.push(`화공의 불길이 ${to.name} 일대로 번졌습니다`); }
-      if (out.won) {
-        to.troops = survivors;
-        to.morale = Math.min(100, city.morale + BALANCE.victoryMorale);
-        to.training = city.training;
-        if (to.port) {
-          // 항구 함락: 남은 전선 절반을 노획하고, 바다로 왔다면 함대 절반이 따라 들어간다
-          const moved = road.type === 'sea' ? Math.floor((city.ships ?? 0) / 2) : 0;
-          city.ships = (city.ships ?? 0) - moved;
-          to.ships = Math.min(BALANCE.maxShipsPerCity, Math.floor((to.ships ?? 0) / 2) + moved);
-        }
-        if (defenderFaction) {
-          const dPop = Object.values(s.cities).filter((c) => c.owner === defenderFaction).reduce((a, c) => a + c.population, 0);
-          const df = s.factions[defenderFaction];
-          const loot = Math.round(df.food * (to.population / Math.max(1, dPop)) * BALANCE.plunderRatio);
-          if (loot > 0) { df.food -= loot; f.food += loot; out.reasons.push(`${to.name}의 창고에서 곡식 ${loot.toLocaleString()}석 노획`); }
-        }
-        to.owner = factionId;
-        to.order = Math.max(10, to.order - 20);
-        to.population = Math.round(to.population * 0.95);
-        g.city = to.id;
-        // 패배한 수비 장수: 인접 아군 도시로 퇴각, 없으면 재야
-        remember(g, s.turn, 'defeated', defenders[0]?.id ?? g.id);
-        for (const d of defenders) {
-          remember(d, s.turn, 'defeatedBy', g.id);
-          const retreat = defenderFaction
-            ? pick(s, neighbors(s, to.id).filter((n) => n.city.owner === defenderFaction).map((n) => n.city.id))
-            : undefined;
-          if (retreat) d.city = retreat;
-          else if (d.faction && s.factions[d.faction]?.rulerId !== d.id) d.faction = null;
-          else if (d.faction) d.faction = null; // 군주도 도망칠 곳이 없으면 재야로
-        }
-        log(s, `${s.factions[factionId].name}군 ${g.name}이(가) ${defName}의 ${to.name}을(를) 함락했습니다!`, 'danger', factionId, { event: 'capture', other: defenderFaction });
-        if (to.seat && defenderFaction) submitCounties(s, to.id, factionId, defenderFaction);
-        checkFactionDestroyed(s, defenderFaction);
-        return { ok: true, message: `${to.name} 함락! (아군 손실 ${out.attackerLoss.toLocaleString()})` };
-      } else {
-        to.troops = Math.max(1, to.troops - out.defenderLoss);
-        to.morale = Math.min(100, to.morale + 5);
-        city.troops += survivors;
-        city.morale = Math.max(0, city.morale - BALANCE.defeatMorale);
-        if (road.type === 'sea' && (city.ships ?? 0) > 0) city.ships = Math.floor((city.ships ?? 0) * (1 - BALANCE.shipLossOnFail));
-        if (chance(s, BALANCE.battleDeathChance * (g.persona.risk / 60))) {
-          killGeneral(s, g, `${g.name}이(가) ${to.name} 공격 중 전사했습니다!`);
-        }
-        log(s, `${g.name}의 ${to.name} 공격이 실패했습니다.`, 'warn', factionId);
-        return { ok: true, message: `${to.name} 공격 실패 (아군 손실 ${out.attackerLoss.toLocaleString()})` };
+      // v3.6 플레이어 도시를 노리면 바로 싸우지 않고 한 계절 포위한다 → 플레이어가 대응을 고른다
+      if (s.playerFactionId && to.owner === s.playerFactionId && factionId !== s.playerFactionId && BALANCE.siegeChoice) {
+        beginSiege(s, factionId, g, city, to, troops, cmd.tactic);
+        return { ok: true, message: `${to.name}을(를) 포위했습니다.` };
       }
+      return finishAttack(s, factionId, g, city, to, troops, road, cmd.tactic);
     }
     case 'recruit': {
       const t = s.generals[cmd.targetId];
@@ -432,6 +375,89 @@ export function foodPrice(s: GameState, cityId: string, action: 'buyFood' | 'sel
 }
 
 /** 세력 특성 효과 합계 (v2.7) */
+export interface AttackOptions {
+  /** 이미 정해진 전투 결과 (청야로 빈 성을 넘겨받을 때) */
+  outcome?: BattleOutcome;
+  /** 포위 대응에서 덧붙이는 전투 입력 */
+  battle?: Partial<BattleInput>;
+  /** 전투 직후 손실 보정 등 (출성 요격 대승) */
+  after?: (out: BattleOutcome) => void;
+  noPlunder?: boolean;
+  /** 패한 공격군이 돌아갈 곳 (기본: 출발 도시) */
+  returnTroops?: (n: number) => void;
+}
+
+/** 전투를 치르고 함락·퇴각을 처리한다 (출진·포위 공용, v3.6에서 분리) */
+export function finishAttack(s: GameState, factionId: string, g: General, city: City, to: City, troops: number, road: Road, tactic?: TacticKind, opt: AttackOptions = {}): CommandResult {
+  const f = s.factions[factionId];
+  const defenderFaction = to.owner;
+  const defenders = generalsIn(s, to.id).filter((x) => x.faction === defenderFaction);
+  const out = opt.outcome ?? resolveBattle(s, {
+    attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic, traitAttack: traitSum(f.traits, 'attack'), attackerShips: city.ships ?? 0, navalTrait: f.traits.includes('수군'),
+    attackerMorale: city.morale, attackerTraining: city.training, supply: supplyRatio(s, factionId) < BALANCE.lowSupplyThreshold ? supplyRatio(s, factionId) : undefined,
+    isolated: !isConnectedToCapital(s, factionId, city.id),
+    lastStand: lastStandBonus(s, defenderFaction),
+    ...opt.battle,
+  });
+  opt.after?.(out);
+  s.lastBattles.push({
+    turn: s.turn, attackerFaction: factionId, defenderFaction, fromCity: city.id, toCity: to.id, generalId: g.id,
+    attackerTroops: troops, defenderTroops: to.troops, ...out,
+  });
+  if (s.lastBattles.length > 30) s.lastBattles.splice(0, s.lastBattles.length - 30);
+
+  const survivors = troops - out.attackerLoss;
+  const defName = defenderFaction ? s.factions[defenderFaction].name : '중립';
+  if (out.tactic?.kind === 'fire' && out.tactic.success) { igniteCity(s, to.id, 1); out.reasons.push(`화공의 불길이 ${to.name} 일대로 번졌습니다`); }
+  if (out.won) {
+    to.troops = survivors;
+    to.morale = Math.min(100, city.morale + BALANCE.victoryMorale);
+    to.training = city.training;
+    if (to.port) {
+      // 항구 함락: 남은 전선 절반을 노획하고, 바다로 왔다면 함대 절반이 따라 들어간다
+      const moved = road.type === 'sea' ? Math.floor((city.ships ?? 0) / 2) : 0;
+      city.ships = (city.ships ?? 0) - moved;
+      to.ships = Math.min(BALANCE.maxShipsPerCity, Math.floor((to.ships ?? 0) / 2) + moved);
+    }
+    if (defenderFaction && !opt.noPlunder) {
+      const dPop = Object.values(s.cities).filter((c) => c.owner === defenderFaction).reduce((a, c) => a + c.population, 0);
+      const df = s.factions[defenderFaction];
+      const loot = Math.round(df.food * (to.population / Math.max(1, dPop)) * BALANCE.plunderRatio);
+      if (loot > 0) { df.food -= loot; f.food += loot; out.reasons.push(`${to.name}의 창고에서 곡식 ${loot.toLocaleString()}석 노획`); }
+    }
+    to.owner = factionId;
+    to.order = Math.max(10, to.order - 20);
+    to.population = Math.round(to.population * 0.95);
+    g.city = to.id;
+    // 패배한 수비 장수: 인접 아군 도시로 퇴각, 없으면 재야
+    remember(g, s.turn, 'defeated', defenders[0]?.id ?? g.id);
+    for (const d of defenders) {
+      remember(d, s.turn, 'defeatedBy', g.id);
+      const retreat = defenderFaction
+        ? pick(s, neighbors(s, to.id).filter((n) => n.city.owner === defenderFaction).map((n) => n.city.id))
+        : undefined;
+      if (retreat) d.city = retreat;
+      else if (d.faction && s.factions[d.faction]?.rulerId !== d.id) d.faction = null;
+      else if (d.faction) d.faction = null; // 군주도 도망칠 곳이 없으면 재야로
+    }
+    log(s, `${s.factions[factionId].name}군 ${g.name}이(가) ${defName}의 ${to.name}을(를) 함락했습니다!`, 'danger', factionId, { event: 'capture', other: defenderFaction });
+    if (to.seat && defenderFaction) submitCounties(s, to.id, factionId, defenderFaction);
+    checkFactionDestroyed(s, defenderFaction);
+    return { ok: true, message: `${to.name} 함락! (아군 손실 ${out.attackerLoss.toLocaleString()})` };
+  } else {
+    to.troops = Math.max(1, to.troops - out.defenderLoss);
+    to.morale = Math.min(100, to.morale + 5);
+    opt.returnTroops ? opt.returnTroops(survivors) : (city.troops += survivors);
+    city.morale = Math.max(0, city.morale - BALANCE.defeatMorale);
+    if (road.type === 'sea' && (city.ships ?? 0) > 0) city.ships = Math.floor((city.ships ?? 0) * (1 - BALANCE.shipLossOnFail));
+    if (chance(s, BALANCE.battleDeathChance * (g.persona.risk / 60))) {
+      killGeneral(s, g, `${g.name}이(가) ${to.name} 공격 중 전사했습니다!`);
+    }
+    log(s, `${g.name}의 ${to.name} 공격이 실패했습니다.`, 'warn', factionId);
+    return { ok: true, message: `${to.name} 공격 실패 (아군 손실 ${out.attackerLoss.toLocaleString()})` };
+  }
+}
+
 /** 귀농 미리보기 (v3.5): 몇 명을 돌려보내면 민심·곡식이 얼마나 느는지. 명령과 화면이 같은 계산을 쓴다. */
 export function disbandPreview(s: GameState, cityId: string, want: number) {
   const city = s.cities[cityId];

@@ -27,6 +27,12 @@ export interface BattleInput {
   navalTrait?: boolean;
   /** 세력 특성 공격 보너스 (v2.7) */
   traitAttack?: number;
+  /** v3.6 포위 대응: 공격·수비 배율과 그 이유, 성벽을 쓰지 않는 야전(출성 요격) */
+  attackMul?: number;
+  attackReason?: string;
+  defenseMul?: number;
+  defenseReason?: string;
+  ignoreWalls?: boolean;
 }
 
 export interface BattleOutcome {
@@ -84,6 +90,8 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   if (wm.reason) { atk *= wm.mul; reasons.push(wm.reason); }
   if (b.weather === 'fog' && b.attackerGeneral.stats.intellect >= 85) { atk *= 1.12; reasons.push(`안개를 이용한 ${b.attackerGeneral.name}의 기습 +12%`); }
 
+  if (b.attackMul !== undefined && b.attackMul !== 1) { atk *= b.attackMul; if (b.attackReason) reasons.push(b.attackReason); }
+
   let tactic: BattleOutcome['tactic'];
   if (b.tactic) {
     const p = tacticChance(b.tactic, { general: b.attackerGeneral, defenders: b.defenderGenerals, weather: b.weather, road: b.road, target: b.defenderCity });
@@ -107,10 +115,11 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   let def = city.troops * commandFactor(dLead, dWar) * dq;
   if (dq > 1.07) reasons.push(`수비군의 높은 사기·훈련 (×${dq.toFixed(2)})`);
   else if (dq < 0.93) reasons.push(`수비군 사기·훈련 부족 (×${dq.toFixed(2)})`);
-  const wallMul = 1 + (city.wall / 200) * (city.fortress ? BALANCE.fortressWallMultiplier : 1);
+  const wallMul = b.ignoreWalls ? 1 : 1 + (city.wall / 200) * (city.fortress ? BALANCE.fortressWallMultiplier : 1);
   def *= wallMul;
-  if (city.fortress) reasons.push(`${city.name}은(는) 산성/요새라 수비력 상승`);
-  const forts = landmarksOfCity(city.id, 'fortress');
+  if (city.fortress && !b.ignoreWalls) reasons.push(`${city.name}은(는) 산성/요새라 수비력 상승`);
+  if (b.ignoreWalls) reasons.push('성 밖 들판에서 맞붙어 성벽의 도움이 없음');
+  const forts = b.ignoreWalls ? [] : landmarksOfCity(city.id, 'fortress');
   if (forts.length) {
     def *= 1 + BALANCE.landmarkFortressBonus * forts.length;
     reasons.push(`${forts.map((f) => f.name).join('·')}이(가) 수비를 도움 +${Math.round(BALANCE.landmarkFortressBonus * forts.length * 100)}%`);
@@ -125,6 +134,7 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
     reasons.push('험준한 산악 지형이 수비에 유리');
   }
   if (!best) reasons.push('수비 측에 지휘관이 없음');
+  if (b.defenseMul !== undefined && b.defenseMul !== 1) { def *= b.defenseMul; if (b.defenseReason) reasons.push(b.defenseReason); }
   if (b.lastStand && b.lastStand > 1) {
     def *= b.lastStand;
     reasons.push(`땅이 얼마 남지 않은 수비군의 배수진 +${Math.round((b.lastStand - 1) * 100)}%`);

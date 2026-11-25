@@ -101,6 +101,31 @@ export const BALANCE = {
   tradeMax: 30000,
   /** 귀농: 병사를 고향으로 돌려보내면 인구로 돌아가고 민심이 오른다 */
   disbandOrderPer1000: 1,
+  /** v3.6 포위 대응: AI가 플레이어 도시를 치면 한 계절 포위 → 플레이어가 대응을 고른다 */
+  siegeChoice: true,
+  /** 농성: 수비 배율, 성 밖 농경지 손실 */
+  siegeHoldDefense: 1.15,
+  siegeHoldAgriLoss: 2,
+  /** 협공: 원군이 적의 배후를 쳐 적 공격력 배율 */
+  siegePincerAttackMul: 0.85,
+  /** 출성 요격: 성벽 없이 싸우되 수비 장수 무력에 따라 기세(무력 50 = 0, 100 = +20%), 이기면 적 손실 ×1.5·아군 손실 ×0.6 */
+  siegeSortiePerWar: 0.004,
+  siegeSortieRout: 1.5,
+  siegeSortieSpare: 0.6,
+  /** 청야 철수: 함께 옮기는 인구 비율, 남기고 떠나는 도시의 농업·상업 손실 */
+  siegeEvacPop: 0.5,
+  siegeEvacAgri: 15,
+  siegeEvacCommerce: 10,
+  /** 화친 요청: 예물 금 = 적 병력 × 이 값 (최소 siegeParleyMinGold), 실패하면 예물 절반을 잃고 사기 저하 */
+  siegeParleyGoldPerTroop: 0.12,
+  /** 화친으로 맺는 휴전 기간 (계절) — 외교 휴전보다 짧다 */
+  siegeParleyTruceTurns: 4,
+  /** 화친 성공률 상한 */
+  siegeParleyMax: 0.8,
+  siegeParleyMinGold: 300,
+  siegeParleyFailMorale: 5,
+  /** 대응별 예상 결과를 낼 때 돌려 보는 전투 수 */
+  siegeForecastSamples: 120,
   /** 함락한 도시의 곡식 노획: 패배 세력 곡식 × (그 도시 인구 비중) × 계수 */
   plunderRatio: 0.6,
   /** AI가 군량을 사들이는 기준: 곡식 < 병력 × 이 값 */

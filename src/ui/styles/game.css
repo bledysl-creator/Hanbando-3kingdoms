@@ -319,3 +319,23 @@ button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 .disband-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-size: 13px; padding: 6px 8px; margin-bottom: 6px; border: 1px dashed #6e5a33; border-radius: 4px; background: rgba(0, 0, 0, 0.18); }
 .disband-preview .wide { grid-column: 1 / -1; color: var(--muted); }
 .disband-preview small { color: var(--muted); }
+
+/* 포위 대응 (v3.6) */
+.siege-card { border: 1px solid #6e5a33; border-radius: 6px; padding: 10px; margin: 10px 0; background: rgba(0, 0, 0, 0.2); }
+.siege-head { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; line-height: 1.5; }
+.siege-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.siege-opt { display: flex; flex-direction: column; gap: 5px; padding: 8px; border: 1px solid #3a3f48; border-radius: 6px; background: linear-gradient(#1d242e, #141a21); }
+.siege-opt.on { border-color: var(--gold-hi); box-shadow: 0 0 0 1px var(--gold-hi) inset; }
+.siege-opt.off { opacity: 0.55; }
+.siege-opt p { margin: 0; }
+.siege-opt-title { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+.siege-opt .tag { margin-left: auto; font-size: 11px; padding: 1px 6px; border-radius: 8px; background: #6b5221; }
+.siege-fc { font-size: 13px; padding: 5px 6px; border: 1px dashed #4a4030; border-radius: 4px; flex: 1; }
+.siege-ctl select { width: 100%; }
+.siege-ctl .troop-quick button { padding: 1px 5px; font-size: 11px; }
+.siege-opt > button { padding: 6px 8px; border: 1px solid #6e5a33; border-radius: 4px; background: linear-gradient(#232b36, #171d25); text-align: center; }
+.siege-opt > button.primary { background: linear-gradient(#6b5221, #3d2e12); border-color: var(--gold-hi); font-weight: 700; }
+.siege-alert { display: block; margin-top: 6px; padding: 6px 10px; border: 1px solid #b04030; border-radius: 4px; background: linear-gradient(#5a1d16, #36110c); color: #ffd9c8; font-weight: 700; animation: siegePulse 1.4s ease-in-out infinite; }
+@keyframes siegePulse { 50% { box-shadow: 0 0 10px #ff5a3c; } }
+.siege-ctl .troop-quick button { color: inherit; background: #232b36; border: 1px solid #6e5a33; border-radius: 3px; cursor: pointer; }
+.siege-ctl .troop-slider-row { font-size: 12px; }

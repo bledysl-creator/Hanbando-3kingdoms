@@ -11,6 +11,7 @@ import { canRise, processAiUprisings, processLifecycle } from './lifecycle';
 import { recordAnnal } from './chronicle';
 import { processSurrenders } from './surrender';
 import { processRebellions } from './rebellion';
+import { resolveSieges } from './siege';
 import { processEpidemics } from './epidemic';
 import { processWildfires } from './wildfire';
 import { processGovernors } from './office';
@@ -107,6 +108,10 @@ export function checkOutcome(s: GameState) {
 export function endTurnMut(s: GameState) {
   if (s.outcome !== 'playing') return;
   s.aiTrace = [];
+  // v3.6 지난 계절 포위된 플레이어 도시: 고른 대응으로 결판
+  resolveSieges(s);
+  checkOutcome(s);
+  if (s.outcome !== 'playing') return;
   for (const fid of Object.keys(s.factions)) {
     if (fid === s.playerFactionId) continue;
     runFactionAI(s, fid);

@@ -288,7 +288,7 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
 }
 
 /** 병력 양 슬라이더: 0 ~ (도시 병력 − 최소 수비병). 남는 병력도 함께 보여 준다. */
-function TroopSlider({ value, max, step, total, keep, onChange }: {
+export function TroopSlider({ value, max, step, total, keep, onChange }: {
   value: number; max: number; step: number; total: number; keep: number; onChange: (v: number) => void;
 }) {
   if (max <= 0) return <p className="muted small">보낼 병력이 없습니다 (도시에 최소 {keep.toLocaleString()}명은 남겨야 함).</p>;

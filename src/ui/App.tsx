@@ -1,11 +1,12 @@
 // 앱 루트: 타이틀 → 메인 지도 화면. 게임 상태는 core 함수로만 바꾼다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BALANCE, canFound, applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
+import { BALANCE, canFound, applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, siegesOf, setSiegeResponse, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
 import { DEFAULT_LAYERS, KoreaMap, LAYER_LABELS, MAP_MODES, type MapLayers, type MapMode } from '../map/KoreaMap';
 import { indexedDbRepo } from '../save/saveRepository';
 import { VERSION } from '../version';
 import { CityPanel } from './components/CityPanel';
 import { EventCards, pickEvents, type EventCardItem } from './components/EventCard';
+import { SiegeModal } from './components/Siege';
 import { DiplomacyModal, OffersModal } from './components/Diplomacy';
 import { CommandBar, EventLog, MiniMap, MissionPanel, RulerCard, SideMenu, TopBar, TurnButton, type BarKey, type MenuKey } from './components/Hud';
 import { SimStatsModal, BattleReportView, BattlesModal, ArmyModal, TacticsModal, DevModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
@@ -127,7 +128,9 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
     try { return { ...DEFAULT_LAYERS, ...JSON.parse(localStorage.getItem('hanbando.layers') ?? '{}') }; } catch { return DEFAULT_LAYERS; }
   });
   const toggleLayer = (k: keyof MapLayers) => setLayers((l) => { const n = { ...l, [k]: !l[k] }; localStorage.setItem('hanbando.layers', JSON.stringify(n)); return n; });
-  useEffect(() => setOffersHidden(false), [state.turn]);
+  const [siegeHidden, setSiegeHidden] = useState(false);
+  useEffect(() => { setOffersHidden(false); setSiegeHidden(false); }, [state.turn]);
+  const mySieges = pf ? siegesOf(state, pf) : [];
 
   const flash = (text: string, ok = true) => { setToast({ text, ok }); setTimeout(() => setToast(null), 2600); };
 
@@ -223,6 +226,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
           <TurnButton onClick={() => setAuto((a) => !a)} label={auto ? '일시정지' : '자동 진행'} disabled={state.outcome !== 'playing'} />
         )}
         {pf && <div className="idle-hint">대기 장수 {idle}명</div>}
+        {mySieges.length > 0 && <button className="siege-alert" onClick={() => setSiegeHidden(false)}>⚔️ 포위된 성 {mySieges.length}곳 — 대응 정하기</button>}
       </div>
 
       {pf && canRise(state, pf) && state.outcome === 'playing' && (
@@ -241,6 +245,10 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
 
       {toast && <div className={`toast ${toast.ok ? 'ok' : 'err'}`}>{toast.text}</div>}
 
+      {mySieges.length > 0 && !siegeHidden && events.length === 0 && auto === false && (
+        <SiegeModal state={state} sieges={mySieges} onClose={() => setSiegeHidden(true)}
+          onRespond={(id, r) => { const x = setSiegeResponse(state, pf!, id, r); setState(x.state); flash(x.result.ok ? x.result.message : x.result.error, x.result.ok); }} />
+      )}
       {events.length > 0 && <EventCards key={state.turn} items={events} onClose={() => setEvents([])} />}
       {report !== null && state.lastBattles[report] && (
         <Modal title="전투 결과" onClose={() => setReport(null)}>

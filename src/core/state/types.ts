@@ -203,8 +203,35 @@ export interface GameState {
   intel: Record<FactionId, Record<CityId, { turn: number; troops: number; false?: boolean }>>; // 첩보 (v1.1) // 후계 순위 (v1.0)
   diplomacy: Record<string, Treaty>; // key: 'a|b' (사전순)
   offers: DiplomaticOffer[]; // AI → 플레이어 제안 (플레이어 응답 대기)
+  /** v3.6 플레이어 도시 포위: 다음 턴 시작에 플레이어가 고른 대응으로 결판난다 */
+  sieges?: Siege[];
   /** 개발자 모드: 지난 턴 AI 판단 근거 (v3.0, 선택 — 저장해도 무방) */
   aiTrace?: AiTraceEntry[];
   outcome: 'playing' | 'won' | 'lost' | 'unified';
   winner: FactionId | null;
+}
+
+/** v3.6 포위 대응 */
+export type SiegeResponse =
+  | { kind: 'hold' }
+  | { kind: 'pincer'; fromCity: CityId; troops: number }
+  | { kind: 'sortie' }
+  | { kind: 'evacuate'; toCity: CityId }
+  | { kind: 'parley' };
+
+export interface Siege {
+  id: string;
+  turn: number;
+  attackerFaction: FactionId;
+  generalId: GeneralId;
+  fromCity: CityId;
+  toCity: CityId;
+  troops: number;
+  tactic?: import('../battle/tactics').TacticKind;
+  morale: number;
+  training: number;
+  ships: number;
+  supply?: number;
+  isolated: boolean;
+  response?: SiegeResponse;
 }

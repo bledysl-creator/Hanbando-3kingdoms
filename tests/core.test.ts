@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, createGame, DATA, endTurn, SCENARIOS, missionProgress, citiesOf, minGarrison, neighbors, disbandPreview } from '../src/core';
+import { applyCommand, createGame, DATA, endTurn, SCENARIOS, missionProgress, citiesOf, minGarrison, neighbors, disbandPreview, siegesOf, siegeForecast, setSiegeResponse, pincerSources, evacuateTargets } from '../src/core';
 import { rand } from '../src/core/rng/rng';
 import { endTurnMut } from '../src/core/systems/turn';
+import { resolveSieges } from '../src/core/systems/siege';
 
 const sc = SCENARIOS['197_sabun'];
 const neighborsOf = (s: ReturnType<typeof createGame>, id: string) => neighbors(s, id).map((n) => n.city.id);
@@ -819,5 +820,88 @@ describe('귀농 미리보기·지역 특성 (v3.5)', () => {
     for (const id of ['daegu', 'gyeongju', 'busan']) expect(C[id].commerce).toBeGreaterThan(C[id].agriculture);
     for (const id of ['uiju', 'ganggye', 'hyesan']) expect(C[id].wall).toBeGreaterThanOrEqual(80);
     expect(C.hanyang.population).toBe(Math.max(...DATA.cities.map((c) => c.population)));
+  });
+});
+
+describe('포위와 대응 (v3.6)', () => {
+  const setup = (seed = 7) => {
+    const s = newGame(seed);
+    s.diplomacy = {};
+    s.offers = [];
+    // 촉 도시와 맞닿은 위·오·여 도시에서 공격
+    for (const g of Object.values(s.generals)) {
+      if (!g.alive || !g.faction || g.faction === 'shu' || s.factions[g.faction].rulerId === g.id) continue;
+      const target = neighbors(s, g.city).find((n) => n.city.owner === 'shu' && n.road.type !== 'sea');
+      if (!target || s.cities[g.city].owner !== g.faction) continue;
+      s.cities[g.city].troops = 30000;
+      s.factions[g.faction].food = 999999;
+      return { s, g, from: g.city, to: target.city.id, fid: g.faction };
+    }
+    throw new Error('공격할 장수 없음');
+  };
+  const march = (x: ReturnType<typeof setup>, troops = 20000) => {
+    // 명령 거부를 피하려고 복종을 높인다
+    x.s.generals[x.g.id].loyalty = 100;
+    x.s.generals[x.g.id].persona.righteousness = 100;
+    return applyCommand(x.s, x.fid, { type: 'march', generalId: x.g.id, toCityId: x.to, troops }).state;
+  };
+  it('AI가 플레이어 성을 치면 바로 싸우지 않고 포위하고, 출발 성에서 병력이 빠진다', () => {
+    const x = setup();
+    const s = march(x);
+    expect(s.sieges?.length).toBe(1);
+    expect(s.cities[x.to].owner).toBe('shu');
+    expect(s.cities[x.from].troops).toBe(10000);
+    expect(siegesOf(s, 'shu').length).toBe(1);
+  });
+  it('관전 모드(플레이어 없음)는 예전처럼 바로 싸운다', () => {
+    const x = setup();
+    x.s.playerFactionId = null;
+    const s = march(x);
+    expect(s.sieges ?? []).toHaveLength(0);
+    expect(s.lastBattles.length).toBeGreaterThan(x.s.lastBattles.length);
+  });
+  it('예상 결과는 상태를 바꾸지 않고, 협공은 농성보다 지킬 확률이 높다', () => {
+    const x = setup();
+    const s = march(x);
+    const sg = s.sieges![0];
+    const rng = s.rng;
+    const hold = siegeForecast(s, sg.id, { kind: 'hold' });
+    expect(s.rng).toBe(rng);
+    const src = pincerSources(s, sg).find((p) => p.leader);
+    if (src) {
+      const pin = siegeForecast(s, sg.id, { kind: 'pincer', fromCity: src.cityId, troops: src.max });
+      expect(pin.holdChance).toBeGreaterThanOrEqual(hold.holdChance);
+    }
+    expect(siegeForecast(s, sg.id, { kind: 'sortie' }).unavailable).toBeUndefined();
+  });
+  it('청야 철수: 병력·장수·백성 절반이 옮겨 가고, 적은 빈 성을 얻되 노획이 없다', () => {
+    const x = setup();
+    let s = march(x);
+    const sg = s.sieges![0];
+    const dest = evacuateTargets(s, sg)[0];
+    if (!dest) return; // 옮길 곳이 없는 배치면 건너뜀
+    const r = setSiegeResponse(s, 'shu', sg.id, { kind: 'evacuate', toCity: dest });
+    expect(r.result.ok).toBe(true);
+    s = structuredClone(r.state);
+    const before = { troops: s.cities[x.to].troops, destTroops: s.cities[dest].troops, pop: s.cities[x.to].population, food: s.factions[x.fid].food };
+    const gens = Object.values(s.generals).filter((g) => g.alive && g.faction === 'shu' && g.city === x.to).map((g) => g.id);
+    resolveSieges(s);
+    expect(s.cities[x.to].owner).toBe(x.fid);
+    expect(s.cities[dest].troops).toBe(before.destTroops + before.troops);
+    expect(s.cities[x.to].population).toBeLessThan(before.pop * 0.6);
+    expect(s.factions[x.fid].food).toBe(before.food);
+    for (const id of gens) expect(s.generals[id].city).toBe(dest);
+  });
+  it('화친 예물이 모자라면 고를 수 없고, 고르지 않으면 농성으로 결판난다', () => {
+    const x = setup();
+    const s = structuredClone(march(x));
+    s.factions.shu.gold = 0;
+    const sg = s.sieges![0];
+    expect(setSiegeResponse(s, 'shu', sg.id, { kind: 'parley' }).result.ok).toBe(false);
+    const n = s.lastBattles.length;
+    resolveSieges(s);
+    expect(s.lastBattles.length).toBe(n + 1);
+    expect(s.lastBattles[n].reasons.some((r) => r.includes('농성'))).toBe(true);
+    expect(s.sieges).toHaveLength(0);
   });
 });
