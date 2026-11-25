@@ -63,6 +63,7 @@ export const BALANCE = {
   uprisingBase: 0.25, // 재기 성공 기본 확률
   uprisingMaxGarrison: 9000, // 이 병력 이하인 도시에서만 재기 가능
   uprisingVolunteerRatio: 0.04, // 재기 시 인구 대비 의병
+  aiUprisingChance: 0.3, // AI가 매년 재기를 시도할 확률
 
   // 계략 (v1.1)
   intelValidTurns: 4,

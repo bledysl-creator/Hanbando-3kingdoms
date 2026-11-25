@@ -1,7 +1,7 @@
 // 목록·보고서 창: 장수, 도시, 연표, 세력 정보, 전투 보고, 설정/저장, 도움말
 import { useEffect, useState, type ReactNode } from 'react';
 import type { BattleReport, GameState } from '../../core';
-import { MEMORY_LABEL, SEASONS, visibleTroops, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
+import { MEMORY_LABEL, SEASONS, visibleTroops, writeChronicle, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
 import { exportJson, indexedDbRepo, migrate, type SaveMeta } from '../../save/saveRepository';
 import { Portrait } from './Portrait';
 
@@ -120,13 +120,30 @@ export function CitiesModal({ state, onClose, onPickCity }: { state: GameState; 
 
 export function ChronicleModal({ state, onClose }: { state: GameState; onClose: () => void }) {
   const entries = [...state.log].reverse();
+  const [tab, setTab] = useState<'log' | 'book'>('log');
+  const book = tab === 'book' ? writeChronicle(state) : '';
+  const download = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([writeChronicle(state)], { type: 'text/markdown' }));
+    a.download = `한반도삼국지-역사서-${state.year}.md`;
+    a.click();
+  };
   return (
     <Modal title="연표 — 이번 판의 한반도 역사" onClose={onClose}>
+      <div className="tabs">
+        <button className={tab === 'log' ? 'active' : ''} onClick={() => setTab('log')}>천하 동향</button>
+        <button className={tab === 'book' ? 'active' : ''} onClick={() => setTab('book')}>역사서</button>
+        <button onClick={download}>📥 역사서 내보내기 (.md)</button>
+      </div>
+      {tab === 'book' ? (
+        <div className="book">{book.split('\n').map((l, i) => l.startsWith('# ') ? <h2 key={i}>{l.slice(2)}</h2> : l.startsWith('## ') ? <h3 key={i}>{l.slice(3)}</h3> : l.startsWith('- ') ? <p key={i} className="ev">· {l.slice(2)}</p> : l === '---' ? <hr key={i} /> : l ? <p key={i}>{l}</p> : null)}</div>
+      ) : (
       <ol className="chronicle">
         {entries.map((l, i) => (
           <li key={i} className={l.kind}><span className="when">{l.year}년 {SEASONS[l.season]}</span> {l.text}</li>
         ))}
       </ol>
+      )}
     </Modal>
   );
 }
@@ -236,6 +253,53 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <li><b>외교</b>: 사신과 예물로 휴전(2년)·동맹을 제안합니다. 맹약 중인 세력은 공격할 수 없고, 파기하면 의리 높은 장수가 실망합니다.</li>
         <li>지도는 마우스 휠로 확대, 드래그로 이동합니다. 부대·계책은 준비 중입니다.</li>
       </ul>
+    </Modal>
+  );
+}
+
+import type { SimProgress } from '../../sim/simWorker';
+import { DATA } from '../../core';
+
+export function SimStatsModal({ onClose }: { onClose: () => void }) {
+  const [p, setP] = useState<SimProgress | null>(null);
+  const [runs, setRuns] = useState(30);
+  const [w, setW] = useState<Worker | null>(null);
+  useEffect(() => () => w?.terminate(), [w]);
+  const start = () => {
+    w?.terminate();
+    const worker = new Worker(new URL('../../sim/simWorker.ts', import.meta.url), { type: 'module' });
+    worker.onmessage = (e) => setP(e.data);
+    worker.postMessage({ runs, maxTurns: 160, seed: Math.floor(Date.now() % 100000) });
+    setW(worker);
+    setP(null);
+  };
+  const facs = DATA.factions;
+  const avgTurn = p && p.turns.length ? (p.turns.reduce((a, b) => a + b, 0) / p.turns.length).toFixed(1) : '-';
+  const hot = p ? Object.entries(p.battles).sort((a, b) => b[1] - a[1]).slice(0, 5) : [];
+  return (
+    <Modal title="관전 통계 — AI끼리 여러 판 돌려보기" onClose={onClose}>
+      <div className="actions row">
+        <select value={runs} onChange={(e) => setRuns(+e.target.value)}>{[10, 30, 100].map((n) => <option key={n} value={n}>{n}판</option>)}</select>
+        <button className="primary" onClick={start}>시뮬레이션 시작 (최대 40년)</button>
+      </div>
+      {p && (
+        <>
+          <p className="muted">{p.done}/{p.runs}판 완료 · 통일까지 평균 {avgTurn}턴 · 장수 이탈 {p.defections}회 · 재기 {p.uprisings}회</p>
+          <table className="table">
+            <thead><tr><th>세력</th><th>통일 확률</th><th>생존율</th><th>평균 도시</th></tr></thead>
+            <tbody>{facs.map((f) => (
+              <tr key={f.id}>
+                <td><span className="badge" style={{ background: f.color }}>{f.hanja}</span> {f.name}</td>
+                <td><div className="bar"><div style={{ width: `${((p.wins[f.id] ?? 0) / p.done) * 100}%` }} /><em>{Math.round(((p.wins[f.id] ?? 0) / p.done) * 100)}%</em></div></td>
+                <td>{Math.round(((p.survive[f.id] ?? 0) / p.done) * 100)}%</td>
+                <td>{((p.cities[f.id] ?? 0) / p.done).toFixed(1)}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+          <p className="small">가장 많이 주인이 바뀐 도시: {hot.map(([c, n]) => `${DATA.cities.find((x) => x.id === c)?.name} ${n}회`).join(', ')}</p>
+        </>
+      )}
+      <p className="hint">밸런스는 감이 아니라 이런 자동 시뮬레이션 통계로 조정합니다 (Game.md 5-7).</p>
     </Modal>
   );
 }

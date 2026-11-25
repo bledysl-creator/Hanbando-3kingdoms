@@ -95,7 +95,7 @@ Hanbando-3kingdoms/
 11. 기능을 추가하면 `tests/`에 테스트를 함께 추가하고, 끝나면 이 파일의 진행 현황을 갱신한다.
 
 ## 5. 진행 현황
-현재 단계: **v1.1.0 — 계략·첩보** (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`)
+현재 단계: **v1.2.0 — 역사서와 관전 통계** (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`)
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
@@ -148,3 +148,4 @@ Hanbando-3kingdoms/
 | 2026-11-25 | v0.9.0: 장수 인격 — 복종도, 명령 거부, 장수 회의, 기억, 장수 상세 창 |
 | 2026-11-25 | v1.0.0: 생애와 재기 — 노화·사망·후계자·새 인물 10명, 멸망 후 재기 |
 | 2026-11-25 | v1.1.0: 계략·첩보 — 전장의 안개, 첩보(오보), 유언비어, 이간 |
+| 2026-11-25 | v1.2.0: 역사서 자동 작성·내보내기, 관전 통계(Web Worker), AI 재기 빈도 조정 |

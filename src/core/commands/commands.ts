@@ -31,6 +31,11 @@ export type CommandResult = { ok: true; message: string } | { ok: false; error: 
 export function log(s: GameState, text: string, kind: LogKind = 'info', factionId: string | null = null) {
   s.log.push({ turn: s.turn, year: s.year, season: s.season, text, kind, factionId });
   if (s.log.length > 400) s.log.splice(0, s.log.length - 400);
+  // 큰 사건은 역사서에 남긴다
+  if ((kind === 'danger' || kind === 'good') && s.chronicle) {
+    s.chronicle.push({ year: s.year, season: s.season, text });
+    if (s.chronicle.length > 1500) s.chronicle.splice(0, s.chronicle.length - 1500);
+  }
 }
 
 /** 상태를 직접 수정한다(드래프트). UI는 applyCommand로 복사본에 적용할 것. */

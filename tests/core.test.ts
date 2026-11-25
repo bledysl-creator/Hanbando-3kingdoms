@@ -329,3 +329,16 @@ describe('계략·첩보 (v1.1)', () => {
     expect(r.result.ok && r.state.generals.guan_yu.loyalty).toBe(100);
   });
 });
+
+import { writeChronicle } from '../src/core';
+describe('역사서 (v1.2)', () => {
+  it('관전 20턴 후 역사서에 연도별 장과 큰 사건이 들어 있다', () => {
+    const s = newGame(11, null);
+    for (let i = 0; i < 20 && s.outcome === 'playing'; i++) endTurnMut(s);
+    const md = writeChronicle(s);
+    expect(md).toContain('## 197년');
+    expect(md).toContain('## 201년');
+    expect(s.annals.length).toBeGreaterThanOrEqual(5);
+    expect(md.split('\n').some((l) => l.startsWith('- '))).toBe(true);
+  });
+});

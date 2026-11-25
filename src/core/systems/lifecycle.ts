@@ -2,7 +2,7 @@
 import { BALANCE } from '../config';
 import { log } from '../commands/commands';
 import { chance, rand } from '../rng/rng';
-import { relationBetween } from '../query';
+import { neighbors, relationBetween } from '../query';
 import type { GameState, General } from '../state/types';
 
 const age = (s: GameState, g: General) => s.year - g.birth;
@@ -120,10 +120,11 @@ export function processAiUprisings(s: GameState) {
   if (s.season !== 0) return;
   for (const f of Object.values(s.factions)) {
     if (f.id === s.playerFactionId || !canRise(s, f.id)) continue;
-    // 군주가 수비가 약한 이웃 도시로 숨어든다
+    if (rand(s) > BALANCE.aiUprisingChance) continue;
+    // 군주가 수비가 약한 이웃 도시로 숨어든다 (한 칸씩만 이동)
     const r = s.generals[f.rulerId];
-    const weakest = Object.values(s.cities).filter((c) => c.troops <= BALANCE.uprisingMaxGarrison).sort((a, b) => a.troops - b.troops)[0];
-    if (weakest && rand(s) < 0.5) r.city = weakest.id;
+    const near = [s.cities[r.city], ...neighbors(s, r.city).map((n) => n.city)].sort((a, b) => a.troops - b.troops)[0];
+    if (near) r.city = near.id;
     attemptUprising(s, f.id);
   }
 }

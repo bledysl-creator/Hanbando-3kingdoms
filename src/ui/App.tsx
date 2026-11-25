@@ -7,7 +7,7 @@ import { VERSION } from '../version';
 import { CityPanel } from './components/CityPanel';
 import { DiplomacyModal, OffersModal } from './components/Diplomacy';
 import { CommandBar, EventLog, MiniMap, MissionPanel, RulerCard, SideMenu, TopBar, TurnButton, type BarKey, type MenuKey } from './components/Hud';
-import { BattleReportView, BattlesModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
+import { SimStatsModal, BattleReportView, BattlesModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
 
 type ModalKey = 'generals' | 'cities' | 'chronicle' | 'factions' | 'battles' | 'settings' | 'help' | 'diplomacy' | null;
 
@@ -20,6 +20,7 @@ export function App() {
 function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
   const [hasAuto, setHasAuto] = useState(false);
   const [pick, setPick] = useState(false);
+  const [stats, setStats] = useState(false);
   useEffect(() => { indexedDbRepo.list().then((l) => setHasAuto(l.some((m) => m.slot === 'auto'))).catch(() => {}); }, []);
   const sc = SCENARIOS['197_sabun'];
   const preview = useMemo(() => createGame(DATA, sc), [sc]);
@@ -38,7 +39,9 @@ function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
               <button className="primary" onClick={() => setPick(true)}>새 게임</button>
               <button disabled={!hasAuto} onClick={() => indexedDbRepo.load('auto').then((s) => s && onStart(s))}>이어하기</button>
               <button onClick={() => start(null)}>관전 모드 (AI끼리 진행)</button>
+              <button onClick={() => setStats(true)}>📊 관전 통계 (여러 판 자동)</button>
             </div>
+            {stats && <SimStatsModal onClose={() => setStats(false)} />}
           </>
         ) : (
           <>

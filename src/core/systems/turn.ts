@@ -8,6 +8,7 @@ import type { GameState } from '../state/types';
 import { expireTreaties } from '../diplomacy/diplomacy';
 import { applyWeatherEffects, rollWeather } from './weather';
 import { canRise, processAiUprisings, processLifecycle } from './lifecycle';
+import { recordAnnal } from './chronicle';
 
 export function processEconomy(s: GameState) {
   for (const f of Object.values(s.factions)) {
@@ -114,6 +115,7 @@ export function endTurnMut(s: GameState) {
   for (const g of Object.values(s.generals)) g.acted = false;
   rollWeather(s);
   processLifecycle(s);
+  if (s.season === 0) recordAnnal(s);
   processAiUprisings(s);
   checkOutcome(s);
   expireTreaties(s, (t) => log(s, t, 'info'));

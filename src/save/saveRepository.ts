@@ -28,6 +28,8 @@ export function migrate(raw: unknown): GameState {
   if (s.saveVersion < 5) { s.heirs = {}; s.saveVersion = 5; }
   // v5 → v6: 첩보
   if (s.saveVersion < 6) { s.intel = {}; s.saveVersion = 6; }
+  // v6 → v7: 역사서
+  if (s.saveVersion < 7) { s.chronicle = []; s.annals = []; s.saveVersion = 7; }
   return s;
 }
 

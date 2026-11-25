@@ -1,8 +1,9 @@
 import type { GameData, ScenarioDef } from '../data';
 import type { GameState } from './types';
 import { rollWeather } from '../systems/weather';
+import { recordAnnal } from '../systems/chronicle';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
 export function createGame(
@@ -31,6 +32,8 @@ export function createGame(
     lastBattles: [],
     weather: {},
     intel: {},
+    chronicle: [],
+    annals: [],
     heirs: Object.fromEntries(Object.entries(scenario.heirs ?? {}).map(([k, v]) => [k, [...v]])),
     diplomacy: {},
     offers: [],
@@ -86,6 +89,7 @@ export function createGame(
     });
 
   rollWeather(s);
+  recordAnnal(s);
   s.log.push({ turn: 1, year: s.year, season: s.season, kind: 'info', text: `${scenario.name} — ${scenario.description}` });
   return s;
 }
