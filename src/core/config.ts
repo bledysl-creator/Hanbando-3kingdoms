@@ -107,7 +107,7 @@ export const BALANCE = {
   siegeHoldDefense: 1.15,
   siegeHoldAgriLoss: 2,
   /** 협공: 원군이 적의 배후를 쳐 적 공격력 배율 */
-  siegePincerAttackMul: 0.85,
+  siegePincerAttackMul: 0.9,
   /** 출성 요격: 성벽 없이 싸우되 수비 장수 무력에 따라 기세(무력 50 = 0, 100 = +20%), 이기면 적 손실 ×1.5·아군 손실 ×0.6 */
   siegeSortiePerWar: 0.004,
   siegeSortieRout: 1.5,
@@ -121,7 +121,11 @@ export const BALANCE = {
   /** 화친으로 맺는 휴전 기간 (계절) — 외교 휴전보다 짧다 */
   siegeParleyTruceTurns: 4,
   /** 화친 성공률 상한 */
-  siegeParleyMax: 0.8,
+  siegeParleyMax: 0.6,
+  /** 화친을 받아 준 세력은 휴전이 끝난 뒤에도 이 계절 수만큼 다시 화친을 받지 않는다 */
+  siegeParleyCooldown: 8,
+  /** AI가 플레이어 성을 노릴 때 승산을 이 값으로 나눠 신중하게 본다 (농성·협공 대비) */
+  siegeAiCaution: 1.25,
   siegeParleyMinGold: 300,
   siegeParleyFailMorale: 5,
   /** 대응별 예상 결과를 낼 때 돌려 보는 전투 수 */

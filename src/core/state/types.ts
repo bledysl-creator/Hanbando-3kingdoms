@@ -205,6 +205,8 @@ export interface GameState {
   offers: DiplomaticOffer[]; // AI → 플레이어 제안 (플레이어 응답 대기)
   /** v3.6 플레이어 도시 포위: 다음 턴 시작에 플레이어가 고른 대응으로 결판난다 */
   sieges?: Siege[];
+  /** v3.6.1 세력별 화친 재요청 금지 기한 (이 턴 전까지 거절) */
+  parleyUntil?: Record<FactionId, number>;
   /** 개발자 모드: 지난 턴 AI 판단 근거 (v3.0, 선택 — 저장해도 무방) */
   aiTrace?: AiTraceEntry[];
   outcome: 'playing' | 'won' | 'lost' | 'unified';

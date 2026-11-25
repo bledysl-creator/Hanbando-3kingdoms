@@ -64,7 +64,9 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
     for (const n of enemyNs) {
       if (troops < minMarch(s)) break;
       if (!canAttack(s, fid, n.city.owner)) continue;
-      const ratio = estimateRatio(s, g, city, n.city, troops);
+      let ratio = estimateRatio(s, g, city, n.city, troops);
+      // v3.6.1 플레이어 성은 한 계절 포위 뒤 농성·협공 등으로 맞서므로 더 넉넉한 승산을 요구한다
+      if (BALANCE.siegeChoice && n.city.owner !== null && n.city.owner === s.playerFactionId) ratio /= BALANCE.siegeAiCaution;
       if (ratio > BALANCE.aiAttackRatio) {
         const value = (n.city.population / 10000 + n.city.agriculture / 20 + n.city.commerce / 20) * (n.city.owner === null ? 0.8 : 1);
         opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops, tactic: bestTactic(s, g, n.city, n.road) }, why: `승산 ${ratio.toFixed(2)}` });

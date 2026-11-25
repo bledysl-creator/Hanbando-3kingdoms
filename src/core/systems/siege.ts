@@ -14,7 +14,7 @@ export type SiegeKind = SiegeResponse['kind'];
 
 export const SIEGE_LABEL: Record<SiegeKind, { icon: string; name: string; desc: string }> = {
   hold: { icon: '🏯', name: '농성', desc: '성문을 닫고 성벽에 기대어 지킵니다. 수비 +15%, 성 밖 농경지가 조금 짓밟힙니다.' },
-  pincer: { icon: '🔀', name: '협공', desc: '이웃 아군 성에서 원군을 보내 적의 배후를 칩니다. 원군이 수비에 합류하고 적 공격력 −15%.' },
+  pincer: { icon: '🔀', name: '협공', desc: '이웃 아군 성에서 원군을 보내 적의 배후를 칩니다. 원군이 수비에 합류하고 적 공격력 −10%.' },
   sortie: { icon: '🐎', name: '출성 요격', desc: '성 밖으로 나가 들판에서 맞섭니다. 성벽 도움은 없지만 장수 무력이 높으면 기세가 오르고, 이기면 적을 크게 무찌릅니다.' },
   evacuate: { icon: '🔥', name: '청야 철수', desc: '병력·장수와 백성 절반을 이웃 아군 성으로 옮기고 들판과 창고를 비웁니다. 성은 내주지만 병력을 보전하고 적은 노획을 못 합니다.' },
   parley: { icon: '🕊️', name: '화친 요청', desc: '사신과 예물을 보내 철군과 휴전을 청합니다. 실패하면 예물 절반을 잃고 사기가 꺾인 채 농성합니다.' },
@@ -79,6 +79,7 @@ function unavailable(s: GameState, sg: Siege, r: SiegeResponse): string | null {
     if (r.troops < 100) return '원군 병력을 정하세요.';
   }
   if (r.kind === 'evacuate' && !evacuateTargets(s, sg).includes(r.toCity)) return '옮겨 갈 이웃 아군 성이 아닙니다 (포위된 성으로는 못 감).';
+  if (r.kind === 'parley' && (s.parleyUntil?.[sg.attackerFaction] ?? -1) > s.turn) return `${s.factions[sg.attackerFaction].name}은(는) 얼마 전 예물을 받고 물러난 적이 있어 다시는 화친에 응하지 않습니다 (${s.parleyUntil![sg.attackerFaction] - s.turn}계절 뒤 가능).`;
   if (r.kind === 'parley' && s.factions[pf].gold < parleyGold(sg)) return `예물 금 ${parleyGold(sg).toLocaleString()}이(가) 부족합니다.`;
   return null;
 }
@@ -174,7 +175,7 @@ export function siegeForecast(s: GameState, siegeId: string, r: SiegeResponse): 
     const fail = sim({ kind: 'hold' }, true);
     return {
       ...base, parleyChance: p, holdChance: p + (1 - p) * fail.holdChance, attackerLoss: Math.round((1 - p) * fail.attackerLoss), defenderLoss: Math.round((1 - p) * fail.defenderLoss),
-      notes: [`예물 금 ${parleyGold(sg).toLocaleString()} · 사신 ${envoyOf(s, sg).name}`, `화친 성공 ${Math.round(p * 100)}% → 적 철군·휴전 ${BALANCE.siegeParleyTruceTurns / 4}년`, `실패하면 예물 절반을 잃고 농성 (지킬 확률 ${Math.round(fail.holdChance * 100)}%)`],
+      notes: [`예물 금 ${parleyGold(sg).toLocaleString()} · 사신 ${envoyOf(s, sg).name}`, `화친 성공 ${Math.round(p * 100)}% → 적 철군·휴전 ${BALANCE.siegeParleyTruceTurns / 4}년 (그 뒤 ${BALANCE.siegeParleyCooldown / 4}년은 다시 화친 불가)`, `실패하면 예물 절반을 잃고 농성 (지킬 확률 ${Math.round(fail.holdChance * 100)}%)`],
     };
   }
   const res = sim(r, false);
@@ -229,6 +230,7 @@ export function resolveSieges(s: GameState) {
         s.factions[pf].gold -= gold;
         s.factions[sg.attackerFaction].gold += gold;
         setTreaty(s, pf, sg.attackerFaction, 'truce', BALANCE.siegeParleyTruceTurns);
+        (s.parleyUntil ??= {})[sg.attackerFaction] = s.turn + BALANCE.siegeParleyTruceTurns + BALANCE.siegeParleyCooldown;
         returnArmy(s, sg, sg.troops);
         log(s, `${af.name}이(가) 예물 금 ${gold.toLocaleString()}을(를) 받고 ${to.name}에서 군사를 물렸습니다. ${BALANCE.siegeParleyTruceTurns / 4}년 휴전.`, 'good', pf, { event: 'treaty', other: sg.attackerFaction });
         continue;

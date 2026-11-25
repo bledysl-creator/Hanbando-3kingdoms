@@ -898,6 +898,10 @@ describe('포위와 대응 (v3.6)', () => {
     s.factions.shu.gold = 0;
     const sg = s.sieges![0];
     expect(setSiegeResponse(s, 'shu', sg.id, { kind: 'parley' }).result.ok).toBe(false);
+    s.factions.shu.gold = 999999;
+    expect(setSiegeResponse(s, 'shu', sg.id, { kind: 'parley' }).result.ok).toBe(true);
+    s.parleyUntil = { [x.fid]: s.turn + 3 }; // 얼마 전 화친을 받아 준 세력은 다시 응하지 않는다
+    expect(setSiegeResponse(s, 'shu', sg.id, { kind: 'parley' }).result.ok).toBe(false);
     const n = s.lastBattles.length;
     resolveSieges(s);
     expect(s.lastBattles.length).toBe(n + 1);
