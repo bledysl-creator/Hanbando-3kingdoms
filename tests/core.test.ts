@@ -419,3 +419,13 @@ describe('시장·귀농·노획 (v1.7)', () => {
     expect(statusOf(s, 'wei', 'lu')).toBe('truce');
   });
 });
+
+import { frontDistance } from '../src/core/ai/ai';
+describe('AI 병력 운용 (v1.8)', () => {
+  it('전선 도시는 거리 0, 후방 도시는 1 이상이다', () => {
+    const s = newGame(2, null);
+    const d = frontDistance(s, 'shu');
+    expect(d.hanyang).toBe(0);
+    expect(Math.max(...Object.values(d))).toBeGreaterThanOrEqual(1);
+  });
+});

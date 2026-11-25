@@ -52,6 +52,10 @@ export const BALANCE = {
   aiBuyFoodBelow: 0.6,
   /** AI 징병 조건: 늘어난 병력을 이 계절 수만큼 먹일 곡식 */
   aiConscriptFoodSeasons: 3,
+  /** AI 후방 도시에 남기는 최소 병력 (v1.8) */
+  aiRearGarrison: 3000,
+  /** 공세 집결 목표: 적 도시 병력의 몇 배를 모을지 */
+  aiMassFactor: 1.6,
   /** 계책 성공 시 공격 배율 (v1.6) */
   tacticBonus: { fire: 1.3, ambush: 1.25, night: 1.18 } as Record<'fire' | 'ambush' | 'night', number>,
   /** 계책 실패 시 공격 배율 */

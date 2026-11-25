@@ -19,6 +19,24 @@ function isFrontierCity(s: GameState, fid: string, cityId: string): boolean {
   return neighbors(s, cityId).some((n) => n.city.owner !== fid);
 }
 
+/** 아군 도시마다 '공격 가능한 적 도시'까지의 거리 (v1.8 후방 병력 전진용) */
+export function frontDistance(s: GameState, fid: string): Record<string, number> {
+  const dist: Record<string, number> = {};
+  const q: string[] = [];
+  for (const c of Object.values(s.cities)) {
+    if (c.owner !== fid) continue;
+    if (neighbors(s, c.id).some((n) => n.city.owner !== fid && canAttack(s, fid, n.city.owner))) { dist[c.id] = 0; q.push(c.id); }
+  }
+  while (q.length) {
+    const id = q.shift()!;
+    for (const n of neighbors(s, id)) {
+      if (n.city.owner !== fid || dist[n.city.id] !== undefined) continue;
+      dist[n.city.id] = dist[id] + 1; q.push(n.city.id);
+    }
+  }
+  return dist;
+}
+
 function optionsFor(s: GameState, fid: string, g: General): Option[] {
   const f = s.factions[fid];
   const city = s.cities[g.city];
@@ -64,6 +82,30 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
       if (need > 2000 && (!best || need > best.need)) best = { id: n.city.id, need };
     }
     if (best) opts.push({ score: 42 + best.need / 1000, cmd: { type: 'transfer', generalId: g.id, toCityId: best.id, troops: Math.min(surplus, best.need + 2000) }, why: '병력 재배치' });
+  }
+  // v1.8 공세 집결: 이웃 아군 전선 도시가 노리는 적 도시를 넘을 만큼 병력을 모아 준다
+  const spareHere = city.troops - Math.max(BALANCE.aiRearGarrison, threat * 0.8);
+  if (spareHere > 2000) {
+    let best: { id: string; need: number } | null = null;
+    for (const n of ns) {
+      if (n.city.owner !== fid) continue;
+      for (const t of neighbors(s, n.city.id)) {
+        if (t.city.owner === fid || t.city.owner === null || !canAttack(s, fid, t.city.owner)) continue;
+        const need = t.city.troops * BALANCE.aiMassFactor - n.city.troops;
+        if (need > 0 && need <= spareHere + 2000 && (!best || need < best.need)) best = { id: n.city.id, need };
+      }
+    }
+    if (best) opts.push({ score: 44, cmd: { type: 'transfer', generalId: g.id, toCityId: best.id, troops: Math.min(spareHere, Math.ceil(best.need)) }, why: '공세 집결' });
+  }
+  // v1.8 후방 병력 전진: 공격할 적이 없는 후방 도시는 여유 병력을 전선 쪽 이웃으로 보낸다 (장기전 해소)
+  if (!isFrontier || !enemyNs.some((n) => canAttack(s, fid, n.city.owner))) {
+    const dist = frontDistance(s, fid);
+    const here = dist[city.id];
+    const spare = city.troops - BALANCE.aiRearGarrison;
+    if (here !== undefined && here > 0 && spare > 2000) {
+      const next = ns.filter((n) => n.city.owner === fid && dist[n.city.id] !== undefined && dist[n.city.id] < here).sort((a, b) => a.city.troops - b.city.troops)[0];
+      if (next) opts.push({ score: 41, cmd: { type: 'transfer', generalId: g.id, toCityId: next.city.id, troops: spare }, why: '후방 병력 전진' });
+    }
   }
   // 계략: 지력 높은 장수는 공격 대상에 유언비어·이간
   if (isFrontier && g.stats.intellect >= 80 && f.gold > 1500) {
