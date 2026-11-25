@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
-import type { Command, GameState, General } from '../../core';
-import { BALANCE, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
+import type { Command, GameState, General, TacticKind } from '../../core';
+import { BALANCE, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -137,6 +137,7 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
   const maxConscript = Math.floor(population * BALANCE.conscriptMaxPopRatio);
   const [amount, setAmount] = useState(Math.min(5000, maxConscript));
   const maxOut = Math.max(0, cityTroops - 500);
+  const [tactic, setTactic] = useState<TacticKind | ''>('');
   const [troops, setTroops] = useState(Math.round(maxOut * 0.7));
   const enemies = ns.filter((n) => n.city.owner !== pf);
   const friends = ns.filter((n) => n.city.owner === pf);
@@ -186,7 +187,27 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
                 </div>
               );
             })()}
-            <button disabled={troops < 1000} onClick={() => onCommand({ type: 'march', generalId: actor.id, toCityId: target, troops })}>⚔️ {Math.min(troops, maxOut).toLocaleString()}명 출진</button>
+            {target && (() => {
+              const to = state.cities[target];
+              const road = neighbors(state, city.id).find((n) => n.city.id === target)?.road;
+              if (!road) return null;
+              const ctx = { general: actor, defenders: generalsIn(state, target).filter((x) => x.faction === to.owner), weather: state.weather[target], road, target: to };
+              return (
+                <div className="tactic-pick">
+                  <small>계책</small>
+                  <button className={tactic === '' ? 'active' : ''} onClick={() => setTactic('')}>정공법</button>
+                  {TACTICS.map((t) => {
+                    const p = tacticChance(t.id, ctx);
+                    return (
+                      <button key={t.id} className={tactic === t.id ? 'active' : ''} disabled={p === 0} title={t.desc} onClick={() => setTactic(t.id)}>
+                        {t.icon} {t.name} {p === 0 ? '불가' : `${Math.round(p * 100)}%`}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            <button disabled={troops < 1000} onClick={() => onCommand({ type: 'march', generalId: actor.id, toCityId: target, troops, tactic: tactic || undefined })}>⚔️ {Math.min(troops, maxOut).toLocaleString()}명 출진</button>
             <p className="hint">군량 {Math.ceil(Math.min(troops, maxOut) * BALANCE.foodPerTroop).toLocaleString()} 소모. 도하·고개·겨울은 공격에 불리합니다.</p>
           </>
         )}

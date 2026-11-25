@@ -245,3 +245,6 @@ select, input { font: inherit; }
 .landmarks-line { font-size: 12px; color: #e8cf8a; margin-top: 2px; }
 .landmark text { pointer-events: none; }
 .danger-row td { color: #ffb3a8; }
+.tactic-pick { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 6px 0; }
+.tactic-pick button { padding: 3px 8px; font-size: 12px; }
+.tactic-pick button.active { background: #8a6d2a; color: #fff3cf; }

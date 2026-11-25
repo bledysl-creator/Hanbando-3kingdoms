@@ -1,3 +1,4 @@
+import type { TacticKind } from '../battle/tactics';
 // 명령: 플레이어와 AI가 똑같이 사용한다 (CLAUDE.md 규칙 6).
 import { BALANCE } from '../config';
 import { resolveBattle } from '../battle/battle';
@@ -16,7 +17,7 @@ export type Command =
   | { type: 'develop'; generalId: string; field: DevelopField }
   | { type: 'conscript'; generalId: string; amount: number }
   | { type: 'train'; generalId: string }
-  | { type: 'march'; generalId: string; toCityId: string; troops: number }
+  | { type: 'march'; generalId: string; toCityId: string; troops: number; tactic?: TacticKind }
   | { type: 'transfer'; generalId: string; toCityId: string; troops: number }
   | { type: 'recruit'; generalId: string; targetId: string }
   | { type: 'reward'; generalId: string; targetId: string }
@@ -134,7 +135,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       const defenderFaction = to.owner;
       const defenders = generalsIn(s, to.id).filter((x) => x.faction === defenderFaction);
       const out = resolveBattle(s, {
-        attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id],
+        attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: cmd.tactic,
         attackerMorale: city.morale, attackerTraining: city.training, supply: supplyRatio(s, factionId) < BALANCE.lowSupplyThreshold ? supplyRatio(s, factionId) : undefined,
         isolated: !isConnectedToCapital(s, factionId, city.id),
       });

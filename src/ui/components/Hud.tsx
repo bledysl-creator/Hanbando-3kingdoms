@@ -126,7 +126,7 @@ const BAR: { key: BarKey; icon: string; ready: boolean }[] = [
   { key: '장수', icon: '🧑‍✈️', ready: true },
   { key: '도시', icon: '🏯', ready: true },
   { key: '부대', icon: '🚩', ready: true },
-  { key: '계책', icon: '🖌️', ready: false },
+  { key: '계책', icon: '🖌️', ready: true },
   { key: '외교', icon: '🤝', ready: true },
   { key: '연표', icon: '📜', ready: true },
 ];

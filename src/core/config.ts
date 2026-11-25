@@ -36,6 +36,12 @@ export const BALANCE = {
   fordEase: 1.05,
   /** 도시에 딸린 항구 하나당 상업 수입 보너스 */
   portLandmarkCommerce: 0.08,
+  /** 계책 성공 시 공격 배율 (v1.6) */
+  tacticBonus: { fire: 1.3, ambush: 1.25, night: 1.18 } as Record<'fire' | 'ambush' | 'night', number>,
+  /** 계책 실패 시 공격 배율 */
+  tacticFailPenalty: 0.9,
+  /** AI가 계책을 쓰는 최소 성공률 */
+  aiTacticMinChance: 0.5,
   neutralLeadership: 50,
   neutralWar: 50,
 

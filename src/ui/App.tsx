@@ -7,9 +7,9 @@ import { VERSION } from '../version';
 import { CityPanel } from './components/CityPanel';
 import { DiplomacyModal, OffersModal } from './components/Diplomacy';
 import { CommandBar, EventLog, MiniMap, MissionPanel, RulerCard, SideMenu, TopBar, TurnButton, type BarKey, type MenuKey } from './components/Hud';
-import { SimStatsModal, BattleReportView, BattlesModal, ArmyModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
+import { SimStatsModal, BattleReportView, BattlesModal, ArmyModal, TacticsModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
 
-type ModalKey = 'army' | 'generals' | 'cities' | 'chronicle' | 'factions' | 'battles' | 'settings' | 'help' | 'diplomacy' | null;
+type ModalKey = 'tactics' | 'army' | 'generals' | 'cities' | 'chronicle' | 'factions' | 'battles' | 'settings' | 'help' | 'diplomacy' | null;
 
 export function App() {
   const [state, setState] = useState<GameState | null>(null);
@@ -123,6 +123,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
     if (k === '장수') setModal('generals');
     else if (k === '도시') setModal('cities');
     else if (k === '부대') setModal('army');
+    else if (k === '계책') setModal('tactics');
     else if (k === '연표') setModal('chronicle');
     else if (k === '외교') setModal('diplomacy');
   };
@@ -194,6 +195,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
         </Modal>
       )}
       {modal === 'generals' && <GeneralsModal state={state} onClose={() => setModal(null)} onPickCity={setSelected} />}
+      {modal === 'tactics' && <TacticsModal state={state} onClose={() => setModal(null)} />}
       {modal === 'army' && <ArmyModal state={state} onClose={() => setModal(null)} onPickCity={setSelected} />}
       {modal === 'cities' && <CitiesModal state={state} onClose={() => setModal(null)} onPickCity={setSelected} />}
       {modal === 'chronicle' && <ChronicleModal state={state} onClose={() => setModal(null)} />}

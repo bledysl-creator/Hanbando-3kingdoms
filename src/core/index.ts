@@ -16,3 +16,4 @@ export { attemptUprising, canRise, uprisingChance } from './systems/lifecycle';
 export { discordChance, rumorChance, scoutChance, visibleTroops, withinTwo } from './systems/intrigue';
 export { writeChronicle } from './systems/chronicle';
 export * from './systems/army';
+export * from './battle/tactics';

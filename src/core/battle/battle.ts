@@ -1,8 +1,9 @@
 // 자동 계산 전투. 결과와 함께 "왜 그렇게 됐는지" 원인을 돌려준다 (Game.md 5-3).
 import { BALANCE } from '../config';
-import { randRange, type RngHolder } from '../rng/rng';
+import { rand, randRange, type RngHolder } from '../rng/rng';
 import type { City, General, Road } from '../state/types';
 import { weatherAttackModifier } from '../systems/weather';
+import { tacticChance, TACTICS, type TacticKind } from './tactics';
 import { landmarksOfCity, landmarksOnRoad } from '../data';
 
 export interface BattleInput {
@@ -17,6 +18,7 @@ export interface BattleInput {
   defenderGenerals: General[];
   road: Road;
   season: number;
+  tactic?: TacticKind;
 }
 
 export interface BattleOutcome {
@@ -26,6 +28,7 @@ export interface BattleOutcome {
   defenderLoss: number;
   won: boolean;
   reasons: string[];
+  tactic?: { kind: TacticKind; success: boolean; chance: number };
 }
 
 const commandFactor = (lead: number, war: number) => (0.5 + lead / 100) * (0.7 + war / 333);
@@ -64,6 +67,18 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   const wm = weatherAttackModifier(b.weather, b.road.type);
   if (wm.reason) { atk *= wm.mul; reasons.push(wm.reason); }
   if (b.weather === 'fog' && b.attackerGeneral.stats.intellect >= 85) { atk *= 1.12; reasons.push(`안개를 이용한 ${b.attackerGeneral.name}의 기습 +12%`); }
+
+  let tactic: BattleOutcome['tactic'];
+  if (b.tactic) {
+    const p = tacticChance(b.tactic, { general: b.attackerGeneral, defenders: b.defenderGenerals, weather: b.weather, road: b.road, target: b.defenderCity });
+    const name = TACTICS.find((t) => t.id === b.tactic)!.name;
+    if (p > 0) {
+      const success = rand(rng) < p;
+      tactic = { kind: b.tactic, success, chance: p };
+      if (success) { atk *= BALANCE.tacticBonus[b.tactic]; reasons.push(`계책 「${name}」 성공! 공격력 +${Math.round((BALANCE.tacticBonus[b.tactic] - 1) * 100)}% (성공률 ${Math.round(p * 100)}%)`); }
+      else { atk *= BALANCE.tacticFailPenalty; reasons.push(`계책 「${name}」이(가) 간파당함 −${Math.round((1 - BALANCE.tacticFailPenalty) * 100)}% (성공률 ${Math.round(p * 100)}%)`); }
+    } else reasons.push(`계책 「${name}」은(는) 지금 쓸 수 없어 정공법으로 싸움`);
+  }
 
   const city = b.defenderCity;
   const best = b.defenderGenerals.reduce<General | null>(
@@ -108,5 +123,5 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   }
   if (b.attackerTroops > city.troops * 1.5 && !won) reasons.push('병력은 우세했으나 지형과 성벽을 넘지 못함');
 
-  return { attackerPower: Math.round(atk), defenderPower: Math.round(def), attackerLoss, defenderLoss: Math.max(0, defenderLoss), won, reasons };
+  return { attackerPower: Math.round(atk), defenderPower: Math.round(def), attackerLoss, defenderLoss: Math.max(0, defenderLoss), won, reasons, tactic };
 }

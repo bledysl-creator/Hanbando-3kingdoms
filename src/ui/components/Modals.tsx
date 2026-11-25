@@ -1,7 +1,7 @@
 // 목록·보고서 창: 장수, 도시, 연표, 세력 정보, 전투 보고, 설정/저장, 도움말
 import { useEffect, useState, type ReactNode } from 'react';
 import type { BattleReport, GameState } from '../../core';
-import { MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
+import { BALANCE, TACTICS, MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
 import { exportJson, indexedDbRepo, migrate, type SaveMeta } from '../../save/saveRepository';
 import { Portrait } from './Portrait';
 
@@ -114,6 +114,24 @@ export function CitiesModal({ state, onClose, onPickCity }: { state: GameState; 
           ))}
         </tbody>
       </table>
+    </Modal>
+  );
+}
+
+export function TacticsModal({ state, onClose }: { state: GameState; onClose: () => void }) {
+  const fid = state.playerFactionId;
+  const mine = fid ? generalsOf(state, fid) : [];
+  const top = (key: 'intellect' | 'war' | 'leadership') => [...mine].sort((a, b) => b.stats[key] - a.stats[key]).slice(0, 3).map((g) => `${g.name}(${g.stats[key]})`).join(', ');
+  return (
+    <Modal title="계책 — 출진할 때 고르는 전술" onClose={onClose}>
+      <p className="muted">도시 패널 → 군사 → 출진에서 계책을 고르면 성공률이 표시됩니다. 성공하면 공격력이 크게 오르고, 실패하면 10% 손해를 봅니다. 수비 장수의 지력이 높으면 간파당하기 쉽습니다.</p>
+      {TACTICS.map((t) => (
+        <div key={t.id} className="sub">
+          <b>{t.icon} {t.name}</b> <small>성공 시 공격력 +{Math.round((BALANCE.tacticBonus[t.id] - 1) * 100)}%</small>
+          <p>{t.desc}</p>
+        </div>
+      ))}
+      <p className="muted small">아군 지력 상위: {top('intellect') || '—'} · 무력 상위: {top('war') || '—'} · 통솔 상위: {top('leadership') || '—'}</p>
     </Modal>
   );
 }

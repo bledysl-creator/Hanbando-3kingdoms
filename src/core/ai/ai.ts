@@ -1,8 +1,9 @@
+import { TACTICS, tacticChance, type TacticKind } from '../battle/tactics';
 // 규칙 기반 + Utility AI (Game.md 5-5). 플레이어와 같은 명령만 사용한다.
 import { BALANCE } from '../config';
 import { executeCommand, type Command } from '../commands/commands';
 import { freeGeneralsIn, generalsIn, neighbors } from '../query';
-import type { GameState, General } from '../state/types';
+import type { City, GameState, General, Road } from '../state/types';
 import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/diplomacy';
 import { chance } from '../rng/rng';
 import { estimateRatio } from '../battle/estimate';
@@ -36,7 +37,7 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
       const ratio = estimateRatio(s, g, city, n.city, troops);
       if (ratio > BALANCE.aiAttackRatio) {
         const value = (n.city.population / 10000 + n.city.agriculture / 20 + n.city.commerce / 20) * (n.city.owner === null ? 0.8 : 1);
-        opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops }, why: `승산 ${ratio.toFixed(2)}` });
+        opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops, tactic: bestTactic(s, g, n.city, n.road) }, why: `승산 ${ratio.toFixed(2)}` });
       }
     }
   }
@@ -133,4 +134,15 @@ function runFactionDiplomacy(s: GameState, fid: string) {
   f.gold -= gold;
   const r = tryProposal(s, fid, target, 'truce', envoy.id, gold);
   if (r.accepted) { s.factions[target].gold += gold; log(s, `${f.name}과(와) ${s.factions[target].name}이(가) 휴전을 맺었습니다.`, 'info'); }
+}
+
+/** AI도 플레이어와 같은 계책을 고른다: 성공률이 가장 높은 것, 기준 미만이면 정공법 */
+function bestTactic(s: GameState, g: General, to: City, road: Road): TacticKind | undefined {
+  const defenders = generalsIn(s, to.id).filter((x) => x.faction === to.owner);
+  let best: { t: TacticKind; p: number } | undefined;
+  for (const t of TACTICS) {
+    const p = tacticChance(t.id, { general: g, defenders, weather: s.weather[to.id], road, target: to });
+    if (p >= BALANCE.aiTacticMinChance && (!best || p > best.p)) best = { t: t.id, p };
+  }
+  return best?.t;
 }

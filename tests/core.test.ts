@@ -374,3 +374,22 @@ describe('부대 현황 (v1.5)', () => {
     expect(rows.some((r) => r.role === 'front')).toBe(true);
   });
 });
+
+import { tacticChance } from '../src/core';
+describe('계책 (v1.6)', () => {
+  it('비 오는 날엔 화공을 못 쓰고, 매복은 고개·산악에서만 된다', () => {
+    const s = newGame();
+    const zhuge = Object.values(s.generals).sort((a, b) => b.stats.intellect - a.stats.intellect)[0];
+    const land = { from: 'hanyang', to: 'kaesong', type: 'land' as const };
+    expect(tacticChance('fire', { general: zhuge, defenders: [], weather: 'rain', road: land, target: s.cities.kaesong })).toBe(0);
+    expect(tacticChance('fire', { general: zhuge, defenders: [], weather: 'clear', road: land, target: s.cities.kaesong })).toBeGreaterThan(0.5);
+    expect(tacticChance('ambush', { general: zhuge, defenders: [], road: land, target: { ...s.cities.kaesong, terrain: 'plain' } })).toBe(0);
+    expect(tacticChance('ambush', { general: zhuge, defenders: [], road: { ...land, type: 'pass' }, target: s.cities.kaesong })).toBeGreaterThan(0);
+  });
+  it('계책 결과가 전투 원인에 남는다', () => {
+    const s = newGame();
+    const r = resolveBattle({ rng: 5 }, { attackerTroops: 20000, attackerGeneral: s.generals.guan_yu, defenderCity: s.cities.kaesong, defenderGenerals: [], road: { from: 'hanyang', to: 'kaesong', type: 'land' }, season: 0, weather: 'clear', tactic: 'night' });
+    expect(r.tactic?.kind).toBe('night');
+    expect(r.reasons.join()).toContain('야습');
+  });
+});
