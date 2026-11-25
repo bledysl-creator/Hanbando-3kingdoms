@@ -1,5 +1,6 @@
 // 자동 계산 전투. 결과와 함께 "왜 그렇게 됐는지" 원인을 돌려준다 (Game.md 5-3).
 import { BALANCE } from '../config';
+import { fixJosa } from '../josa';
 import { rand, randRange, type RngHolder } from '../rng/rng';
 import type { City, General, Road } from '../state/types';
 import { weatherAttackModifier } from '../systems/weather';
@@ -138,5 +139,5 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   }
   if (b.attackerTroops > city.troops * 1.5 && !won) reasons.push('병력은 우세했으나 지형과 성벽을 넘지 못함');
 
-  return { attackerPower: Math.round(atk), defenderPower: Math.round(def), attackerLoss, defenderLoss: Math.max(0, defenderLoss), won, reasons, tactic };
+  return { attackerPower: Math.round(atk), defenderPower: Math.round(def), attackerLoss, defenderLoss: Math.max(0, defenderLoss), won, reasons: reasons.map(fixJosa), tactic };
 }

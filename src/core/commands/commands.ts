@@ -1,3 +1,4 @@
+import { fixJosa } from '../josa';
 import { reliefFood } from '../systems/epidemic';
 import type { TacticKind } from '../battle/tactics';
 // 명령: 플레이어와 AI가 똑같이 사용한다 (CLAUDE.md 규칙 6).
@@ -35,7 +36,8 @@ export type Command =
 
 export type CommandResult = { ok: true; message: string } | { ok: false; error: string };
 
-export function log(s: GameState, text: string, kind: LogKind = 'info', factionId: string | null = null) {
+export function log(s: GameState, rawText: string, kind: LogKind = 'info', factionId: string | null = null) {
+  const text = fixJosa(rawText);
   s.log.push({ turn: s.turn, year: s.year, season: s.season, text, kind, factionId });
   if (s.log.length > 400) s.log.splice(0, s.log.length - 400);
   // 큰 사건은 역사서에 남긴다
@@ -359,7 +361,8 @@ export function checkFactionDestroyed(s: GameState, factionId: string | null) {
 /** 불변 버전: 상태를 복사해 명령을 적용한다. */
 export function applyCommand(state: GameState, factionId: string, cmd: Command): { state: GameState; result: CommandResult } {
   const draft = structuredClone(state);
-  const result = executeCommand(draft, factionId, cmd);
+  const raw = executeCommand(draft, factionId, cmd);
+  const result: CommandResult = raw.ok ? { ok: true, message: fixJosa(raw.message) } : { ok: false, error: fixJosa(raw.error) };
   return { state: result.ok ? draft : state, result };
 }
 

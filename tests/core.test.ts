@@ -520,3 +520,13 @@ describe('관직·태수 (v2.4)', () => {
     expect(r.state.cities.hanyang.agriculture + r.state.cities.hanyang.commerce).toBeGreaterThan(before);
   });
 });
+
+import { fixJosa } from '../src/core';
+describe('조사 교정 (v2.6)', () => {
+  it('받침에 따라 조사를 고른다', () => {
+    expect(fixJosa('조조이(가) 한양을(를) 함락')).toBe('조조가 한양을 함락');
+    expect(fixJosa('위과(와) 촉이(가) 휴전')).toBe('위와 촉이 휴전');
+    expect(fixJosa('관우이(가) 서울(으)로, 춘천(으)로, 수원(으)로')).toBe('관우가 서울로, 춘천으로, 수원으로');
+    expect(fixJosa('魏이(가)')).toBe('魏이(가)');
+  });
+});
