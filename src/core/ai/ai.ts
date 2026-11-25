@@ -17,12 +17,20 @@ function estimateRatio(s: GameState, g: General, from: City, to: City, troops: n
   return atk / Math.max(1, def);
 }
 
+/** 적대 세력(중립 제외) 인접 병력 합 */
+function threatOf(s: GameState, fid: string, cityId: string): number {
+  return neighbors(s, cityId).reduce((a, n) => a + (n.city.owner && n.city.owner !== fid ? n.city.troops : 0), 0);
+}
+function isFrontierCity(s: GameState, fid: string, cityId: string): boolean {
+  return neighbors(s, cityId).some((n) => n.city.owner !== fid);
+}
+
 function optionsFor(s: GameState, fid: string, g: General): Option[] {
   const f = s.factions[fid];
   const city = s.cities[g.city];
   const ns = neighbors(s, city.id);
   const enemyNs = ns.filter((n) => n.city.owner !== fid);
-  const threat = enemyNs.reduce((a, n) => a + n.city.troops, 0);
+  const threat = threatOf(s, fid, city.id);
   const isFrontier = enemyNs.length > 0;
   const opts: Option[] = [];
 
@@ -40,20 +48,25 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
   }
   // 징병: 위협 대비 병력이 부족할 때
   if (isFrontier && city.troops < threat * 0.9 && f.gold > 800 && f.iron > 3000) {
-    const amount = Math.min(Math.floor(city.population * 0.06), Math.floor(f.iron / BALANCE.conscriptIronPerTroop), 8000);
+    const amount = Math.min(Math.floor(city.population * 0.08), Math.floor(f.iron / BALANCE.conscriptIronPerTroop), 10000);
     if (amount >= 1000) opts.push({ score: 40 + (threat / Math.max(1, city.troops)) * 10, cmd: { type: 'conscript', generalId: g.id, amount }, why: '전선 방어 보강' });
   }
   // 공세 준비: 여유 자원이 많으면 전선에서 병력을 키운다
   const totalT = Object.values(s.cities).filter((c) => c.owner === fid).reduce((a, c) => a + c.troops, 0);
   if (isFrontier && f.gold > 2500 && f.iron > 5000 && f.food > totalT * 1.2) {
-    const amount = Math.min(Math.floor(city.population * 0.05), Math.floor(f.iron / BALANCE.conscriptIronPerTroop), 6000);
+    const amount = Math.min(Math.floor(city.population * 0.08), Math.floor(f.iron / BALANCE.conscriptIronPerTroop), 10000);
     if (amount >= 1000) opts.push({ score: 30 + f.gold / 1000, cmd: { type: 'conscript', generalId: g.id, amount }, why: '공세 준비' });
   }
-  // 후방 병력 전선으로
-  if (!isFrontier && city.troops > 6000) {
-    const front = ns.filter((n) => n.city.owner === fid && neighbors(s, n.city.id).some((m) => m.city.owner !== fid));
-    const target = front.sort((a, b) => a.city.troops - b.city.troops)[0];
-    if (target) opts.push({ score: 35, cmd: { type: 'transfer', generalId: g.id, toCityId: target.city.id, troops: city.troops - 3000 }, why: '전선 보강' });
+  // 병력 재배치: 여유 병력을 가장 위협받는 인접 아군 도시로
+  const surplus = city.troops - Math.max(3000, threat * 0.8);
+  if (surplus > 3000) {
+    let best: { id: string; need: number } | null = null;
+    for (const n of ns) {
+      if (n.city.owner !== fid) continue;
+      const need = Math.max(threatOf(s, fid, n.city.id) * 0.9, isFrontierCity(s, fid, n.city.id) && threat === 0 ? n.city.troops + 4000 : 0) - n.city.troops;
+      if (need > 2000 && (!best || need > best.need)) best = { id: n.city.id, need };
+    }
+    if (best) opts.push({ score: 42 + best.need / 1000, cmd: { type: 'transfer', generalId: g.id, toCityId: best.id, troops: Math.min(surplus, best.need + 2000) }, why: '병력 재배치' });
   }
   // 등용
   const free = freeGeneralsIn(s, city.id);

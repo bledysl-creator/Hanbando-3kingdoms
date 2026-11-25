@@ -8,89 +8,377 @@
   "eraStartYear": 196,
   "playerFactionId": "shu",
   "factions": {
-    "wei": { "gold": 6000, "food": 90000, "wood": 30000, "iron": 32000 },
-    "lu":  { "gold": 3500, "food": 50000, "wood": 26000, "iron": 22000 },
-    "shu": { "gold": 5200, "food": 82400, "wood": 36700, "iron": 28950 },
-    "wu":  { "gold": 5800, "food": 70000, "wood": 34000, "iron": 30000 }
+    "wei": {
+      "gold": 7000,
+      "food": 90000,
+      "wood": 30000,
+      "iron": 32000
+    },
+    "lu": {
+      "gold": 3500,
+      "food": 50000,
+      "wood": 26000,
+      "iron": 22000
+    },
+    "shu": {
+      "gold": 5200,
+      "food": 82400,
+      "wood": 36700,
+      "iron": 28950
+    },
+    "wu": {
+      "gold": 5800,
+      "food": 70000,
+      "wood": 34000,
+      "iron": 30000
+    }
   },
   "cities": {
-    "uiju": { "owner": "wei", "troops": 14000 },
-    "anju": { "owner": "wei", "troops": 12000 },
-    "ganggye": { "owner": "wei", "troops": 8000 },
-    "pyongyang": { "owner": "wei", "troops": 30000 },
-    "haeju": { "owner": "wei", "troops": 12000 },
-    "kaesong": { "owner": "wei", "troops": 22000 },
-    "hyesan": { "owner": "lu", "troops": 8000 },
-    "chongjin": { "owner": "lu", "troops": 10000 },
-    "hamhung": { "owner": "lu", "troops": 26000 },
-    "wonsan": { "owner": "lu", "troops": 16000 },
-    "hanyang": { "owner": "shu", "troops": 32000 },
-    "suwon": { "owner": "shu", "troops": 15000 },
-    "cheongju": { "owner": "shu", "troops": 12000 },
-    "gongju": { "owner": "shu", "troops": 14000 },
-    "jeonju": { "owner": "shu", "troops": 18000 },
-    "gwangju": { "owner": "shu", "troops": 12000 },
-    "naju": { "owner": "shu", "troops": 10000 },
-    "chuncheon": { "owner": "wu", "troops": 12000 },
-    "gangneung": { "owner": "wu", "troops": 15000 },
-    "daegu": { "owner": "wu", "troops": 16000 },
-    "gyeongju": { "owner": "wu", "troops": 24000 },
-    "jinju": { "owner": "wu", "troops": 13000 },
-    "busan": { "owner": "wu", "troops": 18000 },
-    "jeju": { "owner": null, "troops": 4000 }
+    "uiju": {
+      "owner": "wei",
+      "troops": 14000
+    },
+    "anju": {
+      "owner": "wei",
+      "troops": 12000
+    },
+    "ganggye": {
+      "owner": "wei",
+      "troops": 8000
+    },
+    "pyongyang": {
+      "owner": "wei",
+      "troops": 34000
+    },
+    "haeju": {
+      "owner": "wei",
+      "troops": 12000
+    },
+    "kaesong": {
+      "owner": "wei",
+      "troops": 27000
+    },
+    "hyesan": {
+      "owner": "lu",
+      "troops": 8000
+    },
+    "chongjin": {
+      "owner": "lu",
+      "troops": 10000
+    },
+    "hamhung": {
+      "owner": "lu",
+      "troops": 26000
+    },
+    "wonsan": {
+      "owner": "lu",
+      "troops": 16000
+    },
+    "hanyang": {
+      "owner": "shu",
+      "troops": 28000
+    },
+    "suwon": {
+      "owner": "shu",
+      "troops": 15000
+    },
+    "cheongju": {
+      "owner": "shu",
+      "troops": 16000
+    },
+    "gongju": {
+      "owner": "shu",
+      "troops": 14000
+    },
+    "jeonju": {
+      "owner": "shu",
+      "troops": 18000
+    },
+    "gwangju": {
+      "owner": "shu",
+      "troops": 12000
+    },
+    "naju": {
+      "owner": "shu",
+      "troops": 10000
+    },
+    "chuncheon": {
+      "owner": "wu",
+      "troops": 12000
+    },
+    "gangneung": {
+      "owner": "wu",
+      "troops": 15000
+    },
+    "daegu": {
+      "owner": "wu",
+      "troops": 16000
+    },
+    "gyeongju": {
+      "owner": "wu",
+      "troops": 24000
+    },
+    "jinju": {
+      "owner": "wu",
+      "troops": 13000
+    },
+    "busan": {
+      "owner": "wu",
+      "troops": 18000
+    },
+    "jeju": {
+      "owner": null,
+      "troops": 4000
+    }
   },
   "generals": {
-    "cao_cao": { "faction": "wei", "city": "pyongyang", "loyalty": 100 },
-    "xun_yu": { "faction": "wei", "city": "pyongyang", "loyalty": 90 },
-    "guo_jia": { "faction": "wei", "city": "pyongyang", "loyalty": 92 },
-    "dian_wei": { "faction": "wei", "city": "pyongyang", "loyalty": 98 },
-    "xiahou_dun": { "faction": "wei", "city": "kaesong", "loyalty": 100 },
-    "xu_chu": { "faction": "wei", "city": "kaesong", "loyalty": 98 },
-    "xiahou_yuan": { "faction": "wei", "city": "haeju", "loyalty": 100 },
-    "cao_ren": { "faction": "wei", "city": "uiju", "loyalty": 100 },
-    "xun_you": { "faction": "wei", "city": "anju", "loyalty": 88 },
-    "lu_bu": { "faction": "lu", "city": "hamhung", "loyalty": 100 },
-    "chen_gong": { "faction": "lu", "city": "hamhung", "loyalty": 78 },
-    "gao_shun": { "faction": "lu", "city": "hamhung", "loyalty": 90 },
-    "zhang_liao": { "faction": "lu", "city": "wonsan", "loyalty": 75 },
-    "song_xian": { "faction": "lu", "city": "wonsan", "loyalty": 55 },
-    "zang_ba": { "faction": "lu", "city": "chongjin", "loyalty": 65 },
-    "hou_cheng": { "faction": "lu", "city": "chongjin", "loyalty": 52 },
-    "wei_xu": { "faction": "lu", "city": "hyesan", "loyalty": 50 },
-    "liu_bei": { "faction": "shu", "city": "hanyang", "loyalty": 100 },
-    "zhuge_liang": { "faction": "shu", "city": "hanyang", "loyalty": 95 },
-    "guan_yu": { "faction": "shu", "city": "hanyang", "loyalty": 100 },
-    "jian_yong": { "faction": "shu", "city": "hanyang", "loyalty": 95 },
-    "zhang_fei": { "faction": "shu", "city": "suwon", "loyalty": 100 },
-    "zhao_yun": { "faction": "shu", "city": "gongju", "loyalty": 98 },
-    "mi_zhu": { "faction": "shu", "city": "jeonju", "loyalty": 95 },
-    "sun_qian": { "faction": "shu", "city": "gwangju", "loyalty": 92 },
-    "sun_quan": { "faction": "wu", "city": "gyeongju", "loyalty": 100 },
-    "zhou_yu": { "faction": "wu", "city": "gyeongju", "loyalty": 98 },
-    "zhang_zhao": { "faction": "wu", "city": "gyeongju", "loyalty": 92 },
-    "lu_su": { "faction": "wu", "city": "busan", "loyalty": 90 },
-    "huang_gai": { "faction": "wu", "city": "busan", "loyalty": 98 },
-    "cheng_pu": { "faction": "wu", "city": "daegu", "loyalty": 96 },
-    "han_dang": { "faction": "wu", "city": "jinju", "loyalty": 94 },
-    "taishi_ci": { "faction": "wu", "city": "gangneung", "loyalty": 88 },
-    "xu_shu": { "faction": null, "city": "cheongju", "loyalty": 0 },
-    "pang_tong": { "faction": null, "city": "naju", "loyalty": 0 },
-    "gan_ning": { "faction": null, "city": "chuncheon", "loyalty": 0 },
-    "huang_zhong": { "faction": null, "city": "jeonju", "loyalty": 0 },
-    "wei_yan": { "faction": null, "city": "gongju", "loyalty": 0 },
-    "yan_baihu": { "faction": null, "city": "jeju", "loyalty": 0 }
+    "cao_cao": {
+      "faction": "wei",
+      "city": "pyongyang",
+      "loyalty": 100
+    },
+    "xun_yu": {
+      "faction": "wei",
+      "city": "pyongyang",
+      "loyalty": 90
+    },
+    "guo_jia": {
+      "faction": "wei",
+      "city": "pyongyang",
+      "loyalty": 92
+    },
+    "dian_wei": {
+      "faction": "wei",
+      "city": "pyongyang",
+      "loyalty": 98
+    },
+    "xiahou_dun": {
+      "faction": "wei",
+      "city": "kaesong",
+      "loyalty": 100
+    },
+    "xu_chu": {
+      "faction": "wei",
+      "city": "kaesong",
+      "loyalty": 98
+    },
+    "xiahou_yuan": {
+      "faction": "wei",
+      "city": "haeju",
+      "loyalty": 100
+    },
+    "cao_ren": {
+      "faction": "wei",
+      "city": "uiju",
+      "loyalty": 100
+    },
+    "xun_you": {
+      "faction": "wei",
+      "city": "anju",
+      "loyalty": 88
+    },
+    "lu_bu": {
+      "faction": "lu",
+      "city": "hamhung",
+      "loyalty": 100
+    },
+    "chen_gong": {
+      "faction": "lu",
+      "city": "hamhung",
+      "loyalty": 78
+    },
+    "gao_shun": {
+      "faction": "lu",
+      "city": "hamhung",
+      "loyalty": 90
+    },
+    "zhang_liao": {
+      "faction": "lu",
+      "city": "wonsan",
+      "loyalty": 75
+    },
+    "song_xian": {
+      "faction": "lu",
+      "city": "wonsan",
+      "loyalty": 55
+    },
+    "zang_ba": {
+      "faction": "lu",
+      "city": "chongjin",
+      "loyalty": 65
+    },
+    "hou_cheng": {
+      "faction": "lu",
+      "city": "chongjin",
+      "loyalty": 52
+    },
+    "wei_xu": {
+      "faction": "lu",
+      "city": "hyesan",
+      "loyalty": 50
+    },
+    "liu_bei": {
+      "faction": "shu",
+      "city": "hanyang",
+      "loyalty": 100
+    },
+    "zhuge_liang": {
+      "faction": "shu",
+      "city": "hanyang",
+      "loyalty": 95
+    },
+    "guan_yu": {
+      "faction": "shu",
+      "city": "hanyang",
+      "loyalty": 100
+    },
+    "jian_yong": {
+      "faction": "shu",
+      "city": "hanyang",
+      "loyalty": 95
+    },
+    "zhang_fei": {
+      "faction": "shu",
+      "city": "suwon",
+      "loyalty": 100
+    },
+    "zhao_yun": {
+      "faction": "shu",
+      "city": "gongju",
+      "loyalty": 98
+    },
+    "mi_zhu": {
+      "faction": "shu",
+      "city": "jeonju",
+      "loyalty": 95
+    },
+    "sun_qian": {
+      "faction": "shu",
+      "city": "gwangju",
+      "loyalty": 92
+    },
+    "sun_quan": {
+      "faction": "wu",
+      "city": "gyeongju",
+      "loyalty": 100
+    },
+    "zhou_yu": {
+      "faction": "wu",
+      "city": "gyeongju",
+      "loyalty": 98
+    },
+    "zhang_zhao": {
+      "faction": "wu",
+      "city": "gyeongju",
+      "loyalty": 92
+    },
+    "lu_su": {
+      "faction": "wu",
+      "city": "busan",
+      "loyalty": 90
+    },
+    "huang_gai": {
+      "faction": "wu",
+      "city": "busan",
+      "loyalty": 98
+    },
+    "cheng_pu": {
+      "faction": "wu",
+      "city": "daegu",
+      "loyalty": 96
+    },
+    "han_dang": {
+      "faction": "wu",
+      "city": "jinju",
+      "loyalty": 94
+    },
+    "taishi_ci": {
+      "faction": "wu",
+      "city": "gangneung",
+      "loyalty": 88
+    },
+    "xu_shu": {
+      "faction": null,
+      "city": "cheongju",
+      "loyalty": 0
+    },
+    "pang_tong": {
+      "faction": null,
+      "city": "naju",
+      "loyalty": 0
+    },
+    "gan_ning": {
+      "faction": null,
+      "city": "chuncheon",
+      "loyalty": 0
+    },
+    "huang_zhong": {
+      "faction": null,
+      "city": "jeonju",
+      "loyalty": 0
+    },
+    "wei_yan": {
+      "faction": null,
+      "city": "gongju",
+      "loyalty": 0
+    },
+    "yan_baihu": {
+      "faction": null,
+      "city": "jeju",
+      "loyalty": 0
+    }
   },
   "relations": [
-    { "a": "liu_bei", "b": "guan_yu", "type": "sworn" },
-    { "a": "liu_bei", "b": "zhang_fei", "type": "sworn" },
-    { "a": "guan_yu", "b": "zhang_fei", "type": "sworn" },
-    { "a": "sun_quan", "b": "zhou_yu", "type": "trust" },
-    { "a": "cao_cao", "b": "lu_bu", "type": "enmity" },
-    { "a": "liu_bei", "b": "lu_bu", "type": "enmity" }
+    {
+      "a": "liu_bei",
+      "b": "guan_yu",
+      "type": "sworn"
+    },
+    {
+      "a": "liu_bei",
+      "b": "zhang_fei",
+      "type": "sworn"
+    },
+    {
+      "a": "guan_yu",
+      "b": "zhang_fei",
+      "type": "sworn"
+    },
+    {
+      "a": "sun_quan",
+      "b": "zhou_yu",
+      "type": "trust"
+    },
+    {
+      "a": "cao_cao",
+      "b": "lu_bu",
+      "type": "enmity"
+    },
+    {
+      "a": "liu_bei",
+      "b": "lu_bu",
+      "type": "enmity"
+    }
   ],
   "missions": [
-    { "id": "unify", "label": "한반도 통일", "kind": "own_all_cities", "target": 1 },
-    { "id": "defeat_wei", "label": "조조 세력 격파", "kind": "destroy_faction", "factionId": "wei", "target": 1 },
-    { "id": "recruit5", "label": "인재 5명 등용", "kind": "recruit", "target": 5 }
+    {
+      "id": "unify",
+      "label": "한반도 통일",
+      "kind": "own_all_cities",
+      "target": 1
+    },
+    {
+      "id": "defeat_wei",
+      "label": "조조 세력 격파",
+      "kind": "destroy_faction",
+      "factionId": "wei",
+      "target": 1
+    },
+    {
+      "id": "recruit5",
+      "label": "인재 5명 등용",
+      "kind": "recruit",
+      "target": 5
+    }
   ]
 }

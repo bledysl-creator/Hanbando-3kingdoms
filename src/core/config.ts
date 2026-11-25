@@ -37,5 +37,6 @@ export const BALANCE = {
   defectChance: 0.25,
 
   // AI
-  aiAttackRatio: 1.1,
+  failedAttackAttrition: 0.45, // 공격 실패 시에도 수비 측이 입는 소모 비율
+  aiAttackRatio: 0.95,
 } as const;

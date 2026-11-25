@@ -72,7 +72,7 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
     reasons.unshift(`${g.name}의 공격력 ${Math.round(atk).toLocaleString()} vs 수비력 ${Math.round(def).toLocaleString()} — 공격 성공`);
   } else {
     attackerLoss = Math.min(b.attackerTroops, Math.round(b.attackerTroops * Math.min(0.9, 0.4 / ratio)));
-    defenderLoss = Math.min(city.troops - 1, Math.round(city.troops * 0.3 * ratio));
+    defenderLoss = Math.min(city.troops - 1, Math.round(city.troops * BALANCE.failedAttackAttrition * ratio));
     reasons.unshift(`${g.name}의 공격력 ${Math.round(atk).toLocaleString()} vs 수비력 ${Math.round(def).toLocaleString()} — 공격 실패`);
   }
   if (b.attackerTroops > city.troops * 1.5 && !won) reasons.push('병력은 우세했으나 지형과 성벽을 넘지 못함');

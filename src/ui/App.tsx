@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { applyCommand, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
 import { KoreaMap } from '../map/KoreaMap';
 import { indexedDbRepo } from '../save/saveRepository';
+import { VERSION } from '../version';
 import { CityPanel } from './components/CityPanel';
 import { CommandBar, EventLog, MiniMap, MissionPanel, RulerCard, SideMenu, TopBar, TurnButton, type BarKey, type MenuKey } from './components/Hud';
 import { BattleReportView, BattlesModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
@@ -33,7 +34,7 @@ function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
           <button disabled={!hasAuto} onClick={() => indexedDbRepo.load('auto').then((s) => s && onStart(s))}>이어하기</button>
           <button onClick={() => start(true)}>관전 모드 (AI끼리 진행)</button>
         </div>
-        <p className="muted small">v0.1 프로토타입 · 오리지널 게임 · 저장은 이 브라우저에만 됩니다</p>
+        <p className="muted small">v{VERSION} 프로토타입 · 오리지널 게임 · 저장은 이 브라우저에만 됩니다</p>
       </div>
     </div>
   );
