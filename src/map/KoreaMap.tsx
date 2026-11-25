@@ -126,6 +126,8 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
       <g transform={mini ? undefined : transform}>
         {/* 육지 */}
         <path d={LAND_PATH} fill="url(#landShade)" stroke="#c9b37a" strokeWidth={mini ? 2 : 1.2} filter={mini ? undefined : 'url(#coast)'} />
+        {/* v1.9 실측 고도 음영 기복도 (Terrain Tiles DEM, tools/geo/build_terrain.py) */}
+        {!mini && <image href={`${import.meta.env.BASE_URL}terrain.webp`} x={0} y={0} width={VIEW_W} height={VIEW_H} preserveAspectRatio="none" opacity={mode === 'terrain' ? 1 : 0.6} pointerEvents="none" />}
 
         {/* 세력 영역: 전국 시·군을 관할 도시 소유 세력 색으로 */}
         <g clipPath={`url(#${mini ? 'land-mini' : 'land'})`}>
@@ -138,7 +140,7 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
             let op = mini ? 0.9 : sel ? 0.62 : f ? 0.42 : 0.25;
             if (!mini && mode !== 'political' && pc) {
               op = sel ? 0.95 : 0.8;
-              if (mode === 'terrain') fill = elevColor(r.elev);
+              if (mode === 'terrain') { fill = elevColor(r.elev); op = sel ? 0.35 : 0.02; }
               else if (mode === 'economy') fill = ramp((pc.agriculture + pc.commerce) / 180);
               else if (mode === 'population') fill = ramp(pc.population / 100000);
               else if (mode === 'military') { const v = visibleTroops(state, state.playerFactionId, pc.id).value; fill = v === null ? '#4a4f58' : ramp(v / 40000); }
@@ -157,14 +159,14 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
                 onClick={mini ? undefined : () => click(r.parent)}
                 className={mini ? undefined : 'region'}
               >
-                {!mini && <title>{`${r.name} (${r.province}) — 관할: ${state.cities[r.parent]?.name}`}</title>}
+                {!mini && <title>{`${r.name} (${r.province}) — 관할: ${state.cities[r.parent]?.name}\n평균 고도 ${r.elev}m · 최고 ${r.elevMax ?? r.elev}m`}</title>}
               </path>
             );
           })}
           {!mini && (
             <>
               {/* 산맥 */}
-              {glyphs.map(([x, y], i) => (
+              {mode !== 'terrain' && glyphs.map(([x, y], i) => (
                 <path key={i} d={`M${x - 6},${y + 4}L${x},${y - 6}L${x + 6},${y + 4}`} fill="#3b3426" fillOpacity={0.55} stroke="#d8cba3" strokeOpacity={0.45} strokeWidth={0.8} />
               ))}
               {/* 강 */}

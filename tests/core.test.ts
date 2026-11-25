@@ -429,3 +429,22 @@ describe('AI 병력 운용 (v1.8)', () => {
     expect(Math.max(...Object.values(d))).toBeGreaterThanOrEqual(1);
   });
 });
+
+import { migrate } from '../src/save/saveRepository';
+describe('실측 고도 (v1.9)', () => {
+  it('혜산은 해발 900m 이상, 한양은 200m 미만이며 고지대 수비 보너스가 원인에 나온다', () => {
+    const s = newGame();
+    expect(s.cities.hyesan.elev!).toBeGreaterThan(900);
+    expect(s.cities.hanyang.elev!).toBeLessThan(200);
+    const r = resolveBattle({ rng: 1 }, { attackerTroops: 20000, attackerGeneral: s.generals.guan_yu, defenderCity: s.cities.hyesan, defenderGenerals: [], road: { from: 'hamhung', to: 'hyesan', type: 'pass' }, season: 0, weather: 'clear' });
+    expect(r.reasons.join()).toContain('고지대');
+  });
+  it('v7 세이브를 불러오면 도시 고도가 채워진다', () => {
+    const s = JSON.parse(JSON.stringify(newGame()));
+    s.saveVersion = 7;
+    for (const c of Object.values(s.cities) as { elev?: number }[]) delete c.elev;
+    const m = migrate(s);
+    expect(m.saveVersion).toBe(8);
+    expect(m.cities.hyesan.elev).toBeGreaterThan(900);
+  });
+});

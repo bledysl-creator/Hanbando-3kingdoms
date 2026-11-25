@@ -36,9 +36,12 @@ export const BALANCE = {
   fordEase: 1.05,
   /** 도시에 딸린 항구 하나당 상업 수입 보너스 */
   portLandmarkCommerce: 0.08,
+  /** 고지대 도시 수비 보너스: 고도 1000m당, 상한 (v1.9) */
+  elevDefensePer1000m: 0.1,
+  elevDefenseCap: 0.12,
   /** 시장 (v1.7): 곡식 1000석 매입가·매각가(금). 가을엔 싸고 봄엔 비싸다 */
   foodBuyPer1000: 110,
-  foodSellPer1000: 60,
+  foodSellPer1000: 45, // 가을에 사서 봄에 팔아도 이득이 거의 없도록
   seasonFoodPrice: [1.2, 1.0, 0.8, 1.1] as number[],
   /** 상업 수치 100일 때 거래가 할인 */
   marketCommerceDiscount: 0.2,

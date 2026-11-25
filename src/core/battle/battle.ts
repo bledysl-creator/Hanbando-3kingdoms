@@ -99,6 +99,11 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
     def *= 1 + BALANCE.landmarkFortressBonus * forts.length;
     reasons.push(`${forts.map((f) => f.name).join('·')}이(가) 수비를 도움 +${Math.round(BALANCE.landmarkFortressBonus * forts.length * 100)}%`);
   }
+  const elevBonus = Math.min(BALANCE.elevDefenseCap, ((city.elev ?? 0) / 1000) * BALANCE.elevDefensePer1000m);
+  if (elevBonus >= 0.02) {
+    def *= 1 + elevBonus;
+    reasons.push(`해발 ${city.elev}m 고지대라 수비 +${Math.round(elevBonus * 100)}%`);
+  }
   if (city.terrain === 'mountain') {
     def *= BALANCE.mountainDefenseBonus;
     reasons.push('험준한 산악 지형이 수비에 유리');

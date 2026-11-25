@@ -12,7 +12,8 @@
   "commerce": 45,
   "wall": 60,
   "wood": 3,
-  "iron": 2
+  "iron": 2,
+  "elev": 92
  },
  {
   "id": "anju",
@@ -27,7 +28,8 @@
   "commerce": 35,
   "wall": 45,
   "wood": 2,
-  "iron": 2
+  "iron": 2,
+  "elev": 35
  },
  {
   "id": "ganggye",
@@ -42,7 +44,8 @@
   "commerce": 20,
   "wall": 70,
   "wood": 5,
-  "iron": 4
+  "iron": 4,
+  "elev": 623
  },
  {
   "id": "pyongyang",
@@ -57,7 +60,8 @@
   "commerce": 70,
   "wall": 80,
   "wood": 2,
-  "iron": 3
+  "iron": 3,
+  "elev": 56
  },
  {
   "id": "haeju",
@@ -72,7 +76,8 @@
   "commerce": 45,
   "wall": 40,
   "wood": 2,
-  "iron": 1
+  "iron": 1,
+  "elev": 151
  },
  {
   "id": "kaesong",
@@ -87,7 +92,8 @@
   "commerce": 60,
   "wall": 50,
   "wood": 2,
-  "iron": 1
+  "iron": 1,
+  "elev": 69
  },
  {
   "id": "hyesan",
@@ -102,7 +108,8 @@
   "commerce": 15,
   "wall": 60,
   "wood": 6,
-  "iron": 4
+  "iron": 4,
+  "elev": 1017
  },
  {
   "id": "chongjin",
@@ -117,7 +124,8 @@
   "commerce": 35,
   "wall": 40,
   "wood": 4,
-  "iron": 5
+  "iron": 5,
+  "elev": 786
  },
  {
   "id": "hamhung",
@@ -132,7 +140,8 @@
   "commerce": 45,
   "wall": 70,
   "wood": 4,
-  "iron": 3
+  "iron": 3,
+  "elev": 127
  },
  {
   "id": "wonsan",
@@ -147,7 +156,8 @@
   "commerce": 45,
   "wall": 45,
   "wood": 3,
-  "iron": 2
+  "iron": 2,
+  "elev": 298
  },
  {
   "id": "hanyang",
@@ -162,7 +172,8 @@
   "commerce": 75,
   "wall": 75,
   "wood": 2,
-  "iron": 2
+  "iron": 2,
+  "elev": 67
  },
  {
   "id": "suwon",
@@ -177,7 +188,8 @@
   "commerce": 50,
   "wall": 55,
   "wood": 2,
-  "iron": 1
+  "iron": 1,
+  "elev": 71
  },
  {
   "id": "chuncheon",
@@ -192,7 +204,8 @@
   "commerce": 30,
   "wall": 60,
   "wood": 5,
-  "iron": 2
+  "iron": 2,
+  "elev": 305
  },
  {
   "id": "cheongju",
@@ -207,7 +220,8 @@
   "commerce": 40,
   "wall": 45,
   "wood": 3,
-  "iron": 2
+  "iron": 2,
+  "elev": 155
  },
  {
   "id": "gongju",
@@ -222,7 +236,8 @@
   "commerce": 45,
   "wall": 65,
   "wood": 2,
-  "iron": 1
+  "iron": 1,
+  "elev": 153
  },
  {
   "id": "jeonju",
@@ -237,7 +252,8 @@
   "commerce": 50,
   "wall": 50,
   "wood": 2,
-  "iron": 1
+  "iron": 1,
+  "elev": 88
  },
  {
   "id": "gwangju",
@@ -252,7 +268,8 @@
   "commerce": 45,
   "wall": 45,
   "wood": 2,
-  "iron": 1
+  "iron": 1,
+  "elev": 95
  },
  {
   "id": "naju",
@@ -267,7 +284,8 @@
   "commerce": 50,
   "wall": 40,
   "wood": 2,
-  "iron": 1
+  "iron": 1,
+  "elev": 88
  },
  {
   "id": "gangneung",
@@ -282,7 +300,8 @@
   "commerce": 45,
   "wall": 50,
   "wood": 5,
-  "iron": 2
+  "iron": 2,
+  "elev": 401
  },
  {
   "id": "daegu",
@@ -297,7 +316,8 @@
   "commerce": 65,
   "wall": 50,
   "wood": 3,
-  "iron": 3
+  "iron": 3,
+  "elev": 172
  },
  {
   "id": "gyeongju",
@@ -312,7 +332,8 @@
   "commerce": 70,
   "wall": 70,
   "wood": 3,
-  "iron": 4
+  "iron": 4,
+  "elev": 204
  },
  {
   "id": "jinju",
@@ -327,7 +348,8 @@
   "commerce": 45,
   "wall": 65,
   "wood": 3,
-  "iron": 2
+  "iron": 2,
+  "elev": 95
  },
  {
   "id": "busan",
@@ -342,7 +364,8 @@
   "commerce": 75,
   "wall": 50,
   "wood": 3,
-  "iron": 3
+  "iron": 3,
+  "elev": 87
  },
  {
   "id": "jeju",
@@ -357,6 +380,7 @@
   "commerce": 40,
   "wall": 35,
   "wood": 3,
-  "iron": 1
+  "iron": 1,
+  "elev": 282
  }
 ]

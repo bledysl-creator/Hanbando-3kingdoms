@@ -65,7 +65,8 @@ export interface Region {
   lon: number;
   lat: number;
   parent: string; // 관할 게임 도시 id
-  elev: number; // 추정 평균 고도(m) — tools/geo/estimate_elevation.py
+  elev: number; // 시·군 평균 고도(m), 실측 DEM — tools/geo/build_terrain.py (v1.9)
+  elevMax?: number; // 시·군 최고 고도(m)
   rings: LonLat[][];
 }
 

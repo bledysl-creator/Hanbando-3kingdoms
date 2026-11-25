@@ -40,6 +40,8 @@ export interface Faction {
 export interface City {
   id: CityId;
   name: string;
+  /** 도성 시·군의 실측 평균 고도(m) (v1.9) */
+  elev?: number;
   lon: number;
   lat: number;
   terrain: Terrain;

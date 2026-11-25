@@ -4,7 +4,7 @@ import type { GameState } from './types';
 import { rollWeather } from '../systems/weather';
 import { recordAnnal } from '../systems/chronicle';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
 export function createGame(

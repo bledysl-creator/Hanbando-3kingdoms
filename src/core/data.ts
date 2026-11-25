@@ -9,7 +9,7 @@ import type { Persona, RoadType, Stats, Terrain, MissionKind, RelationType } fro
 
 export interface FactionDef { id: string; name: string; hanja: string; color: string; rulerId: string; traits: string[] }
 export interface CityDef {
-  id: string; name: string; lon: number; lat: number; terrain: Terrain; fortress: boolean; port: boolean;
+  id: string; name: string; lon: number; lat: number; elev?: number; terrain: Terrain; fortress: boolean; port: boolean;
   population: number; agriculture: number; commerce: number; wall: number; wood: number; iron: number;
 }
 export interface RoadDef { from: string; to: string; type: RoadType }
