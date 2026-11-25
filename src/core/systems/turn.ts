@@ -11,6 +11,7 @@ import { canRise, processAiUprisings, processLifecycle } from './lifecycle';
 import { recordAnnal } from './chronicle';
 import { processSurrenders } from './surrender';
 import { processEpidemics } from './epidemic';
+import { processWildfires } from './wildfire';
 import { processGovernors } from './office';
 import { traitSum } from '../commands/commands';
 import { landmarksOfCity } from '../data';
@@ -28,7 +29,7 @@ export function processEconomy(s: GameState) {
         const dry = Math.max(0, 1 - (c.droughtTurns ?? 0) * BALANCE.droughtHarvestLoss);
         harvest += c.agriculture * k * BALANCE.harvestPerAgriculture * orderMul * dry * (1 + traitSum(f.traits, 'harvest'));
       }
-      wood += c.wood * BALANCE.woodPerLevel;
+      wood += c.wood * BALANCE.woodPerLevel * ((c.fire ?? 0) > 0 ? BALANCE.fireWoodPenalty : 1);
       iron += c.iron * BALANCE.ironPerLevel;
       troops += c.troops;
       // 인구·민심
@@ -109,6 +110,7 @@ export function endTurnMut(s: GameState) {
   applyWeatherEffects(s, (t, fid) => { if (fid === s.playerFactionId) log(s, t, 'warn', fid); });
   processEconomy(s);
   processEpidemics(s);
+  processWildfires(s);
   processGovernors(s);
   if (s.season === 2) for (const c of Object.values(s.cities)) c.droughtTurns = 0;
   processLoyalty(s);

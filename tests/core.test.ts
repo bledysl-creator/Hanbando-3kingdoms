@@ -546,3 +546,28 @@ describe('세력 특성 (v2.7)', () => {
     expect(r.reasons.join()).toContain('세력 특성');
   });
 });
+
+import { fireChance, processWildfires, igniteCity } from '../src/core';
+describe('산불 (v2.8)', () => {
+  it('비 오는 날엔 산불이 나지 않고, 가을 산악 도시가 겨울 평지보다 잘 난다', () => {
+    const s = newGame();
+    s.weather.ganggye = 'rain'; expect(fireChance(s, 'ganggye')).toBe(0);
+    s.season = 2; s.weather.ganggye = 'drought'; const a = fireChance(s, 'ganggye');
+    s.season = 3; s.weather.anju = 'clear'; const b = fireChance(s, 'anju');
+    expect(a).toBeGreaterThan(b);
+  });
+  it('산불은 인구를 줄이고 비가 오면 꺼지며, 진화 명령으로도 끈다', () => {
+    const s = newGame(2, 'shu');
+    igniteCity(s, 'hanyang'); s.weather.hanyang = 'clear';
+    const pop = s.cities.hanyang.population;
+    processWildfires(s);
+    expect(s.cities.hanyang.population).toBeLessThan(pop);
+    s.cities.hanyang.fire = 2; s.weather.hanyang = 'rain';
+    processWildfires(s);
+    expect(s.cities.hanyang.fire).toBe(0);
+    igniteCity(s, 'hanyang');
+    const gid = Object.values(s.generals).find((g) => g.faction === 'shu' && g.city === 'hanyang')!.id;
+    const r = applyCommand(s, 'shu', { type: 'extinguish', generalId: gid });
+    expect(r.result.ok && r.state.cities.hanyang.fire).toBe(0);
+  });
+});

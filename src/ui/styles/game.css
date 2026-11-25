@@ -255,3 +255,25 @@ select, input { font: inherit; }
 .layers input { accent-color: #c9a24e; margin: 0; }
 button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 .battle-arrow path { filter: drop-shadow(0 0 2px #000); }
+/* v2.8 날씨·재해 효과 */
+.wx-fall { animation: wx-fall 0.55s linear infinite; }
+.wx-fall.wx-fast { animation-duration: 0.3s; }
+.wx-fall.wx-slow { animation: wx-snowfall 3.2s linear infinite; }
+.wx-fall.wx-slow.wx-fast { animation-duration: 1.2s; }
+@keyframes wx-fall { from { transform: translate(0, -16px); } to { transform: translate(-4px, 0); } }
+@keyframes wx-snowfall { from { transform: translate(0, -16px); } to { transform: translate(4px, 0); } }
+.wx-fog { animation: wx-fog 6s ease-in-out infinite; }
+@keyframes wx-fog { 0%,100% { fill-opacity: 0.18; transform: translateX(-4px); } 50% { fill-opacity: 0.38; transform: translateX(4px); } }
+.wx-drought { animation: wx-pulse 4s ease-in-out infinite; }
+@keyframes wx-pulse { 0%,100% { fill-opacity: 0.1; } 50% { fill-opacity: 0.25; } }
+.wx-fire-tint { animation: wx-firetint 1.6s ease-in-out infinite; }
+@keyframes wx-firetint { 0%,100% { fill-opacity: 0.14; } 50% { fill-opacity: 0.3; } }
+.wx-flicker { animation: wx-flicker 0.7s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center bottom; }
+@keyframes wx-flicker { from { opacity: 0.75; transform: scale(0.88); } to { opacity: 1; transform: scale(1.12); } }
+.wx-smoke { animation: wx-smoke 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes wx-smoke { from { opacity: 0.6; transform: translateY(0) scale(0.6); } to { opacity: 0; transform: translateY(-16px) scale(1.8); } }
+.wx-spin { animation: wx-spin 2.5s linear infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes wx-spin { to { transform: rotate(-360deg); } }
+.wx-flash { animation: wx-flash 1.8s steps(1) infinite; }
+@keyframes wx-flash { 0%, 80% { opacity: 0; } 82%, 90% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .wx-fall, .wx-fog, .wx-drought, .wx-fire-tint, .wx-flicker, .wx-smoke, .wx-spin, .wx-flash { animation: none; } }

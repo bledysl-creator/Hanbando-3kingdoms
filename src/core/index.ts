@@ -21,3 +21,4 @@ export * from './systems/surrender';
 export * from './systems/epidemic';
 export * from './systems/office';
 export { fixJosa } from './josa';
+export * from './systems/wildfire';

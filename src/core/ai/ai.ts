@@ -114,6 +114,8 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
     const cand = generalsIn(s, city.id, fid).filter((x) => x.id !== f.rulerId).sort((a, b) => b.stats.politics - a.stats.politics)[0];
     if (cand) opts.push({ score: 36, cmd: { type: 'appoint', generalId: g.id, targetId: cand.id }, why: '태수 임명' });
   }
+  // v2.8 산불 진화
+  if ((city.fire ?? 0) > 0 && f.gold > BALANCE.extinguishGold + 1000) opts.push({ score: 51, cmd: { type: 'extinguish', generalId: g.id }, why: '산불 진화' });
   // v2.3 구휼: 역병이 돌거나 민심이 바닥이면 곡식을 푼다
   if (((city.epidemic ?? 0) > 0 || city.order < 35) && f.food > reliefFood(s, city.id) + totalT * BALANCE.foodPerTroop * 2) {
     opts.push({ score: (city.epidemic ?? 0) > 0 ? 52 : 33, cmd: { type: 'relief', generalId: g.id }, why: '구휼' });

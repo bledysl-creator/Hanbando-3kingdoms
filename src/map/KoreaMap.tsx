@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import type { GameState } from '../core';
 import { WEATHER_ICON, WEATHER_LABEL, visibleTroops } from '../core';
 import { LANDMARKS } from '../core';
-import { LAND_PATH, REGIONS, REGION_PATHS, RIDGES, RIVERS, VIEW_H, VIEW_W, mountainGlyphs, project, toPath } from './geo';
+import { CITY_AREAS, LAND_PATH, REGIONS, REGION_PATHS, RIDGES, RIVERS, VIEW_H, VIEW_W, mountainGlyphs, project, toPath } from './geo';
 
 const LM_LABEL = { pass: '고개', ford: '나루터', port: '항구', fortress: '산성' } as const;
 
@@ -40,10 +40,10 @@ function elevColor(m: number): string {
   return 'rgb(220,215,205)';
 }
 
-export interface MapLayers { landmarks: boolean; rivers: boolean; roads: boolean; labels: boolean; relief: boolean; battles: boolean }
-export const DEFAULT_LAYERS: MapLayers = { landmarks: true, rivers: true, roads: true, labels: true, relief: true, battles: true };
+export interface MapLayers { landmarks: boolean; rivers: boolean; roads: boolean; labels: boolean; relief: boolean; battles: boolean; effects: boolean }
+export const DEFAULT_LAYERS: MapLayers = { landmarks: true, rivers: true, roads: true, labels: true, relief: true, battles: true, effects: true };
 export const LAYER_LABELS: { key: keyof MapLayers; label: string }[] = [
-  { key: 'relief', label: '음영 기복' }, { key: 'rivers', label: '강' }, { key: 'roads', label: '길' }, { key: 'landmarks', label: '거점' }, { key: 'labels', label: '시·군 이름' }, { key: 'battles', label: '최근 전투' },
+  { key: 'relief', label: '음영 기복' }, { key: 'rivers', label: '강' }, { key: 'roads', label: '길' }, { key: 'landmarks', label: '거점' }, { key: 'labels', label: '시·군 이름' }, { key: 'battles', label: '최근 전투' }, { key: 'effects', label: '날씨·재해 효과' },
 ];
 
 interface Props {
@@ -110,6 +110,11 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
       onPointerLeave={onUp}
     >
       <defs>
+        <pattern id="wx-rain" width="9" height="16" patternUnits="userSpaceOnUse"><path d="M3,0L1,7M8,8L6,15" stroke="#a9d2ff" strokeWidth="0.9" strokeOpacity="0.75" /></pattern>
+        <pattern id="wx-storm" width="6" height="12" patternUnits="userSpaceOnUse"><path d="M3,0L0,9M6,4L4,11" stroke="#cfe6ff" strokeWidth="1.2" strokeOpacity="0.85" /></pattern>
+        <pattern id="wx-snow" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="3" cy="4" r="1.1" fill="#fff" fillOpacity="0.9" /><circle cx="11" cy="11" r="0.9" fill="#fff" fillOpacity="0.8" /><circle cx="13" cy="2" r="0.7" fill="#fff" fillOpacity="0.7" /></pattern>
+        <pattern id="wx-blizzard" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="#fff" /><circle cx="6" cy="6" r="1" fill="#fff" fillOpacity="0.85" /></pattern>
+        <radialGradient id="fire-glow"><stop offset="0" stopColor="#ffdd55" stopOpacity="0.95" /><stop offset="0.45" stopColor="#ff6a1a" stopOpacity="0.7" /><stop offset="1" stopColor="#b3200c" stopOpacity="0" /></radialGradient>
         <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M0,0L10,5L0,10z" fill="context-stroke" />
         </marker>
@@ -218,6 +223,39 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
                   <circle r={5.5} fill="#1d1a14" fillOpacity={0.7} stroke="#d8c27a" strokeWidth={0.8} />
                   <text y={3} textAnchor="middle" fontSize={7}>{icon}</text>
                   {view.k >= 1.4 && <text y={13} textAnchor="middle" fontSize={6.5} fill="#ffe7a8" stroke="#1d1a14" strokeWidth={1.6} paintOrder="stroke">{l.name}</text>}
+                </g>
+              );
+            })}
+
+            {/* v2.8 날씨·재해 효과: 그 도시 관할 시·군 안에서만 비·눈·안개·가뭄·한파·산불을 그린다 */}
+            {layers.effects && cities.map((c) => {
+              const area = CITY_AREAS[c.id];
+              const w = state.weather[c.id];
+              const fire = (c.fire ?? 0) > 0;
+              if (!area || (!fire && (!w || w === 'clear'))) return null;
+              const pad = 20;
+              const box = { x: area.x - pad, y: area.y - pad, width: area.w + pad * 2, height: area.h + pad * 2 };
+              const pat = w === 'rain' ? 'wx-rain' : w === 'storm' || w === 'typhoon' ? 'wx-storm' : w === 'snow' ? 'wx-snow' : w === 'blizzard' ? 'wx-blizzard' : null;
+              return (
+                <g key={'wx' + c.id} pointerEvents="none">
+                  <clipPath id={`wxc-${c.id}`}><path d={area.path} /></clipPath>
+                  <g clipPath={`url(#wxc-${c.id})`}>
+                    {(w === 'rain' || w === 'storm' || w === 'typhoon') && <rect {...box} fill="#1d3550" fillOpacity={w === 'rain' ? 0.18 : 0.3} />}
+                    {pat && <rect {...box} fill={`url(#${pat})`} className={`wx-fall ${w === 'snow' || w === 'blizzard' ? 'wx-slow' : ''} ${w === 'storm' || w === 'typhoon' || w === 'blizzard' ? 'wx-fast' : ''}`} />}
+                    {(w === 'snow' || w === 'blizzard') && <rect {...box} fill="#eef6ff" fillOpacity={w === 'blizzard' ? 0.3 : 0.16} />}
+                    {w === 'fog' && <rect {...box} fill="#e8ecef" className="wx-fog" />}
+                    {w === 'drought' && <rect {...box} fill="#d9822b" className="wx-drought" />}
+                    {w === 'cold' && <rect {...box} fill="#9fd0ff" fillOpacity={0.18} />}
+                    {fire && <rect {...box} fill="#ff4a10" className="wx-fire-tint" />}
+                  </g>
+                  {w === 'storm' || w === 'typhoon' ? <text x={area.x + area.w / 2} y={area.y + area.h / 2} fontSize={w === 'typhoon' ? 26 : 14} textAnchor="middle" className={w === 'typhoon' ? 'wx-spin' : 'wx-flash'}>{w === 'typhoon' ? '🌀' : '⚡'}</text> : null}
+                  {fire && area.spots.map(([x, y], i) => (
+                    <g key={i} transform={`translate(${x},${y})`}>
+                      <circle r={11} fill="url(#fire-glow)" className="wx-flicker" style={{ animationDelay: `${i * 0.23}s` }} />
+                      <text y={4} fontSize={11} textAnchor="middle" className="wx-flicker" style={{ animationDelay: `${i * 0.31}s` }}>🔥</text>
+                      <circle cy={-10} r={4} fill="#5a5048" className="wx-smoke" style={{ animationDelay: `${i * 0.5}s` }} />
+                    </g>
+                  ))}
                 </g>
               );
             })}

@@ -1,3 +1,4 @@
+import { igniteCity } from '../systems/wildfire';
 import { fixJosa } from '../josa';
 import { reliefFood } from '../systems/epidemic';
 import type { TacticKind } from '../battle/tactics';
@@ -32,7 +33,8 @@ export type Command =
   | { type: 'disband'; generalId: string; amount: number }
   | { type: 'buildShips'; generalId: string }
   | { type: 'relief'; generalId: string }
-  | { type: 'appoint'; generalId: string; targetId: string };
+  | { type: 'appoint'; generalId: string; targetId: string }
+  | { type: 'extinguish'; generalId: string };
 
 export type CommandResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -155,6 +157,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
 
       const survivors = troops - out.attackerLoss;
       const defName = defenderFaction ? s.factions[defenderFaction].name : '중립';
+      if (out.tactic?.kind === 'fire' && out.tactic.success) { igniteCity(s, to.id, 1); out.reasons.push(`화공의 불길이 ${to.name} 일대로 번졌습니다`); }
       if (out.won) {
         to.troops = survivors;
         to.morale = Math.min(100, city.morale + BALANCE.victoryMorale);
@@ -221,6 +224,16 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         return { ok: true, message: `${t.name} 등용 성공!` };
       }
       return { ok: true, message: `${t.name}이(가) 등용을 거절했습니다. (성공률 ${Math.round(p * 100)}%)` };
+    }
+    case 'extinguish': {
+      if (!(city.fire ?? 0)) return { ok: false, error: '이 도시에는 산불이 없습니다.' };
+      if (f.gold < BALANCE.extinguishGold) return { ok: false, error: `금 ${BALANCE.extinguishGold}이 필요합니다.` };
+      f.gold -= BALANCE.extinguishGold;
+      city.fire = 0;
+      city.order = Math.min(100, city.order + 2);
+      g.acted = true;
+      log(s, `${g.name}이(가) 백성을 이끌고 ${city.name}의 산불을 껐습니다.`, 'good', factionId);
+      return { ok: true, message: `${city.name}의 산불을 진화했습니다. (민심 +2)` };
     }
     case 'appoint': {
       const t = s.generals[cmd.targetId];

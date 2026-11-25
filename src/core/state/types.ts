@@ -62,6 +62,8 @@ export interface City {
   ships?: number;
   /** 역병이 남은 턴 수 (v2.3) */
   epidemic?: number;
+  /** 산불이 남은 턴 수 (v2.8) */
+  fire?: number;
   /** 태수 장수 id (v2.4) */
   governor?: string;
   droughtTurns?: number; // 이번 해 가뭄을 겪은 계절 수 (가을 수확 감소)

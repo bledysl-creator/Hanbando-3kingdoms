@@ -48,7 +48,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
       </h2>
       <div className="stat-grid">
         <span>세력</span><b>{owner ? `${owner.name}(${owner.hanja})` : '중립'}</b>
-        <span>병력</span><b>{(() => { const v = visibleTroops(state, pf, c.id); return v.value === null ? '알 수 없음 (첩보 필요)' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)} (${v.age}턴 전 첩보)`; })()}</b>{(c.epidemic ?? 0) > 0 && <><span>역병</span><b className="bad">🦠 {c.epidemic}턴 남음 — 인구·병력 감소 중</b></>}{c.port && <><span>전선</span><b>⛵ {c.ships ?? 0}척</b></>}
+        <span>병력</span><b>{(() => { const v = visibleTroops(state, pf, c.id); return v.value === null ? '알 수 없음 (첩보 필요)' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)} (${v.age}턴 전 첩보)`; })()}</b>{(c.fire ?? 0) > 0 && <><span>산불</span><b className="bad">🔥 {c.fire}턴 — 인구·농지·목재 피해 중 (비가 오면 꺼짐)</b></>}{(c.epidemic ?? 0) > 0 && <><span>역병</span><b className="bad">🦠 {c.epidemic}턴 남음 — 인구·병력 감소 중</b></>}{c.port && <><span>전선</span><b>⛵ {c.ships ?? 0}척</b></>}
         <span>인구</span><b>{fmt(c.population)}</b>
         <span>민심</span><b>{Math.round(c.order)}</b>
         <Bar label="농업" v={c.agriculture} />
@@ -127,6 +127,9 @@ function DomesticTab({ state, cityId, actor, onCommand }: { state: GameState; ci
   const city = state.cities[cityId];
   return (
     <div className="actions">
+      {(city.fire ?? 0) > 0 && (
+        <button className="urgent" onClick={() => onCommand({ type: 'extinguish', generalId: actor.id })}>🧯 산불 진화 <small>금 {BALANCE.extinguishGold} · 민심 +2</small></button>
+      )}
       <button className={(city.epidemic ?? 0) > 0 ? 'urgent' : ''} onClick={() => onCommand({ type: 'relief', generalId: actor.id })}>
         🍚 구휼 <small>곡 {reliefFood(state, cityId).toLocaleString()} · 민심 +{BALANCE.reliefOrder}{(city.epidemic ?? 0) > 0 ? ' · 역병 진정' : ''}</small>
       </button>

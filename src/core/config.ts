@@ -39,6 +39,11 @@ export const BALANCE = {
   } as Record<string, string>,
   /** 관직 (v2.4): 태수 정치/이 값 = 계절마다 농업·상업 +1 확률, 정치 70+ 또는 매력 80+ 이면 민심 + */
   governorDevDivisor: 250, governorOrder: 1, governorLoyalty: 5,
+  /** 산불 (v2.8): 확률 = 계절 기본 + 산악 + 목재 등급 + 고도 + 가뭄 */
+  fireDrySeason: 0.006, fireOtherSeason: 0.001, fireMountain: 0.012, fireWoodLevel: 0.003, fireDrought: 0.05,
+  fireTurns: 2, firePopLoss: 0.01, fireOrderLoss: 3, fireAgriLoss: 2, fireSpread: 0.2, fireWoodPenalty: 0.5,
+  /** 진화: 금 비용 */
+  extinguishGold: 300,
   /** 역병 (v2.3): 발생 확률 = 계절 기본 + 인구 10만당 + 큰비 − 민심 보호 */
   epidemicSummer: 0.025, epidemicOther: 0.004, epidemicDensity: 0.015, epidemicFlood: 0.03, epidemicOrderGuard: 0.02,
   epidemicTurns: 3, epidemicPopLoss: 0.03, epidemicTroopLoss: 0.03, epidemicOrderLoss: 4, epidemicSpread: 0.15,
