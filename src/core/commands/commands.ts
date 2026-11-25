@@ -30,7 +30,8 @@ export type Command =
   | { type: 'trade'; generalId: string; action: 'buyFood' | 'sellFood'; amount: number }
   | { type: 'disband'; generalId: string; amount: number }
   | { type: 'buildShips'; generalId: string }
-  | { type: 'relief'; generalId: string };
+  | { type: 'relief'; generalId: string }
+  | { type: 'appoint'; generalId: string; targetId: string };
 
 export type CommandResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -218,6 +219,16 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         return { ok: true, message: `${t.name} 등용 성공!` };
       }
       return { ok: true, message: `${t.name}이(가) 등용을 거절했습니다. (성공률 ${Math.round(p * 100)}%)` };
+    }
+    case 'appoint': {
+      const t = s.generals[cmd.targetId];
+      if (!t || !t.alive || t.faction !== factionId || t.city !== city.id) return { ok: false, error: '이 도시에 있는 우리 장수만 태수로 임명할 수 있습니다.' };
+      if (city.governor === t.id) return { ok: false, error: '이미 태수입니다.' };
+      const prev = city.governor;
+      city.governor = t.id;
+      if (prev !== t.id) t.loyalty = Math.min(100, t.loyalty + BALANCE.governorLoyalty);
+      g.acted = true;
+      return { ok: true, message: `${t.name}을(를) ${city.name} 태수로 임명했습니다. (충성 +${BALANCE.governorLoyalty})` };
     }
     case 'relief': {
       const food = reliefFood(s, city.id);

@@ -504,3 +504,19 @@ describe('역병·구휼 (v2.3)', () => {
     expect(r.state.cities.hanyang.epidemic).toBe(0);
   });
 });
+
+import { governorOf, processGovernors } from '../src/core';
+describe('관직·태수 (v2.4)', () => {
+  it('태수를 임명하면 충성이 오르고, 계절이 지나면 도시가 발전한다', () => {
+    const s = newGame(4, 'shu');
+    const here = Object.values(s.generals).filter((g) => g.faction === 'shu' && g.city === 'hanyang' && g.id !== s.factions.shu.rulerId);
+    const t = here.sort((a, b) => b.stats.politics - a.stats.politics)[0];
+    const actor = Object.values(s.generals).find((g) => g.faction === 'shu' && g.city === 'hanyang')!;
+    const r = applyCommand(s, 'shu', { type: 'appoint', generalId: actor.id, targetId: t.id });
+    expect(r.result.ok).toBe(true);
+    expect(governorOf(r.state, 'hanyang')?.id).toBe(t.id);
+    const before = r.state.cities.hanyang.agriculture + r.state.cities.hanyang.commerce;
+    for (let i = 0; i < 20; i++) processGovernors(r.state);
+    expect(r.state.cities.hanyang.agriculture + r.state.cities.hanyang.commerce).toBeGreaterThan(before);
+  });
+});

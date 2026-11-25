@@ -19,3 +19,4 @@ export * from './systems/army';
 export * from './battle/tactics';
 export * from './systems/surrender';
 export * from './systems/epidemic';
+export * from './systems/office';

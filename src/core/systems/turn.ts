@@ -11,6 +11,7 @@ import { canRise, processAiUprisings, processLifecycle } from './lifecycle';
 import { recordAnnal } from './chronicle';
 import { processSurrenders } from './surrender';
 import { processEpidemics } from './epidemic';
+import { processGovernors } from './office';
 import { landmarksOfCity } from '../data';
 
 export function processEconomy(s: GameState) {
@@ -107,6 +108,7 @@ export function endTurnMut(s: GameState) {
   applyWeatherEffects(s, (t, fid) => { if (fid === s.playerFactionId) log(s, t, 'warn', fid); });
   processEconomy(s);
   processEpidemics(s);
+  processGovernors(s);
   if (s.season === 2) for (const c of Object.values(s.cities)) c.droughtTurns = 0;
   processLoyalty(s);
   checkOutcome(s);

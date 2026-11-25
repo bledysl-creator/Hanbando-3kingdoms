@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Command, GameState, General, TacticKind } from '../../core';
-import { BALANCE, foodPrice, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
+import { BALANCE, foodPrice, governorOf, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -268,6 +268,12 @@ function TalentTab({ state, actor, free, onCommand }: { state: GameState; actor:
           <button key={t.id} onClick={() => onCommand({ type: 'recruit', generalId: actor.id, targetId: t.id })}>
             🤝 {t.name} 등용 <small>통{t.stats.leadership} 무{t.stats.war} 지{t.stats.intellect} 정{t.stats.politics} 매{t.stats.charm}</small>
           </button>
+        ))}
+      </div>
+      <div className="sub">
+        <b>태수</b> <small>{(() => { const gv = governorOf(state, actor.city); return gv ? `현재 ${gv.name} (정치 ${gv.stats.politics})` : '없음 — 임명하면 계절마다 농업·상업이 저절로 오릅니다'; })()}</small>
+        {mine.length === 0 ? <p className="muted">임명할 장수가 없습니다.</p> : mine.map((t) => (
+          <button key={t.id} disabled={state.cities[actor.city].governor === t.id} onClick={() => onCommand({ type: 'appoint', generalId: actor.id, targetId: t.id })}>🏛️ {t.name} 태수 임명 <small>정{t.stats.politics} 매{t.stats.charm}</small></button>
         ))}
       </div>
       <div className="sub">

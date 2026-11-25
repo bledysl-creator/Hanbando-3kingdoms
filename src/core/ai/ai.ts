@@ -8,6 +8,7 @@ import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/dip
 import { chance } from '../rng/rng';
 import { estimateRatio } from '../battle/estimate';
 import { reliefFood } from '../systems/epidemic';
+import { governorOf } from '../systems/office';
 import { log } from '../commands/commands';
 
 interface Option { score: number; cmd: Command; why: string }
@@ -107,6 +108,11 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
       const next = ns.filter((n) => n.city.owner === fid && dist[n.city.id] !== undefined && dist[n.city.id] < here).sort((a, b) => a.city.troops - b.city.troops)[0];
       if (next) opts.push({ score: 41, cmd: { type: 'transfer', generalId: g.id, toCityId: next.city.id, troops: spare }, why: '후방 병력 전진' });
     }
+  }
+  // v2.4 태수: 태수가 없으면 이 도시에서 정치가 가장 높은 장수(군주 제외)를 임명
+  if (!governorOf(s, city.id)) {
+    const cand = generalsIn(s, city.id, fid).filter((x) => x.id !== f.rulerId).sort((a, b) => b.stats.politics - a.stats.politics)[0];
+    if (cand) opts.push({ score: 36, cmd: { type: 'appoint', generalId: g.id, targetId: cand.id }, why: '태수 임명' });
   }
   // v2.3 구휼: 역병이 돌거나 민심이 바닥이면 곡식을 푼다
   if (((city.epidemic ?? 0) > 0 || city.order < 35) && f.food > reliefFood(s, city.id) + totalT * BALANCE.foodPerTroop * 2) {
