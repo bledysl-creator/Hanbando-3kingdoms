@@ -1,6 +1,6 @@
 // 앱 루트: 타이틀 → 메인 지도 화면. 게임 상태는 core 함수로만 바꾼다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
+import { BALANCE, applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
 import { DEFAULT_LAYERS, KoreaMap, LAYER_LABELS, MAP_MODES, type MapLayers, type MapMode } from '../map/KoreaMap';
 import { indexedDbRepo } from '../save/saveRepository';
 import { VERSION } from '../version';
@@ -58,7 +58,7 @@ function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
                     <b>{ruler.name}</b>
                     <small>도시 {cities.length} · 장수 {gens.length} · 병력 {troops.toLocaleString()}</small>
                     <p>{sc.factionIntro?.[f.id]}</p>
-                    <small className="muted">{f.traits.join(' · ')}</small>
+                    <small className="muted" title={f.traits.map((t) => `${t}: ${BALANCE.traitText[t] ?? ''}`).join('\n')}>{f.traits.map((t) => `${t}(${BALANCE.traitText[t] ?? ''})`).join(' · ')}</small>
                   </button>
                 );
               })}

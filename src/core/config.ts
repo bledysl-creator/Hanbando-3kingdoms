@@ -32,6 +32,11 @@ export const BALANCE = {
     '최강무력': { attack: 0.1 }, '인재': { recruit: 0.1 }, '대군': { conscriptCost: 0.2 },
     '인덕': { rewardLoyalty: 5 }, '곡창': { harvest: 0.05 }, '교역': { market: 0.1 }, '수군': {}, '불안정': {},
   } as Record<string, { attack?: number; recruit?: number; conscriptCost?: number; rewardLoyalty?: number; harvest?: number; market?: number }>,
+  /** 세력 특성 설명 (화면 표시용) */
+  traitText: {
+    '최강무력': '모든 공격 +10%', '인재': '등용 성공률 +10%', '대군': '징병 금 −20%', '인덕': '포상 충성 +5',
+    '곡창': '가을 수확 +5%', '교역': '시장 시세 10% 유리', '수군': '상륙전 +10%·전선 건조 −30%', '불안정': '(효과 없음 — 이야기용)',
+  } as Record<string, string>,
   /** 관직 (v2.4): 태수 정치/이 값 = 계절마다 농업·상업 +1 확률, 정치 70+ 또는 매력 80+ 이면 민심 + */
   governorDevDivisor: 250, governorOrder: 1, governorLoyalty: 5,
   /** 역병 (v2.3): 발생 확률 = 계절 기본 + 인구 10만당 + 큰비 − 민심 보호 */
