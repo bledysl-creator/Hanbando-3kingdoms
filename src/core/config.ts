@@ -28,6 +28,14 @@ export const BALANCE = {
   roadAttackModifier: { land: 1, river: 0.8, pass: 0.85, sea: 0.75 } as Record<string, number>,
   mountainDefenseBonus: 1.2,
   fortressWallMultiplier: 1.5,
+  /** 도시에 딸린 산성 하나당 수비 보너스 (v1.3) */
+  landmarkFortressBonus: 0.06,
+  /** 이름난 고개를 넘어 공격할 때 추가 감소 */
+  namedPassPenalty: 0.95,
+  /** 이름난 나루를 장악하면(공격 측이 나루 인접 도시 보유 시) 도하 감소 완화 */
+  fordEase: 1.05,
+  /** 도시에 딸린 항구 하나당 상업 수입 보너스 */
+  portLandmarkCommerce: 0.08,
   neutralLeadership: 50,
   neutralWar: 50,
 

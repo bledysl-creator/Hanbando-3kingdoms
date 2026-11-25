@@ -342,3 +342,22 @@ describe('역사서 (v1.2)', () => {
     expect(md.split('\n').some((l) => l.startsWith('- '))).toBe(true);
   });
 });
+
+import { LANDMARKS, landmarksOnRoad, landmarksOfCity } from '../src/core';
+describe('지형 거점 (v1.3)', () => {
+  it('고개·나루의 road는 실제 도로이고 산성·항구의 city는 실제 도시다', () => {
+    for (const l of LANDMARKS) {
+      if (l.road) expect(DATA.roads.some((r) => (r.from === l.road![0] && r.to === l.road![1]) || (r.from === l.road![1] && r.to === l.road![0]))).toBe(true);
+      if (l.city) expect(DATA.cities.some((c) => c.id === l.city)).toBe(true);
+    }
+    expect(landmarksOnRoad('cheongju', 'daegu').map((l) => l.name)).toContain('조령');
+  });
+  it('산성이 딸린 도시는 수비력이 오르고 원인에 산성 이름이 나온다', () => {
+    const s = newGame();
+    expect(landmarksOfCity('hanyang', 'fortress').length).toBeGreaterThan(0);
+    const base = { attackerTroops: 20000, attackerGeneral: s.generals.guan_yu, defenderGenerals: [], road: { from: 'kaesong', to: 'hanyang', type: 'river' as const }, season: 0, weather: 'clear' as const };
+    const r = resolveBattle({ rng: 1 }, { ...base, defenderCity: s.cities.hanyang });
+    expect(r.reasons.join()).toContain('북한산성');
+    expect(r.reasons.join()).toContain('임진나루');
+  });
+});

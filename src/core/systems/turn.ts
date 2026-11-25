@@ -9,6 +9,7 @@ import { expireTreaties } from '../diplomacy/diplomacy';
 import { applyWeatherEffects, rollWeather } from './weather';
 import { canRise, processAiUprisings, processLifecycle } from './lifecycle';
 import { recordAnnal } from './chronicle';
+import { landmarksOfCity } from '../data';
 
 export function processEconomy(s: GameState) {
   for (const f of Object.values(s.factions)) {
@@ -18,7 +19,7 @@ export function processEconomy(s: GameState) {
       if (c.owner !== f.id) continue;
       const k = c.population / 1000;
       const orderMul = 0.5 + c.order / 200;
-      gold += c.commerce * k * BALANCE.goldPerCommerce * orderMul;
+      gold += c.commerce * k * BALANCE.goldPerCommerce * orderMul * (1 + BALANCE.portLandmarkCommerce * landmarksOfCity(c.id, 'port').length);
       if (s.season === 2) {
         const dry = Math.max(0, 1 - (c.droughtTurns ?? 0) * BALANCE.droughtHarvestLoss);
         harvest += c.agriculture * k * BALANCE.harvestPerAgriculture * orderMul * dry;

@@ -242,3 +242,5 @@ select, input { font: inherit; }
 .book h2 { color: var(--gold-hi); margin: 4px 0 10px; } .book h3 { color: var(--gold-hi); margin: 14px 0 4px; font-size: 16px; border-bottom: 1px solid #6e5a33; }
 .book p { margin: 2px 0; } .book .ev { padding-left: 10px; color: var(--hanji); }
 .modal select { background: #0f141b; color: var(--hanji); border: 1px solid #6e5a33; padding: 6px; border-radius: 4px; }
+.landmarks-line { font-size: 12px; color: #e8cf8a; margin-top: 2px; }
+.landmark text { pointer-events: none; }

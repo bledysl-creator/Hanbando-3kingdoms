@@ -2,7 +2,10 @@
 import { useMemo, useRef, useState } from 'react';
 import type { GameState } from '../core';
 import { WEATHER_ICON, WEATHER_LABEL, visibleTroops } from '../core';
+import { LANDMARKS } from '../core';
 import { LAND_PATH, REGIONS, REGION_PATHS, RIDGES, RIVERS, VIEW_H, VIEW_W, mountainGlyphs, project, toPath } from './geo';
+
+const LM_LABEL = { pass: '고개', ford: '나루터', port: '항구', fortress: '산성' } as const;
 
 export type MapMode = 'political' | 'terrain' | 'economy' | 'population' | 'military' | 'order' | 'weather';
 export const MAP_MODES: { key: MapMode; label: string }[] = [
@@ -186,6 +189,21 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
               const [x2, y2] = project([state.cities[r.to].lon, state.cities[r.to].lat]);
               const dash = r.type === 'sea' ? '2 6' : r.type === 'pass' ? '6 4' : undefined;
               return <line key={r.from + r.to} x1={x1} y1={y1} x2={x2} y2={y2} stroke={r.type === 'sea' ? '#9cc7e0' : '#e8d9a8'} strokeOpacity={0.45} strokeWidth={1.2} strokeDasharray={dash} />;
+            })}
+
+            {/* 거점: 고개·나루·항구·산성 (v1.3) */}
+            {LANDMARKS.map((l) => {
+              const [x, y] = project([l.lon, l.lat]);
+              const sz = 1 / Math.min(Math.max(view.k, 1), 2.2);
+              const icon = l.type === 'pass' ? '⛰' : l.type === 'ford' ? '⛴' : l.type === 'port' ? '⚓' : '🏯';
+              return (
+                <g key={l.id} transform={`translate(${x},${y}) scale(${sz})`} className="landmark" pointerEvents="visiblePainted">
+                  <title>{`${l.name} — ${LM_LABEL[l.type]}\n${l.note}`}</title>
+                  <circle r={5.5} fill="#1d1a14" fillOpacity={0.7} stroke="#d8c27a" strokeWidth={0.8} />
+                  <text y={3} textAnchor="middle" fontSize={7}>{icon}</text>
+                  {view.k >= 1.4 && <text y={13} textAnchor="middle" fontSize={6.5} fill="#ffe7a8" stroke="#1d1a14" strokeWidth={1.6} paintOrder="stroke">{l.name}</text>}
+                </g>
+              );
             })}
 
             {/* 도시 */}

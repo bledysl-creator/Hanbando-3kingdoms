@@ -3,6 +3,7 @@ import factionsJson from '../../data/factions.json';
 import citiesJson from '../../data/cities.json';
 import roadsJson from '../../data/roads.json';
 import generalsJson from '../../data/generals.json';
+import landmarksJson from '../../data/landmarks.json';
 import scenario197 from '../../data/scenarios/197_sabun.json';
 import type { Persona, RoadType, Stats, Terrain, MissionKind, RelationType } from './state/types';
 
@@ -25,6 +26,22 @@ export interface ScenarioDef {
   debuts?: Record<string, { year: number; city: string; faction: string | null }>;
   heirs?: Record<string, string[]>;
   factionIntro?: Record<string, string>;
+}
+
+export type LandmarkType = 'pass' | 'ford' | 'port' | 'fortress';
+export interface LandmarkDef {
+  id: string; name: string; type: LandmarkType; lon: number; lat: number;
+  road?: string[] | null; city?: string | null; note: string;
+}
+export const LANDMARKS: LandmarkDef[] = landmarksJson as LandmarkDef[];
+
+/** 두 도시를 잇는 길 위의 고개·나루 */
+export function landmarksOnRoad(a: string, b: string): LandmarkDef[] {
+  return LANDMARKS.filter((l) => l.road && ((l.road[0] === a && l.road[1] === b) || (l.road[0] === b && l.road[1] === a)));
+}
+/** 도시에 딸린 산성·항구 */
+export function landmarksOfCity(cityId: string, type?: LandmarkType): LandmarkDef[] {
+  return LANDMARKS.filter((l) => l.city === cityId && (!type || l.type === type));
 }
 
 export interface GameData {

@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Command, GameState, General } from '../../core';
-import { BALANCE, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
+import { BALANCE, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -42,6 +42,9 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
       <h2>
         <span className="badge" style={{ background: owner?.color ?? '#777' }}>{owner?.hanja ?? '中'}</span> {c.name}
         <small> {TERRAIN[c.terrain]}{c.fortress ? ' · 산성' : ''}{c.port ? ' · 항구' : ''}</small>
+        {landmarksOfCity(c.id).length > 0 && (
+          <div className="landmarks-line">{landmarksOfCity(c.id).map((l) => (l.type === 'port' ? '⚓' : '🏯') + l.name).join(' · ')}</div>
+        )}
       </h2>
       <div className="stat-grid">
         <span>세력</span><b>{owner ? `${owner.name}(${owner.hanja})` : '중립'}</b>

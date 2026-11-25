@@ -3,6 +3,7 @@ import { BALANCE } from '../config';
 import { randRange, type RngHolder } from '../rng/rng';
 import type { City, General, Road } from '../state/types';
 import { weatherAttackModifier } from '../systems/weather';
+import { landmarksOfCity, landmarksOnRoad } from '../data';
 
 export interface BattleInput {
   attackerMorale?: number;
@@ -52,6 +53,10 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
     reasons.push(`${label}으로 공격력 ${Math.round((1 - roadMod) * 100)}% 감소`);
   }
   atk *= roadMod;
+  for (const lm of landmarksOnRoad(b.road.from, b.road.to)) {
+    if (lm.type === 'pass') { atk *= BALANCE.namedPassPenalty; reasons.push(`${lm.name}을(를) 넘는 험한 길 −${Math.round((1 - BALANCE.namedPassPenalty) * 100)}%`); }
+    else if (lm.type === 'ford') { atk *= BALANCE.fordEase; reasons.push(`${lm.name}로 강을 건너 도하 부담 완화 +${Math.round((BALANCE.fordEase - 1) * 100)}%`); }
+  }
   if (b.season === 3) {
     atk *= BALANCE.winterAttackPenalty;
     reasons.push('겨울 보급난으로 공격력 소폭 감소');
@@ -74,6 +79,11 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   const wallMul = 1 + (city.wall / 200) * (city.fortress ? BALANCE.fortressWallMultiplier : 1);
   def *= wallMul;
   if (city.fortress) reasons.push(`${city.name}은(는) 산성/요새라 수비력 상승`);
+  const forts = landmarksOfCity(city.id, 'fortress');
+  if (forts.length) {
+    def *= 1 + BALANCE.landmarkFortressBonus * forts.length;
+    reasons.push(`${forts.map((f) => f.name).join('·')}이(가) 수비를 도움 +${Math.round(BALANCE.landmarkFortressBonus * forts.length * 100)}%`);
+  }
   if (city.terrain === 'mountain') {
     def *= BALANCE.mountainDefenseBonus;
     reasons.push('험준한 산악 지형이 수비에 유리');

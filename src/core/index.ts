@@ -6,7 +6,8 @@ export { acceptanceChance, statusOf, treatyOf, canAttack } from './diplomacy/dip
 export { endTurn, endTurnMut } from './systems/turn';
 export { missionProgress } from './systems/missions';
 export * from './query';
-export { DATA, SCENARIOS } from './data';
+export { DATA, SCENARIOS, LANDMARKS, landmarksOnRoad, landmarksOfCity } from './data';
+export type { LandmarkDef, LandmarkType } from './data';
 export { BALANCE, SEASONS } from './config';
 export { WEATHER_ICON, WEATHER_LABEL } from './systems/weather';
 export { estimateRatio } from './battle/estimate';
