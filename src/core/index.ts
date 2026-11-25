@@ -12,3 +12,4 @@ export { WEATHER_ICON, WEATHER_LABEL } from './systems/weather';
 export { estimateRatio } from './battle/estimate';
 export { marchOpinions, obedience, MEMORY_LABEL } from './systems/persona';
 export { attemptUprising, canRise, uprisingChance } from './systems/lifecycle';
+export { discordChance, rumorChance, scoutChance, visibleTroops, withinTwo } from './systems/intrigue';

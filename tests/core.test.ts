@@ -304,3 +304,28 @@ describe('생애 (v1.0)', () => {
     expect(s.generals.guan_yu.faction).toBe('shu'); // 의형제가 돌아온다
   });
 });
+
+import { visibleTroops } from '../src/core';
+describe('계략·첩보 (v1.1)', () => {
+  it('먼 적 도시 병력은 보이지 않고, 첩보 후에는 보인다', () => {
+    let s = newGame(4);
+    expect(visibleTroops(s, 'shu', 'hamhung').value).toBeNull();
+    expect(visibleTroops(s, 'shu', 'kaesong').exact).toBe(true); // 인접
+    s = applyCommand(s, 'shu', { type: 'scout', generalId: 'guan_yu', cityId: 'pyongyang' }).state; // 한양→개성→평양? 2칸 이내 확인
+    // 평양은 한양에서 3칸이므로 거부되어야 한다
+    expect(visibleTroops(s, 'shu', 'pyongyang').value).toBeNull();
+    s = applyCommand(s, 'shu', { type: 'scout', generalId: 'zhuge_liang', cityId: 'haeju' }).state;
+    expect(visibleTroops(s, 'shu', 'haeju').value).not.toBeNull();
+  });
+  it('유언비어는 인접 도시에만, 성공하면 민심이 떨어진다', () => {
+    const s = newGame(4);
+    const r = applyCommand(s, 'shu', { type: 'rumor', generalId: 'zhuge_liang', cityId: 'kaesong' });
+    expect(r.result.ok).toBe(true);
+    expect(r.state.cities.kaesong.order).toBeLessThanOrEqual(s.cities.kaesong.order);
+  });
+  it('의형제는 이간할 수 없다', () => {
+    const s = newGame(4, 'wei');
+    const r = applyCommand(s, 'wei', { type: 'discord', generalId: 'xiahou_dun', targetId: 'guan_yu' });
+    expect(r.result.ok && r.state.generals.guan_yu.loyalty).toBe(100);
+  });
+});

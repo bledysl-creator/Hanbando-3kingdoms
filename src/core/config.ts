@@ -64,6 +64,14 @@ export const BALANCE = {
   uprisingMaxGarrison: 9000, // 이 병력 이하인 도시에서만 재기 가능
   uprisingVolunteerRatio: 0.04, // 재기 시 인구 대비 의병
 
+  // 계략 (v1.1)
+  intelValidTurns: 4,
+  scoutGold: 100,
+  rumorGold: 200,
+  discordGold: 300,
+  rumorOrder: 15,
+  rumorMorale: 10,
+
   // 외교 (v0.4)
   truceBase: 0.35,
   allianceBase: 0.2,

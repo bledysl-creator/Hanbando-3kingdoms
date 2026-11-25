@@ -61,7 +61,7 @@ const MENU: { key: MenuKey; icon: string; ready: boolean }[] = [
   { key: '군사', icon: '⚔️', ready: true },
   { key: '인재', icon: '👥', ready: true },
   { key: '외교', icon: '🤝', ready: true },
-  { key: '계략', icon: '🗡️', ready: false },
+  { key: '계략', icon: '🗡️', ready: true },
   { key: '정보', icon: '📜', ready: true },
 ];
 

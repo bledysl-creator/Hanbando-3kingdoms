@@ -62,6 +62,15 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
     }
     if (best) opts.push({ score: 42 + best.need / 1000, cmd: { type: 'transfer', generalId: g.id, toCityId: best.id, troops: Math.min(surplus, best.need + 2000) }, why: '병력 재배치' });
   }
+  // 계략: 지력 높은 장수는 공격 대상에 유언비어·이간
+  if (isFrontier && g.stats.intellect >= 80 && f.gold > 1500) {
+    const tgt = enemyNs.filter((n) => n.city.owner && canAttack(s, fid, n.city.owner)).sort((a, b) => a.city.troops - b.city.troops)[0];
+    if (tgt) {
+      opts.push({ score: 25 + g.stats.intellect / 20, cmd: { type: 'rumor', generalId: g.id, cityId: tgt.city.id }, why: '유언비어' });
+      const victim = Object.values(s.generals).find((x) => x.alive && x.city === tgt.city.id && x.faction === tgt.city.owner && x.loyalty < 75 && x.id !== s.factions[x.faction!].rulerId);
+      if (victim) opts.push({ score: 30, cmd: { type: 'discord', generalId: g.id, targetId: victim.id }, why: '이간' });
+    }
+  }
   // 훈련: 전선 도시의 훈련도가 낮으면
   if (isFrontier && city.training < 65 && f.food > city.troops) {
     opts.push({ score: 26 + (65 - city.training) / 3, cmd: { type: 'train', generalId: g.id }, why: '훈련' });

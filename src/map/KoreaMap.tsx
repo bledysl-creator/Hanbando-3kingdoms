@@ -1,7 +1,7 @@
 // 한반도 전략 지도 (SVG). 세력 영역은 도시 기준 보로노이 분할을 해안선으로 잘라 칠한다.
 import { useMemo, useRef, useState } from 'react';
 import type { GameState } from '../core';
-import { WEATHER_ICON, WEATHER_LABEL } from '../core';
+import { WEATHER_ICON, WEATHER_LABEL, visibleTroops } from '../core';
 import { LAND_PATH, REGIONS, REGION_PATHS, RIDGES, RIVERS, VIEW_H, VIEW_W, mountainGlyphs, project, toPath } from './geo';
 
 export type MapMode = 'political' | 'terrain' | 'economy' | 'population' | 'military' | 'order' | 'weather';
@@ -138,7 +138,7 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
               if (mode === 'terrain') fill = elevColor(r.elev);
               else if (mode === 'economy') fill = ramp((pc.agriculture + pc.commerce) / 180);
               else if (mode === 'population') fill = ramp(pc.population / 100000);
-              else if (mode === 'military') fill = ramp(pc.troops / 40000);
+              else if (mode === 'military') { const v = visibleTroops(state, state.playerFactionId, pc.id).value; fill = v === null ? '#4a4f58' : ramp(v / 40000); }
               else if (mode === 'order') fill = ramp(pc.order / 100);
               else if (mode === 'weather') fill = WEATHER_COLOR[state.weather[pc.id] ?? 'clear'];
             }

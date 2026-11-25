@@ -1,7 +1,7 @@
 // 목록·보고서 창: 장수, 도시, 연표, 세력 정보, 전투 보고, 설정/저장, 도움말
 import { useEffect, useState, type ReactNode } from 'react';
 import type { BattleReport, GameState } from '../../core';
-import { MEMORY_LABEL, SEASONS, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
+import { MEMORY_LABEL, SEASONS, visibleTroops, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
 import { exportJson, indexedDbRepo, migrate, type SaveMeta } from '../../save/saveRepository';
 import { Portrait } from './Portrait';
 
@@ -108,7 +108,7 @@ export function CitiesModal({ state, onClose, onPickCity }: { state: GameState; 
             <tr key={c.id} onClick={() => { onPickCity(c.id); onClose(); }}>
               <td>{c.name}{c.fortress ? ' 🏯' : ''}</td>
               <td>{c.owner ? state.factions[c.owner].name : '중립'}</td>
-              <td>{fmt(c.troops)}</td><td>{fmt(c.population)}</td><td>{c.agriculture}</td><td>{c.commerce}</td><td>{c.wall}</td><td>{Math.round(c.order)}</td>
+              <td>{(() => { const v = visibleTroops(state, state.playerFactionId, c.id); return v.value === null ? '?' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)}`; })()}</td><td>{fmt(c.population)}</td><td>{c.agriculture}</td><td>{c.commerce}</td><td>{c.wall}</td><td>{Math.round(c.order)}</td>
               <td>{Object.values(state.generals).filter((g) => g.alive && g.city === c.id && g.faction === c.owner).length}</td>
             </tr>
           ))}
@@ -227,13 +227,14 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <li><b>군사</b>: 징병(금·철 소모, 인구·민심 감소), 출진(인접 도시 공격, 군량 소모), 이동.</li>
         <li><b>지형</b>: 강을 건너는 도하 공격, 고개, 해로, 겨울 행군은 불리. 산성·산악 도시는 수비 유리.</li>
         <li><b>인재</b>: 재야 장수 등용(매력), 포상(충성 상승). 충성이 낮고 야망이 큰 장수는 떠날 수 있습니다.</li>
+        <li><b>계략·첩보</b>: 우리 땅과 맞닿지 않은 적 도시의 병력은 보이지 않습니다(전장의 안개). 첩자를 보내 알아내되, 실패하면 적이 흘린 가짜 정보를 받을 수 있습니다. 유언비어로 적 도시의 민심·사기를, 이간으로 적 장수의 충성을 떨어뜨립니다.</li>
         <li><b>생애</b>: 장수는 나이를 먹고 세상을 떠나며, 새 인물(조비·사마의·육손·강유 등)이 때가 되면 등장합니다. 군주가 죽으면 후계자가 뒤를 잇습니다. 세력이 망해도 군주가 살아 있으면 수비가 약한 도시로 잠행해 의병을 일으켜 재기할 수 있습니다.</li>
         <li><b>장수 인격</b>: 장수마다 야망·의리·자존심·위험감수 성향이 있어 복종도가 다릅니다. 승산이 낮거나 충성이 낮으면 출진 명령을 거부할 수 있고(의형제·군주는 항상 따름), 출진 전에 장수들이 의견을 냅니다. 장수는 포상·패전·등용을 기억합니다. 장수 목록에서 이름을 누르면 상세 정보가 보입니다.</li>
         <li><b>사기·훈련·보급</b>: 병력의 질이 전투력을 바꿉니다. 훈련으로 올리고, 징병한 신병은 훈련도를 낮춥니다. 승리하면 사기가 오르고 패배·굶주림에 떨어집니다. 군량이 한 계절치보다 적으면 보급 부족, 본거지와 끊긴 도시는 고립되어 공격력이 줄어듭니다.</li>
         <li><b>날씨</b>: 계절과 지역에 따라 도시마다 날씨가 바뀝니다. 폭우·태풍·폭설인 도시를 공격하면 불리하고(특히 강을 건널 때), 태풍은 농업·성벽, 가뭄은 가을 수확, 한파·폭설은 병력을 깎습니다. 지력 높은 장수는 안개를 기습에 씁니다.</li>
         <li><b>군량</b>: 병사는 매 계절 곡식을 먹습니다. 부족하면 탈영이 일어납니다.</li>
         <li><b>외교</b>: 사신과 예물로 휴전(2년)·동맹을 제안합니다. 맹약 중인 세력은 공격할 수 없고, 파기하면 의리 높은 장수가 실망합니다.</li>
-        <li>지도는 마우스 휠로 확대, 드래그로 이동합니다. 계략·부대·계책은 준비 중입니다.</li>
+        <li>지도는 마우스 휠로 확대, 드래그로 이동합니다. 부대·계책은 준비 중입니다.</li>
       </ul>
     </Modal>
   );

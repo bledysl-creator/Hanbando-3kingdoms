@@ -4,6 +4,7 @@ import { resolveBattle } from '../battle/battle';
 import { chance, pick } from '../rng/rng';
 import { estimateRatio } from '../battle/estimate';
 import { killGeneral } from '../systems/lifecycle';
+import { discord, rumor, scout, withinTwo } from '../systems/intrigue';
 import { generalsIn, isConnectedToCapital, neighbors, roadBetween, supplyRatio } from '../query';
 import type { GameState, LogKind } from '../state/types';
 import { refuseChance, remember } from '../systems/persona';
@@ -20,7 +21,10 @@ export type Command =
   | { type: 'recruit'; generalId: string; targetId: string }
   | { type: 'reward'; generalId: string; targetId: string }
   | { type: 'diplomacy'; generalId: string; targetFactionId: string; proposal: Proposal; gold: number }
-  | { type: 'breakTreaty'; generalId: string; targetFactionId: string };
+  | { type: 'breakTreaty'; generalId: string; targetFactionId: string }
+  | { type: 'scout'; generalId: string; cityId: string }
+  | { type: 'rumor'; generalId: string; cityId: string }
+  | { type: 'discord'; generalId: string; targetId: string };
 
 export type CommandResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -220,6 +224,28 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       }
       log(s, `${t.name}이(가) ${f.name}의 ${what} 제안을 거절했습니다.`, 'warn', factionId);
       return { ok: true, message: `${t.name}이(가) 거절했습니다. 예물은 돌려받지 못했습니다. (수락률 ${Math.round(r.p * 100)}%)` };
+    }
+    case 'scout':
+    case 'rumor': {
+      const t = s.cities[cmd.cityId];
+      if (!t || t.owner === factionId) return { ok: false, error: '적 또는 중립 도시를 골라야 합니다.' };
+      const cost = cmd.type === 'scout' ? BALANCE.scoutGold : BALANCE.rumorGold;
+      if (f.gold < cost) return { ok: false, error: '금이 부족합니다.' };
+      if (cmd.type === 'scout' ? !withinTwo(s, city.id, t.id) : !roadBetween(s, city.id, t.id)) return { ok: false, error: cmd.type === 'scout' ? '두 칸 이내 도시만 정찰할 수 있습니다.' : '인접 도시에만 유언비어를 퍼뜨릴 수 있습니다.' };
+      f.gold -= cost;
+      g.acted = true;
+      const r = cmd.type === 'scout' ? scout(s, g, t.id) : rumor(s, g, t.id);
+      if (cmd.type === 'rumor' && r.ok && t.owner) log(s, `${t.name}에 ${f.name}이(가) 퍼뜨린 유언비어가 돌고 있습니다.`, 'warn', t.owner);
+      return { ok: true, message: r.message };
+    }
+    case 'discord': {
+      const t = s.generals[cmd.targetId];
+      if (!t || !t.alive || !t.faction || t.faction === factionId) return { ok: false, error: '적 장수를 골라야 합니다.' };
+      if (t.city !== city.id && !roadBetween(s, city.id, t.city)) return { ok: false, error: '인접 도시의 장수만 이간할 수 있습니다.' };
+      if (f.gold < BALANCE.discordGold) return { ok: false, error: '금이 부족합니다.' };
+      f.gold -= BALANCE.discordGold;
+      g.acted = true;
+      return { ok: true, message: discord(s, g, t).message };
     }
     case 'breakTreaty': {
       const t = s.factions[cmd.targetFactionId];

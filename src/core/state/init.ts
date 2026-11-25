@@ -2,7 +2,7 @@ import type { GameData, ScenarioDef } from '../data';
 import type { GameState } from './types';
 import { rollWeather } from '../systems/weather';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
 export function createGame(
@@ -30,6 +30,7 @@ export function createGame(
     log: [],
     lastBattles: [],
     weather: {},
+    intel: {},
     heirs: Object.fromEntries(Object.entries(scenario.heirs ?? {}).map(([k, v]) => [k, [...v]])),
     diplomacy: {},
     offers: [],

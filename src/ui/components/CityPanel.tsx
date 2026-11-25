@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Command, GameState, General } from '../../core';
-import { BALANCE, WEATHER_ICON, WEATHER_LABEL, estimateRatio, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
+import { BALANCE, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -45,7 +45,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
       </h2>
       <div className="stat-grid">
         <span>세력</span><b>{owner ? `${owner.name}(${owner.hanja})` : '중립'}</b>
-        <span>병력</span><b>{fmt(c.troops)}</b>
+        <span>병력</span><b>{(() => { const v = visibleTroops(state, pf, c.id); return v.value === null ? '알 수 없음 (첩보 필요)' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)} (${v.age}턴 전 첩보)`; })()}</b>
         <span>인구</span><b>{fmt(c.population)}</b>
         <span>민심</span><b>{Math.round(c.order)}</b>
         <Bar label="농업" v={c.agriculture} />
@@ -75,7 +75,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
       {mine && (
         <>
           <div className="tabs">
-            {(['내정', '군사', '인재'] as MenuKey[]).map((t) => (
+            {(['내정', '군사', '인재', '계략'] as MenuKey[]).map((t) => (
               <button key={t} className={tab === t ? 'active' : ''} onClick={() => onTab(t)}>{t}</button>
             ))}
           </div>
@@ -93,6 +93,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
           )}
           {actor && tab === '내정' && <DomesticTab actor={actor} onCommand={onCommand} />}
           {actor && tab === '군사' && <MilitaryTab state={state} actor={actor} cityTroops={c.troops} population={c.population} neighbors={ns} onCommand={onCommand} onTargetHover={onTargetHover} />}
+          {actor && tab === '계략' && <IntrigueTab state={state} actor={actor} onCommand={onCommand} />}
           {actor && tab === '인재' && <TalentTab state={state} actor={actor} free={free} onCommand={onCommand} />}
         </>
       )}
@@ -220,6 +221,42 @@ function TalentTab({ state, actor, free, onCommand }: { state: GameState; actor:
         {mine.length === 0 ? <p className="muted">포상할 장수가 없습니다.</p> : mine.map((t) => (
           <button key={t.id} onClick={() => onCommand({ type: 'reward', generalId: actor.id, targetId: t.id })}>🎁 {t.name} (충성 {t.loyalty})</button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function IntrigueTab({ state, actor, onCommand }: { state: GameState; actor: General; onCommand: (c: Command) => void }) {
+  const pf = state.playerFactionId!;
+  const here = actor.city;
+  const scoutable = Object.values(state.cities).filter((x) => x.owner !== pf && withinTwo(state, here, x.id));
+  const adjacent = neighbors(state, here).map((n) => n.city).filter((x) => x.owner !== pf);
+  const victims = Object.values(state.generals).filter((g) => g.alive && g.faction && g.faction !== pf && (g.city === here || adjacent.some((a) => a.id === g.city)));
+  const [sc, setSc] = useState(scoutable[0]?.id ?? '');
+  const [ru, setRu] = useState(adjacent[0]?.id ?? '');
+  const [vi, setVi] = useState(victims[0]?.id ?? '');
+  return (
+    <div className="actions">
+      <div className="sub">
+        <b>첩보</b> <small>금 {BALANCE.scoutGold} · 두 칸 이내 · 실패하면 오보를 받을 수도 있음</small>
+        {scoutable.length === 0 ? <p className="muted">정찰할 도시가 없습니다.</p> : (<>
+          <select value={sc} onChange={(e) => setSc(e.target.value)}>{scoutable.map((x) => <option key={x.id} value={x.id}>{x.name} ({x.owner ? state.factions[x.owner].name : '중립'})</option>)}</select>
+          <button onClick={() => onCommand({ type: 'scout', generalId: actor.id, cityId: sc })}>🕵️ 첩자 파견 (정확도 {Math.round(scoutChance(state, actor, sc || scoutable[0].id) * 100)}%)</button>
+        </>)}
+      </div>
+      <div className="sub">
+        <b>유언비어</b> <small>금 {BALANCE.rumorGold} · 인접 도시 민심 −{BALANCE.rumorOrder}, 사기 −{BALANCE.rumorMorale}</small>
+        {adjacent.length === 0 ? <p className="muted">인접한 적 도시가 없습니다.</p> : (<>
+          <select value={ru} onChange={(e) => setRu(e.target.value)}>{adjacent.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+          <button onClick={() => onCommand({ type: 'rumor', generalId: actor.id, cityId: ru })}>📣 유언비어 ({Math.round(rumorChance(state, actor, ru || adjacent[0].id) * 100)}%)</button>
+        </>)}
+      </div>
+      <div className="sub">
+        <b>이간</b> <small>금 {BALANCE.discordGold} · 적 장수 충성 −10~20 (군주·의형제 불가)</small>
+        {victims.length === 0 ? <p className="muted">이간할 장수가 없습니다.</p> : (<>
+          <select value={vi} onChange={(e) => setVi(e.target.value)}>{victims.map((g) => <option key={g.id} value={g.id}>{g.name} ({state.factions[g.faction!].name} · {state.cities[g.city].name})</option>)}</select>
+          <button onClick={() => onCommand({ type: 'discord', generalId: actor.id, targetId: vi })}>🗡️ 이간 ({Math.round(discordChance(state, actor, state.generals[vi || victims[0].id]) * 100)}%)</button>
+        </>)}
       </div>
     </div>
   );

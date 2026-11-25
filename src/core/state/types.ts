@@ -166,7 +166,8 @@ export interface GameState {
   log: LogEntry[];
   lastBattles: BattleReport[];
   weather: Record<CityId, WeatherKind>; // 이번 계절 도시별 날씨 (v0.7)
-  heirs: Record<FactionId, GeneralId[]>; // 후계 순위 (v1.0)
+  heirs: Record<FactionId, GeneralId[]>;
+  intel: Record<FactionId, Record<CityId, { turn: number; troops: number; false?: boolean }>>; // 첩보 (v1.1) // 후계 순위 (v1.0)
   diplomacy: Record<string, Treaty>; // key: 'a|b' (사전순)
   offers: DiplomaticOffer[]; // AI → 플레이어 제안 (플레이어 응답 대기)
   outcome: 'playing' | 'won' | 'lost' | 'unified';
