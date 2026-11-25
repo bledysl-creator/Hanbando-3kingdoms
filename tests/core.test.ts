@@ -122,3 +122,19 @@ describe('임무', () => {
     expect(citiesOf(s, 'shu').length).toBe(7);
   });
 });
+
+describe('세력 선택 (v0.3)', () => {
+  it('어느 세력으로든 시작할 수 있고 숙적 임무가 맞춰진다', () => {
+    for (const [fid, rival] of Object.entries({ wei: 'shu', lu: 'wei', shu: 'wei', wu: 'shu' })) {
+      const s = createGame(DATA, sc, { seed: 1, playerFactionId: fid });
+      expect(s.playerFactionId).toBe(fid);
+      const m = s.missions.find((x) => x.kind === 'destroy_faction');
+      expect(m?.factionId).toBe(rival);
+      expect(m?.label).not.toContain('{rival}');
+    }
+  });
+  it('여포로 시작해도 명령이 동작한다', () => {
+    const s = createGame(DATA, sc, { seed: 1, playerFactionId: 'lu' });
+    expect(applyCommand(s, 'lu', { type: 'develop', generalId: 'chen_gong', field: 'agriculture' }).result.ok).toBe(true);
+  });
+});

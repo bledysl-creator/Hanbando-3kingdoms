@@ -1,5 +1,5 @@
 // 앱 루트: 타이틀 → 메인 지도 화면. 게임 상태는 core 함수로만 바꾼다.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { applyCommand, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
 import { KoreaMap } from '../map/KoreaMap';
 import { indexedDbRepo } from '../save/saveRepository';
@@ -18,22 +18,50 @@ export function App() {
 
 function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
   const [hasAuto, setHasAuto] = useState(false);
+  const [pick, setPick] = useState(false);
   useEffect(() => { indexedDbRepo.list().then((l) => setHasAuto(l.some((m) => m.slot === 'auto'))).catch(() => {}); }, []);
   const sc = SCENARIOS['197_sabun'];
-  const start = (spectate: boolean) =>
-    onStart(createGame(DATA, sc, { seed: Math.floor(Date.now() % 2147483647), playerFactionId: spectate ? null : sc.playerFactionId }));
+  const preview = useMemo(() => createGame(DATA, sc), [sc]);
+  const start = (fid: string | null) =>
+    onStart(createGame(DATA, sc, { seed: Math.floor(Date.now() % 2147483647), playerFactionId: fid }));
   return (
     <div className="title-screen">
-      <div className="title-bg"><KoreaMap state={createGame(DATA, sc)} mini /></div>
-      <div className="title-box panel">
+      <div className="title-bg"><KoreaMap state={preview} mini /></div>
+      <div className={`title-box panel ${pick ? 'wide' : ''}`}>
         <h1>三國志 <span>한반도 천하쟁패</span></h1>
-        <p className="quote">천하의 영웅들이 낯선 땅에 모였다.<br />백두산에서 한라산까지, 한강에서 낙동강까지.<br />역사는 정해져 있지 않다.</p>
-        <p className="scenario"><b>{sc.name}</b> — {sc.description}</p>
-        <div className="actions">
-          <button className="primary" onClick={() => start(false)}>새 게임 (유비 · 蜀)</button>
-          <button disabled={!hasAuto} onClick={() => indexedDbRepo.load('auto').then((s) => s && onStart(s))}>이어하기</button>
-          <button onClick={() => start(true)}>관전 모드 (AI끼리 진행)</button>
-        </div>
+        {!pick ? (
+          <>
+            <p className="quote">천하의 영웅들이 낯선 땅에 모였다.<br />백두산에서 한라산까지, 한강에서 낙동강까지.<br />역사는 정해져 있지 않다.</p>
+            <p className="scenario"><b>{sc.name}</b> — {sc.description}</p>
+            <div className="actions">
+              <button className="primary" onClick={() => setPick(true)}>새 게임</button>
+              <button disabled={!hasAuto} onClick={() => indexedDbRepo.load('auto').then((s) => s && onStart(s))}>이어하기</button>
+              <button onClick={() => start(null)}>관전 모드 (AI끼리 진행)</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="scenario">플레이할 군주를 고르세요.</p>
+            <div className="faction-pick">
+              {Object.values(preview.factions).map((f) => {
+                const ruler = preview.generals[f.rulerId];
+                const cities = citiesOf(preview, f.id);
+                const gens = Object.values(preview.generals).filter((g) => g.faction === f.id);
+                const troops = cities.reduce((a, c) => a + c.troops, 0);
+                return (
+                  <button key={f.id} className="faction-card" style={{ borderColor: f.color }} onClick={() => start(f.id)}>
+                    <span className="fc-hanja" style={{ background: f.color }}>{f.hanja}</span>
+                    <b>{ruler.name}</b>
+                    <small>도시 {cities.length} · 장수 {gens.length} · 병력 {troops.toLocaleString()}</small>
+                    <p>{sc.factionIntro?.[f.id]}</p>
+                    <small className="muted">{f.traits.join(' · ')}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="actions row"><button onClick={() => setPick(false)}>← 뒤로</button></div>
+          </>
+        )}
         <p className="muted small">v{VERSION} 프로토타입 · 오리지널 게임 · 저장은 이 브라우저에만 됩니다</p>
       </div>
     </div>

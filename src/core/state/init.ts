@@ -24,7 +24,7 @@ export function createGame(
     roads: data.roads.map((r) => ({ ...r })),
     generals: {},
     relations: scenario.relations.map((r) => ({ ...r })),
-    missions: scenario.missions.map((m) => ({ ...m })),
+    missions: [],
     recruits: {},
     log: [],
     lastBattles: [],
@@ -58,6 +58,20 @@ export function createGame(
       alive: true,
     };
   }
+
+  // 임무: 플레이어 세력에 맞춰 숙적을 채운다
+  const pf = s.playerFactionId;
+  const rival = pf ? scenario.rivals?.[pf] : undefined;
+  s.missions = scenario.missions
+    .filter((m) => m.kind !== 'destroy_faction' || m.factionId || rival)
+    .map((m) => {
+      if (m.kind === 'destroy_faction' && !m.factionId && rival) {
+        const rf = data.factions.find((f) => f.id === rival);
+        const ruler = data.generals.find((g) => g.id === rf?.rulerId);
+        return { ...m, factionId: rival, label: m.label.replace('{rival}', ruler?.name ?? rival) };
+      }
+      return { ...m };
+    });
 
   s.log.push({ turn: 1, year: s.year, season: s.season, kind: 'info', text: `${scenario.name} — ${scenario.description}` });
   return s;

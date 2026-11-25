@@ -21,6 +21,8 @@ export interface ScenarioDef {
   generals: Record<string, { faction: string | null; city: string; loyalty: number }>;
   relations: { a: string; b: string; type: RelationType }[];
   missions: { id: string; label: string; kind: MissionKind; target: number; factionId?: string }[];
+  rivals?: Record<string, string>;
+  factionIntro?: Record<string, string>;
 }
 
 export interface GameData {
