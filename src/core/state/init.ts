@@ -2,7 +2,7 @@ import type { GameData, ScenarioDef } from '../data';
 import type { GameState } from './types';
 import { rollWeather } from '../systems/weather';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
 export function createGame(
@@ -30,6 +30,7 @@ export function createGame(
     log: [],
     lastBattles: [],
     weather: {},
+    heirs: Object.fromEntries(Object.entries(scenario.heirs ?? {}).map(([k, v]) => [k, [...v]])),
     diplomacy: {},
     offers: [],
     outcome: 'playing',
@@ -50,6 +51,12 @@ export function createGame(
 
   for (const g of data.generals) {
     const sg = scenario.generals[g.id];
+    const db = scenario.debuts?.[g.id];
+    if (!sg && db) {
+      // 아직 등장하지 않은 장수 (성인이 되면 등장)
+      s.generals[g.id] = { ...g, stats: { ...g.stats }, persona: { ...g.persona }, faction: null, city: db.city, loyalty: 0, acted: false, alive: false, debut: { ...db } };
+      continue;
+    }
     if (!sg) continue;
     s.generals[g.id] = {
       ...g,

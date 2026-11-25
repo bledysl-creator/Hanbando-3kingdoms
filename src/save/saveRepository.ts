@@ -24,6 +24,8 @@ export function migrate(raw: unknown): GameState {
   if (s.saveVersion < 3) { s.weather = {}; for (const id of Object.keys(s.cities)) s.weather[id] = 'clear'; s.saveVersion = 3; }
   // v3 → v4: 사기·훈련
   if (s.saveVersion < 4) { for (const c of Object.values(s.cities)) { c.morale = 70; c.training = 50; } s.saveVersion = 4; }
+  // v4 → v5: 후계·등장 장수
+  if (s.saveVersion < 5) { s.heirs = {}; s.saveVersion = 5; }
   return s;
 }
 

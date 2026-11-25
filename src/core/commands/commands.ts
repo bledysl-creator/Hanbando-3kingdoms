@@ -3,6 +3,7 @@ import { BALANCE } from '../config';
 import { resolveBattle } from '../battle/battle';
 import { chance, pick } from '../rng/rng';
 import { estimateRatio } from '../battle/estimate';
+import { killGeneral } from '../systems/lifecycle';
 import { generalsIn, isConnectedToCapital, neighbors, roadBetween, supplyRatio } from '../query';
 import type { GameState, LogKind } from '../state/types';
 import { refuseChance, remember } from '../systems/persona';
@@ -163,6 +164,9 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         to.morale = Math.min(100, to.morale + 5);
         city.troops += survivors;
         city.morale = Math.max(0, city.morale - BALANCE.defeatMorale);
+        if (chance(s, BALANCE.battleDeathChance * (g.persona.risk / 60))) {
+          killGeneral(s, g, `${g.name}이(가) ${to.name} 공격 중 전사했습니다!`);
+        }
         log(s, `${g.name}의 ${to.name} 공격이 실패했습니다.`, 'warn', factionId);
         return { ok: true, message: `${to.name} 공격 실패 (아군 손실 ${out.attackerLoss.toLocaleString()})` };
       }

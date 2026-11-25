@@ -78,6 +78,7 @@ export interface General {
   acted: boolean; // 이번 턴 행동했는가
   alive: boolean;
   memories?: Memory[]; // 기억 (v0.9)
+  debut?: { year: number; city: CityId; faction: FactionId | null }; // 등장 예정 (v1.0)
 }
 
 export type MemoryKind = 'rewarded' | 'ignored' | 'defeatedBy' | 'defeated' | 'recruitedBy' | 'refusedOrder';
@@ -165,6 +166,7 @@ export interface GameState {
   log: LogEntry[];
   lastBattles: BattleReport[];
   weather: Record<CityId, WeatherKind>; // 이번 계절 도시별 날씨 (v0.7)
+  heirs: Record<FactionId, GeneralId[]>; // 후계 순위 (v1.0)
   diplomacy: Record<string, Treaty>; // key: 'a|b' (사전순)
   offers: DiplomaticOffer[]; // AI → 플레이어 제안 (플레이어 응답 대기)
   outcome: 'playing' | 'won' | 'lost' | 'unified';

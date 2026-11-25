@@ -56,6 +56,14 @@ export const BALANCE = {
   memoryLimit: 10,
   grudgeRecruitPenalty: 0.2, // 나를 이긴 세력의 등용 제안 수락률 감소
 
+  // 생애 (v1.0)
+  deathAgeStart: 52, // 이 나이부터 자연사 확률
+  deathAgeDivisor: 1600, // (나이-시작)^2 / 값 = 연간 사망 확률
+  battleDeathChance: 0.03, // 공격 실패 시 지휘관 전사 확률
+  uprisingBase: 0.25, // 재기 성공 기본 확률
+  uprisingMaxGarrison: 9000, // 이 병력 이하인 도시에서만 재기 가능
+  uprisingVolunteerRatio: 0.04, // 재기 시 인구 대비 의병
+
   // 외교 (v0.4)
   truceBase: 0.35,
   allianceBase: 0.2,

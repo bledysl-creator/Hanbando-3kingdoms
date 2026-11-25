@@ -7,6 +7,7 @@ import { relationBetween } from '../query';
 import type { GameState } from '../state/types';
 import { expireTreaties } from '../diplomacy/diplomacy';
 import { applyWeatherEffects, rollWeather } from './weather';
+import { canRise, processAiUprisings, processLifecycle } from './lifecycle';
 
 export function processEconomy(s: GameState) {
   for (const f of Object.values(s.factions)) {
@@ -84,7 +85,8 @@ export function checkOutcome(s: GameState) {
       return;
     }
   }
-  if (s.playerFactionId && !s.factions[s.playerFactionId].alive) {
+  // 세력이 망해도 군주가 살아 있으면 재기할 수 있다 (Game.md 5-6)
+  if (s.playerFactionId && !s.factions[s.playerFactionId].alive && !canRise(s, s.playerFactionId)) {
     s.outcome = 'lost';
   }
 }
@@ -111,6 +113,9 @@ export function endTurnMut(s: GameState) {
   s.turn += 1;
   for (const g of Object.values(s.generals)) g.acted = false;
   rollWeather(s);
+  processLifecycle(s);
+  processAiUprisings(s);
+  checkOutcome(s);
   expireTreaties(s, (t) => log(s, t, 'info'));
   if (s.outcome === 'playing') log(s, `${s.year}년 ${SEASONS[s.season]}이 되었습니다.`, 'info');
 }

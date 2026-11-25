@@ -391,5 +391,70 @@
     "lu": "함경의 맹호. 천하무적 여포가 있으나 땅이 척박하고 군량이 늘 모자란다.",
     "shu": "한강과 호남 곡창을 쥔 인덕의 군주. 남북 모두의 표적이 되는 중원의 땅.",
     "wu": "강원·경상의 해양 세력. 수군과 교역으로 부유하며 주유가 곁을 지킨다."
+  },
+  "debuts": {
+    "cao_pi": {
+      "year": 203,
+      "city": "pyongyang",
+      "faction": "wei"
+    },
+    "cao_zhi": {
+      "year": 208,
+      "city": "pyongyang",
+      "faction": "wei"
+    },
+    "sima_yi": {
+      "year": 201,
+      "city": "haeju",
+      "faction": null
+    },
+    "lu_xun": {
+      "year": 200,
+      "city": "busan",
+      "faction": "wu"
+    },
+    "jiang_wei": {
+      "year": 220,
+      "city": "gangneung",
+      "faction": null
+    },
+    "deng_ai": {
+      "year": 215,
+      "city": "cheongju",
+      "faction": null
+    },
+    "ma_su": {
+      "year": 207,
+      "city": "gongju",
+      "faction": null
+    },
+    "lu_meng": {
+      "year": 198,
+      "city": "jinju",
+      "faction": "wu"
+    },
+    "guan_ping": {
+      "year": 198,
+      "city": "hanyang",
+      "faction": "shu"
+    },
+    "zhang_bao": {
+      "year": 202,
+      "city": "suwon",
+      "faction": "shu"
+    }
+  },
+  "heirs": {
+    "wei": [
+      "cao_pi"
+    ],
+    "wu": [],
+    "shu": [
+      "guan_ping"
+    ],
+    "lu": [
+      "zhang_liao",
+      "gao_shun"
+    ]
   }
 }

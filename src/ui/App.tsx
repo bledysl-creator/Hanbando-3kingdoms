@@ -1,6 +1,6 @@
 // 앱 루트: 타이틀 → 메인 지도 화면. 게임 상태는 core 함수로만 바꾼다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { applyCommand, respondOffer, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
+import { applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
 import { KoreaMap, MAP_MODES, type MapMode } from '../map/KoreaMap';
 import { indexedDbRepo } from '../save/saveRepository';
 import { VERSION } from '../version';
@@ -167,6 +167,20 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
         )}
         {pf && <div className="idle-hint">대기 장수 {idle}명</div>}
       </div>
+
+      {pf && canRise(state, pf) && state.outcome === 'playing' && (
+        <div className="uprising panel">
+          <h3>세력이 무너졌습니다</h3>
+          <p>{state.generals[state.factions[pf].rulerId].name}은(는) {state.cities[state.generals[state.factions[pf].rulerId].city].name}에 몸을 숨기고 있습니다. 군주가 살아 있는 한 끝이 아닙니다.</p>
+          <p className="muted small">거병 성공률 {Math.round(uprisingChance(state, pf) * 100)}% (수비 {state.cities[state.generals[state.factions[pf].rulerId].city].troops.toLocaleString()} 이하 9,000일 때 가능, 매력·민심 영향). 실패해도 턴을 넘겨 다시 노릴 수 있습니다.</p>
+          <div className="actions row">
+            <button className="primary" disabled={uprisingChance(state, pf) <= 0} onClick={() => { const d = structuredClone(state); const r = attemptUprising(d, pf); setState(d); flash(r.message, r.ok); }}>의병을 일으킨다</button>
+            <select value={state.generals[state.factions[pf].rulerId].city} onChange={(e) => { const d = structuredClone(state); d.generals[d.factions[pf].rulerId].city = e.target.value; setState(d); }}>
+              {Object.values(state.cities).map((c) => <option key={c.id} value={c.id}>{c.name}으로 잠행 (수비 {c.troops.toLocaleString()})</option>)}
+            </select>
+          </div>
+        </div>
+      )}
 
       {toast && <div className={`toast ${toast.ok ? 'ok' : 'err'}`}>{toast.text}</div>}
 

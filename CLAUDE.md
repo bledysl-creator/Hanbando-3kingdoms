@@ -95,7 +95,7 @@ Hanbando-3kingdoms/
 11. 기능을 추가하면 `tests/`에 테스트를 함께 추가하고, 끝나면 이 파일의 진행 현황을 갱신한다.
 
 ## 5. 진행 현황
-현재 단계: **v0.9.0 — 장수 인격** (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`)
+현재 단계: **v1.0.0 — 생애와 재기** (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`) (버전별 상세는 `CHANGELOG.md`)
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
@@ -146,3 +146,4 @@ Hanbando-3kingdoms/
 | 2026-11-25 | v0.7.0: 날씨·기후 9종, 전투·수확·병력 영향, 기후 지도. 관전 위 생존 38→50 |
 | 2026-11-25 | v0.8.0: 사기·훈련·보급(고립) — 관전 통일 54판 |
 | 2026-11-25 | v0.9.0: 장수 인격 — 복종도, 명령 거부, 장수 회의, 기억, 장수 상세 창 |
+| 2026-11-25 | v1.0.0: 생애와 재기 — 노화·사망·후계자·새 인물 10명, 멸망 후 재기 |

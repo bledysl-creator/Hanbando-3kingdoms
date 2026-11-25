@@ -271,3 +271,36 @@ describe('장수 인격 (v0.9)', () => {
     expect(state.generals.jian_yong.memories?.at(-1)?.kind).toBe('rewarded');
   });
 });
+
+import { attemptUprising, canRise } from '../src/core';
+import { processLifecycle, killGeneral } from '../src/core/systems/lifecycle';
+describe('생애 (v1.0)', () => {
+  it('때가 되면 새 인물이 등장한다', () => {
+    const s = newGame();
+    expect(s.generals.lu_meng.alive).toBe(false);
+    s.year = 198; s.season = 0;
+    processLifecycle(s);
+    expect(s.generals.lu_meng.alive).toBe(true);
+    expect(s.generals.lu_meng.faction).toBe('wu');
+  });
+  it('군주가 죽으면 후계자가 잇는다 (조조 → 조비 우선, 없으면 능력·관계)', () => {
+    const s = newGame();
+    killGeneral(s, s.generals.liu_bei, 'test');
+    expect(s.factions.shu.alive).toBe(true);
+    expect(s.factions.shu.rulerId).not.toBe('liu_bei');
+    expect(['guan_yu', 'zhang_fei']).toContain(s.factions.shu.rulerId); // 의형제 우선
+  });
+  it('멸망해도 군주가 살아 있으면 재기할 수 있다', () => {
+    const s = newGame(2);
+    for (const c of Object.values(s.cities)) if (c.owner === 'shu') c.owner = 'wu';
+    s.factions.shu.alive = false;
+    for (const g of Object.values(s.generals)) if (g.faction === 'shu') g.faction = null;
+    expect(canRise(s, 'shu')).toBe(true);
+    s.cities.naju.troops = 3000; s.generals.liu_bei.city = 'naju';
+    let ok = false;
+    for (let i = 0; i < 10 && !ok; i++) { attemptUprising(s, 'shu'); ok = s.factions.shu.alive; }
+    expect(ok).toBe(true);
+    expect(s.cities.naju.owner).toBe('shu');
+    expect(s.generals.guan_yu.faction).toBe('shu'); // 의형제가 돌아온다
+  });
+});

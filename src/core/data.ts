@@ -22,6 +22,8 @@ export interface ScenarioDef {
   relations: { a: string; b: string; type: RelationType }[];
   missions: { id: string; label: string; kind: MissionKind; target: number; factionId?: string }[];
   rivals?: Record<string, string>;
+  debuts?: Record<string, { year: number; city: string; faction: string | null }>;
+  heirs?: Record<string, string[]>;
   factionIntro?: Record<string, string>;
 }
 

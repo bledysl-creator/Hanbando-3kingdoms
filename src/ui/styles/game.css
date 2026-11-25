@@ -233,3 +233,6 @@ select, input { font: inherit; }
 .bar.persona div { background: linear-gradient(90deg, #4f3a6e, #b48ad8); }
 .rel { display: inline-block; margin: 0 8px 4px 0; padding: 2px 8px; border-radius: 10px; font-size: 13px; border: 1px solid #6e5a33; }
 .rel.sworn { border-color: #3f9a4a; } .rel.enmity { border-color: #c2463c; } .rel.trust { border-color: var(--gold-hi); }
+.uprising { position: fixed; left: 50%; top: 90px; transform: translateX(-50%); z-index: 15; width: min(520px, 92vw); padding: 14px 18px; }
+.uprising h3 { margin: 0 0 6px; color: #ffb4aa; }
+.uprising select { flex: 1; background: #0f141b; color: var(--hanji); border: 1px solid #6e5a33; padding: 6px; border-radius: 4px; }

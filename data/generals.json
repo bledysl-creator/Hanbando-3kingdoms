@@ -778,5 +778,205 @@
    "pride": 60,
    "risk": 60
   }
+ },
+ {
+  "id": "cao_pi",
+  "name": "조비",
+  "hanja": "曹丕",
+  "birth": 187,
+  "stats": {
+   "leadership": 72,
+   "war": 68,
+   "intellect": 80,
+   "politics": 82,
+   "charm": 74
+  },
+  "persona": {
+   "ambition": 80,
+   "righteousness": 55,
+   "greed": 50,
+   "pride": 75,
+   "risk": 45
+  }
+ },
+ {
+  "id": "cao_zhi",
+  "name": "조식",
+  "hanja": "曹植",
+  "birth": 192,
+  "stats": {
+   "leadership": 30,
+   "war": 25,
+   "intellect": 88,
+   "politics": 62,
+   "charm": 85
+  },
+  "persona": {
+   "ambition": 30,
+   "righteousness": 70,
+   "greed": 30,
+   "pride": 70,
+   "risk": 40
+  }
+ },
+ {
+  "id": "sima_yi",
+  "name": "사마의",
+  "hanja": "司馬懿",
+  "birth": 179,
+  "stats": {
+   "leadership": 96,
+   "war": 64,
+   "intellect": 97,
+   "politics": 92,
+   "charm": 82
+  },
+  "persona": {
+   "ambition": 92,
+   "righteousness": 50,
+   "greed": 40,
+   "pride": 60,
+   "risk": 40
+  }
+ },
+ {
+  "id": "lu_xun",
+  "name": "육손",
+  "hanja": "陸遜",
+  "birth": 183,
+  "stats": {
+   "leadership": 94,
+   "war": 68,
+   "intellect": 95,
+   "politics": 88,
+   "charm": 84
+  },
+  "persona": {
+   "ambition": 45,
+   "righteousness": 85,
+   "greed": 20,
+   "pride": 50,
+   "risk": 45
+  }
+ },
+ {
+  "id": "jiang_wei",
+  "name": "강유",
+  "hanja": "姜維",
+  "birth": 202,
+  "stats": {
+   "leadership": 90,
+   "war": 88,
+   "intellect": 88,
+   "politics": 70,
+   "charm": 80
+  },
+  "persona": {
+   "ambition": 60,
+   "righteousness": 85,
+   "greed": 20,
+   "pride": 70,
+   "risk": 70
+  }
+ },
+ {
+  "id": "deng_ai",
+  "name": "등애",
+  "hanja": "鄧艾",
+  "birth": 197,
+  "stats": {
+   "leadership": 92,
+   "war": 82,
+   "intellect": 90,
+   "politics": 72,
+   "charm": 64
+  },
+  "persona": {
+   "ambition": 65,
+   "righteousness": 70,
+   "greed": 30,
+   "pride": 70,
+   "risk": 85
+  }
+ },
+ {
+  "id": "ma_su",
+  "name": "마속",
+  "hanja": "馬謖",
+  "birth": 190,
+  "stats": {
+   "leadership": 68,
+   "war": 60,
+   "intellect": 84,
+   "politics": 70,
+   "charm": 72
+  },
+  "persona": {
+   "ambition": 55,
+   "righteousness": 70,
+   "greed": 30,
+   "pride": 90,
+   "risk": 75
+  }
+ },
+ {
+  "id": "lu_meng",
+  "name": "여몽",
+  "hanja": "呂蒙",
+  "birth": 178,
+  "stats": {
+   "leadership": 90,
+   "war": 84,
+   "intellect": 88,
+   "politics": 70,
+   "charm": 78
+  },
+  "persona": {
+   "ambition": 55,
+   "righteousness": 80,
+   "greed": 30,
+   "pride": 60,
+   "risk": 70
+  }
+ },
+ {
+  "id": "guan_ping",
+  "name": "관평",
+  "hanja": "關平",
+  "birth": 178,
+  "stats": {
+   "leadership": 72,
+   "war": 80,
+   "intellect": 62,
+   "politics": 50,
+   "charm": 68
+  },
+  "persona": {
+   "ambition": 25,
+   "righteousness": 95,
+   "greed": 20,
+   "pride": 60,
+   "risk": 60
+  }
+ },
+ {
+  "id": "zhang_bao",
+  "name": "장포",
+  "hanja": "張苞",
+  "birth": 185,
+  "stats": {
+   "leadership": 70,
+   "war": 86,
+   "intellect": 40,
+   "politics": 35,
+   "charm": 55
+  },
+  "persona": {
+   "ambition": 35,
+   "righteousness": 90,
+   "greed": 30,
+   "pride": 70,
+   "risk": 85
+  }
  }
 ]
