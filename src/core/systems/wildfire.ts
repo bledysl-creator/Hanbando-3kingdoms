@@ -15,7 +15,8 @@ export function fireChance(s: GameState, cityId: string): number {
   if (w && WET.has(w)) return 0;
   const dry = s.season === 0 || s.season === 2 ? BALANCE.fireDrySeason : BALANCE.fireOtherSeason;
   const forest = (c.terrain === 'mountain' ? BALANCE.fireMountain : 0) + c.wood * BALANCE.fireWoodLevel + Math.min(0.02, (c.elev ?? 0) / 50000);
-  return dry + forest + (w === 'drought' ? BALANCE.fireDrought : 0);
+  // 군현 지도는 도시가 약 14배 많으므로 발생 확률을 낮춰 전국 빈도를 맞춘다 (v3.2)
+  return (dry + forest + (w === 'drought' ? BALANCE.fireDrought : 0)) * (s.mapScale === 'region' ? BALANCE.regionEventScale : 1);
 }
 
 export function igniteCity(s: GameState, cityId: string, turns: number = BALANCE.fireTurns) {

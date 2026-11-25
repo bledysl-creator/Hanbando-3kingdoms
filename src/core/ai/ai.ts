@@ -2,7 +2,7 @@ import { TACTICS, tacticChance, type TacticKind } from '../battle/tactics';
 // 규칙 기반 + Utility AI (Game.md 5-5). 플레이어와 같은 명령만 사용한다.
 import { BALANCE } from '../config';
 import { executeCommand, foodPrice, type Command } from '../commands/commands';
-import { allGenerals, freeGeneralsIn, generalsIn, neighbors } from '../query';
+import { allGenerals, freeGeneralsIn, generalsIn, minGarrison, minMarch, neighbors } from '../query';
 import type { City, GameState, General, Road } from '../state/types';
 import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/diplomacy';
 import { chance } from '../rng/rng';
@@ -54,12 +54,14 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
   const threat = threatOf(s, fid, city.id);
   const isFrontier = enemyNs.length > 0;
   const opts: Option[] = [];
+  // v3.2 군현 지도: 도시 하나의 병력·인구가 작으므로 병력 기준을 줄인다
+  const K = s.mapScale === 'region' ? BALANCE.regionAiTroopScale : 1;
 
   // 공격
   if (isFrontier && s.season !== 3) {
-    const troops = city.troops - Math.max(500, Math.round(threat * 0.25));
+    const troops = city.troops - Math.max(minGarrison(s), Math.round(threat * 0.25));
     for (const n of enemyNs) {
-      if (troops < 1000) break;
+      if (troops < minMarch(s)) break;
       if (!canAttack(s, fid, n.city.owner)) continue;
       const ratio = estimateRatio(s, g, city, n.city, troops);
       if (ratio > BALANCE.aiAttackRatio) {
@@ -74,34 +76,34 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
   const canFeed = (amount: number) => f.food > (totalT + amount) * BALANCE.foodPerTroop * BALANCE.aiConscriptFoodSeasons;
   if (isFrontier && city.troops < threat * 0.9 && f.gold > 800 && f.iron > 3000) {
     const amount = Math.min(Math.floor(city.population * 0.08), Math.floor(f.iron / BALANCE.conscriptIronPerTroop), 10000);
-    if (amount >= 1000 && canFeed(amount)) opts.push({ score: 40 + (threat / Math.max(1, city.troops)) * 10, cmd: { type: 'conscript', generalId: g.id, amount }, why: '전선 방어 보강' });
+    if (amount >= 1000 * K && canFeed(amount)) opts.push({ score: 40 + (threat / Math.max(1, city.troops)) * 10, cmd: { type: 'conscript', generalId: g.id, amount }, why: '전선 방어 보강' });
   }
   // 공세 준비: 여유 자원이 많으면 전선에서 병력을 키운다
   if (isFrontier && f.gold > 2500 && f.iron > 5000 && f.food > totalT * 1.2) {
     const amount = Math.min(Math.floor(city.population * 0.08), Math.floor(f.iron / BALANCE.conscriptIronPerTroop), 10000);
-    if (amount >= 1000) opts.push({ score: 30 + f.gold / 1000, cmd: { type: 'conscript', generalId: g.id, amount }, why: '공세 준비' });
+    if (amount >= 1000 * K) opts.push({ score: 30 + f.gold / 1000, cmd: { type: 'conscript', generalId: g.id, amount }, why: '공세 준비' });
   }
   // 병력 재배치: 여유 병력을 가장 위협받는 인접 아군 도시로
-  const surplus = city.troops - Math.max(3000, threat * 0.8);
-  if (surplus > 3000) {
+  const surplus = city.troops - Math.max(3000 * K, threat * 0.8);
+  if (surplus > 3000 * K) {
     let best: { id: string; need: number } | null = null;
     for (const n of ns) {
       if (n.city.owner !== fid) continue;
-      const need = Math.max(threatOf(s, fid, n.city.id) * 0.9, isFrontierCity(s, fid, n.city.id) && threat === 0 ? n.city.troops + 4000 : 0) - n.city.troops;
-      if (need > 2000 && (!best || need > best.need)) best = { id: n.city.id, need };
+      const need = Math.max(threatOf(s, fid, n.city.id) * 0.9, isFrontierCity(s, fid, n.city.id) && threat === 0 ? n.city.troops + 4000 * K : 0) - n.city.troops;
+      if (need > 2000 * K && (!best || need > best.need)) best = { id: n.city.id, need };
     }
-    if (best) opts.push({ score: 42 + best.need / 1000, cmd: { type: 'transfer', generalId: g.id, toCityId: best.id, troops: Math.min(surplus, best.need + 2000) }, why: '병력 재배치' });
+    if (best) opts.push({ score: 42 + best.need / 1000, cmd: { type: 'transfer', generalId: g.id, toCityId: best.id, troops: Math.min(surplus, best.need + 2000 * K) }, why: '병력 재배치' });
   }
   // v1.8 공세 집결: 이웃 아군 전선 도시가 노리는 적 도시를 넘을 만큼 병력을 모아 준다
-  const spareHere = city.troops - Math.max(BALANCE.aiRearGarrison, threat * 0.8);
-  if (spareHere > 2000) {
+  const spareHere = city.troops - Math.max(BALANCE.aiRearGarrison * K, threat * 0.8);
+  if (spareHere > 2000 * K) {
     let best: { id: string; need: number } | null = null;
     for (const n of ns) {
       if (n.city.owner !== fid) continue;
       for (const t of neighbors(s, n.city.id)) {
         if (t.city.owner === fid || t.city.owner === null || !canAttack(s, fid, t.city.owner)) continue;
         const need = t.city.troops * BALANCE.aiMassFactor - n.city.troops;
-        if (need > 0 && need <= spareHere + 2000 && (!best || need < best.need)) best = { id: n.city.id, need };
+        if (need > 0 && need <= spareHere + 2000 * K && (!best || need < best.need)) best = { id: n.city.id, need };
       }
     }
     if (best) opts.push({ score: 44, cmd: { type: 'transfer', generalId: g.id, toCityId: best.id, troops: Math.min(spareHere, Math.ceil(best.need)) }, why: '공세 집결' });
@@ -110,10 +112,19 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
   if (!isFrontier || !enemyNs.some((n) => canAttack(s, fid, n.city.owner))) {
     const dist = frontDistanceCached(s, fid);
     const here = dist[city.id];
-    const spare = city.troops - BALANCE.aiRearGarrison;
-    if (here !== undefined && here > 0 && spare > 2000) {
+    const spare = city.troops - BALANCE.aiRearGarrison * K;
+    if (here !== undefined && here > 0 && spare > 2000 * K) {
       const next = ns.filter((n) => n.city.owner === fid && dist[n.city.id] !== undefined && dist[n.city.id] < here).sort((a, b) => a.city.troops - b.city.troops)[0];
       if (next) opts.push({ score: 41, cmd: { type: 'transfer', generalId: g.id, toCityId: next.city.id, troops: spare }, why: '후방 병력 전진' });
+    }
+  }
+  // v3.2 군현 지도: 병력이 빠진 후방의 장수는 전선 쪽으로 걸어간다 (병력은 남은 만큼만)
+  if (s.mapScale === 'region' && (!isFrontier || !enemyNs.some((n) => canAttack(s, fid, n.city.owner)))) {
+    const dist = frontDistanceCached(s, fid);
+    const here = dist[city.id];
+    if (here !== undefined && here > 0) {
+      const next = ns.filter((n) => n.city.owner === fid && dist[n.city.id] !== undefined && dist[n.city.id] < here).sort((a, b) => b.city.troops - a.city.troops)[0];
+      if (next) opts.push({ score: 16, cmd: { type: 'transfer', generalId: g.id, toCityId: next.city.id, troops: Math.max(0, city.troops - minGarrison(s) * 2) }, why: '장수 전선 이동' });
     }
   }
   // v2.4 태수: 태수가 없으면 이 도시에서 정치가 가장 높은 장수(군주 제외)를 임명
@@ -150,7 +161,7 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
     const price = foodPrice(s, city.id, 'buyFood');
     const afford = Math.floor((f.gold - 500) / price) * 1000;
     if (Math.min(need, afford) >= 1000) opts.push({ score: 55, cmd: { type: 'trade', generalId: g.id, action: 'buyFood', amount: Math.min(need, afford) }, why: '군량 매입' });
-    else if (!isFrontier && city.troops > 4000 && f.food < totalT * 0.3) opts.push({ score: 50, cmd: { type: 'disband', generalId: g.id, amount: Math.floor(city.troops * 0.4) }, why: '귀농' });
+    else if (!isFrontier && city.troops > 4000 * K && f.food < totalT * 0.3) opts.push({ score: 50, cmd: { type: 'disband', generalId: g.id, amount: Math.floor(city.troops * 0.4) }, why: '귀농' });
   }
   // 등용
   const free = freeGeneralsIn(s, city.id);

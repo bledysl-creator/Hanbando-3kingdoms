@@ -3678,5 +3678,85 @@
    "pride": 64,
    "risk": 27
   }
+ },
+ {
+  "id": "sun_jian",
+  "name": "손견",
+  "hanja": "孫堅",
+  "birth": 155,
+  "stats": {
+   "leadership": 88,
+   "war": 90,
+   "intellect": 72,
+   "politics": 68,
+   "charm": 85
+  },
+  "persona": {
+   "ambition": 72,
+   "righteousness": 78,
+   "greed": 30,
+   "pride": 82,
+   "risk": 82
+  }
+ },
+ {
+  "id": "dong_zhuo",
+  "name": "동탁",
+  "hanja": "董卓",
+  "birth": 141,
+  "stats": {
+   "leadership": 82,
+   "war": 84,
+   "intellect": 66,
+   "politics": 30,
+   "charm": 25
+  },
+  "persona": {
+   "ambition": 98,
+   "righteousness": 8,
+   "greed": 95,
+   "pride": 95,
+   "risk": 70
+  }
+ },
+ {
+  "id": "hua_xiong",
+  "name": "화웅",
+  "hanja": "華雄",
+  "birth": 155,
+  "stats": {
+   "leadership": 78,
+   "war": 87,
+   "intellect": 38,
+   "politics": 24,
+   "charm": 40
+  },
+  "persona": {
+   "ambition": 60,
+   "righteousness": 55,
+   "greed": 50,
+   "pride": 80,
+   "risk": 85
+  }
+ },
+ {
+  "id": "li_ru",
+  "name": "이유",
+  "hanja": "李儒",
+  "birth": 150,
+  "stats": {
+   "leadership": 42,
+   "war": 30,
+   "intellect": 88,
+   "politics": 70,
+   "charm": 36
+  },
+  "persona": {
+   "ambition": 70,
+   "righteousness": 40,
+   "greed": 60,
+   "pride": 60,
+   "risk": 55
+  }
  }
 ]

@@ -4,18 +4,29 @@ import { BALANCE } from '../config';
 import type { GameState } from './types';
 import { rollWeather } from '../systems/weather';
 import { recordAnnal } from '../systems/chronicle';
+import { regionize } from './regionize';
+import { foundFaction } from './found';
 
 export const SAVE_VERSION = 9;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
-export function createGame(
-  data: GameData,
-  scenario: ScenarioDef,
-  opts: { seed?: number; playerFactionId?: string | null; allGenerals?: boolean } = {},
-): GameState {
+export interface CreateOptions {
+  seed?: number;
+  playerFactionId?: string | null;
+  /** v3.1: 등장 예정 장수도 처음부터 등장 */
+  allGenerals?: boolean;
+  /** v3.2: 'region'이면 시·군 345곳이 각각 도시 */
+  scale?: 'city' | 'region';
+  /** v3.2: 아무 도시(시·군)에서 아무 장수를 군주로 새 세력을 세워 시작 */
+  newRuler?: { cityId: string; generalId: string };
+}
+
+export function createGame(data: GameData, scenario: ScenarioDef, opts: CreateOptions = {}): GameState {
+  if (opts.scale === 'region') ({ data, scenario } = regionize(data, scenario));
   const s: GameState = {
     saveVersion: SAVE_VERSION,
     scenarioId: scenario.id,
+    mapScale: opts.scale ?? 'city',
     turn: 1,
     year: scenario.year,
     season: scenario.season,
@@ -46,7 +57,7 @@ export function createGame(
   for (const f of data.factions) {
     const res = scenario.factions[f.id];
     if (!res) continue;
-    s.factions[f.id] = { ...f, traits: [...f.traits], ...res, alive: true };
+    s.factions[f.id] = { ...f, ...scenario.factionNames?.[f.id], traits: [...f.traits], ...res, alive: true };
     s.recruits[f.id] = 0;
   }
 
@@ -89,15 +100,22 @@ export function createGame(
     };
   }
 
+  // v3.2 신군주: 고른 도시에서 고른 장수가 새 세력을 세운다
+  let rival: string | undefined;
+  if (opts.newRuler) {
+    const r = foundFaction(s, opts.newRuler.cityId, opts.newRuler.generalId);
+    if (!r.ok) throw new Error(r.error);
+    s.playerFactionId = r.factionId;
+    rival = r.rival ?? undefined;
+  }
   // 임무: 플레이어 세력에 맞춰 숙적을 채운다
   const pf = s.playerFactionId;
-  const rival = pf ? scenario.rivals?.[pf] : undefined;
+  rival ??= pf ? scenario.rivals?.[pf] : undefined;
   s.missions = scenario.missions
     .filter((m) => m.kind !== 'destroy_faction' || m.factionId || rival)
     .map((m) => {
       if (m.kind === 'destroy_faction' && !m.factionId && rival) {
-        const rf = data.factions.find((f) => f.id === rival);
-        const ruler = data.generals.find((g) => g.id === rf?.rulerId);
+        const ruler = s.generals[s.factions[rival]?.rulerId];
         return { ...m, factionId: rival, label: m.label.replace('{rival}', ruler?.name ?? rival) };
       }
       return { ...m };

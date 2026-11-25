@@ -21,7 +21,7 @@ describe('데이터 무결성', () => {
       expect(gIds.has(id), id).toBe(true);
       expect(cIds.has(g.city), g.city).toBe(true);
     }
-    for (const f of DATA.factions) expect(sc.generals[f.rulerId]?.faction).toBe(f.id);
+    for (const f of DATA.factions.filter((x) => sc.factions[x.id])) expect(sc.generals[f.rulerId]?.faction).toBe(f.id);
   });
   it('모든 도시가 도로로 연결되어 있다', () => {
     const seen = new Set<string>(['hanyang']);
@@ -596,7 +596,8 @@ describe('모든 장수 (v3.1)', () => {
   it('"모든 장수 등장"이면 등장 예정 장수도 처음부터 살아 있고 성인이다', () => {
     const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1, playerFactionId: 'shu', allGenerals: true });
     const all = Object.values(s.generals);
-    expect(all.length).toBe(DATA.generals.length);
+    const sc197 = SCENARIOS['197_sabun'];
+    expect(all.length).toBe(Object.keys(sc197.generals).length + Object.keys(sc197.debuts ?? {}).length);
     expect(all.every((g) => g.alive)).toBe(true);
     const debutIds = Object.keys(SCENARIOS['197_sabun'].debuts ?? {});
     expect(debutIds.every((id) => s.year - s.generals[id].birth >= 18)).toBe(true);
@@ -604,4 +605,89 @@ describe('모든 장수 (v3.1)', () => {
     const normal = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1, playerFactionId: 'shu' });
     expect(normal.generals.jiang_wei.alive).toBe(false);
   });
+});
+
+import { canFound, REGION_GRAPH } from '../src/core';
+
+describe('군현 지도·신군주·190년 (v3.2)', () => {
+  it('군현 지도: 시·군 345곳이 모두 도시이고 길로 모두 이어진다', () => {
+    const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1, playerFactionId: 'shu', scale: 'region' });
+    const ids = Object.keys(s.cities);
+    expect(ids.length).toBe(345);
+    expect(s.mapScale).toBe('region');
+    for (const r of s.roads) { expect(s.cities[r.from]).toBeTruthy(); expect(s.cities[r.to]).toBeTruthy(); }
+    const adj: Record<string, string[]> = {};
+    for (const r of s.roads) { (adj[r.from] ??= []).push(r.to); (adj[r.to] ??= []).push(r.from); }
+    const seen = new Set([ids[0]]); const q = [ids[0]];
+    while (q.length) for (const n of adj[q.pop()!] ?? []) if (!seen.has(n)) { seen.add(n); q.push(n); }
+    expect(seen.size).toBe(345);
+    // 소유는 옛 관할 도시를 따르고, 군주는 치소에 있다
+    for (const c of Object.values(s.cities)) expect(c.owner).toBe(SCENARIOS['197_sabun'].cities[c.parent!]?.owner ?? null);
+    expect(s.cities[s.generals.liu_bei.city].seat).toBe(true);
+    expect(new Set(REGION_GRAPH.cities.map((c) => c.name)).size).toBe(345);
+  });
+  it('군현 지도에서도 턴이 진행되고 결정론적이다', () => {
+    const run = () => { let s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 9, playerFactionId: null, scale: 'region' }); for (let i = 0; i < 8; i++) s = endTurn(s); return s; };
+    const a = run(), b = run();
+    expect(a.turn).toBe(9);
+    expect(JSON.stringify(a.cities)).toBe(JSON.stringify(b.cities));
+  });
+  it('군현 지도에서 산성·항구 거점이 시·군에 붙는다', () => {
+    const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1, scale: 'region' });
+    const n = Object.keys(s.cities).reduce((a, id) => a + landmarksOfCity(id).length, 0);
+    expect(n).toBe(LANDMARKS.filter((l) => l.city).length);
+  });
+  it('신군주: 아무 시·군에서 아무 장수로 거병할 수 있다', () => {
+    const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1, scale: 'region', newRuler: { cityId: 'r250', generalId: 'xu_shu' } });
+    expect(s.playerFactionId).toBe('neo');
+    expect(s.cities.r250.owner).toBe('neo');
+    expect(s.factions.neo.rulerId).toBe('xu_shu');
+    expect(s.generals.xu_shu.faction).toBe('neo');
+    expect(s.missions.some((m) => m.factionId === 'lu')).toBe(true); // 땅을 빼앗긴 여포가 숙적
+    // 소속 장수도 독립할 수 있다 (조운이 제주에서)
+    const t = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1, newRuler: { cityId: 'jeju', generalId: 'zhao_yun' } });
+    expect(t.generals.zhao_yun.faction).toBe('neo');
+    expect(t.factions.neo.name).toBe('조');
+    // 군주가 있는 도시와 이미 군주인 장수는 안 된다
+    const p = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1 });
+    expect(canFound(p, p.generals.cao_cao.city, 'xu_shu')).not.toBeNull();
+    expect(canFound(p, 'jeju', 'liu_bei')).not.toBeNull();
+    expect(() => createGame(DATA, SCENARIOS['197_sabun'], { newRuler: { cityId: 'jeju', generalId: 'liu_bei' } })).toThrow();
+  });
+  it('190년 군웅할거: 12세력, 군주는 자기 도시에, 장수는 16세 이상', () => {
+    const sc = SCENARIOS['190_gunung'];
+    const s = createGame(DATA, sc, { seed: 1, playerFactionId: 'wei' });
+    const fs = Object.values(s.factions);
+    expect(fs.length).toBe(12);
+    for (const f of fs) expect(s.cities[s.generals[f.rulerId].city].owner).toBe(f.id);
+    expect(s.factions.wei.name).toBe('조');
+    for (const g of Object.values(s.generals)) if (g.alive) expect(s.year - g.birth).toBeGreaterThanOrEqual(16);
+    expect(Object.values(s.cities).every((c) => c.owner)).toBe(true);
+    let t = s; for (let i = 0; i < 6; i++) t = endTurn(t);
+    expect(t.turn).toBe(7);
+    const r = createGame(DATA, sc, { seed: 1, scale: 'region' });
+    expect(Object.values(r.factions).filter((f) => f.alive).length).toBe(12);
+  });
+});
+
+describe('군현 지도 AI (v3.2)', () => {
+  it('AI가 시·군을 실제로 빼앗는다 (후방 장수 전선 이동·병력 기준 축소)', () => {
+    const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 5, playerFactionId: null, scale: 'region' });
+    const before = Object.fromEntries(Object.values(s.cities).map((c) => [c.id, c.owner]));
+    let t = s; for (let i = 0; i < 40; i++) t = endTurn(t);
+    const changed = Object.values(t.cities).filter((c) => c.owner !== before[c.id]).length;
+    expect(changed).toBeGreaterThan(20);
+  });
+});
+
+import { submitCounties } from '../src/core/commands/commands';
+it('치소 함락 시 장수 없는 약한 속현이 귀부한다', () => {
+  const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 2, playerFactionId: null, scale: 'region' });
+  const seat = Object.values(s.cities).find((c) => c.seat && c.parent === 'jeonju')!;
+  for (const c of Object.values(s.cities)) if (c.parent === 'jeonju') c.troops = 500;
+  for (const g of Object.values(s.generals)) if (s.cities[g.city]?.parent === 'jeonju') g.city = s.generals.liu_bei.city;
+  seat.owner = 'wu';
+  submitCounties(s, seat.id, 'wu', 'shu');
+  const n = Object.values(s.cities).filter((c) => c.parent === 'jeonju' && c.owner === 'wu').length;
+  expect(n).toBeGreaterThan(1);
 });

@@ -1,12 +1,14 @@
 // core 공개 API. UI는 이 파일을 통해서만 core를 사용한다.
 export * from './state/types';
-export { createGame, SAVE_VERSION } from './state/init';
+export { createGame, SAVE_VERSION, type CreateOptions } from './state/init';
+export { canFound, foundFaction } from './state/found';
+export { regionize } from './state/regionize';
 export { applyCommand, respondOffer, foodPrice, type Command, type CommandResult, type DevelopField } from './commands/commands';
 export { acceptanceChance, statusOf, treatyOf, canAttack } from './diplomacy/diplomacy';
 export { endTurn, endTurnMut } from './systems/turn';
 export { missionProgress } from './systems/missions';
 export * from './query';
-export { DATA, SCENARIOS, LANDMARKS, landmarksOnRoad, landmarksOfCity } from './data';
+export { DATA, SCENARIOS, LANDMARKS, REGION_GRAPH, landmarksOnRoad, landmarksOfCity } from './data';
 export type { LandmarkDef, LandmarkType } from './data';
 export { BALANCE, SEASONS } from './config';
 export { WEATHER_ICON, WEATHER_LABEL } from './systems/weather';

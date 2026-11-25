@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import type { GameState } from '../core';
 import { WEATHER_ICON, WEATHER_LABEL, visibleTroops } from '../core';
 import { LANDMARKS, isConnectedToCapital, supplyRatio } from '../core';
-import { CITY_AREAS, LAND_PATH, REGIONS, REGION_PATHS, RIDGES, RIVERS, VIEW_H, VIEW_W, mountainGlyphs, project, toPath } from './geo';
+import { CITY_AREAS, REGION_AREAS, LAND_PATH, REGIONS, REGION_PATHS, RIDGES, RIVERS, VIEW_H, VIEW_W, mountainGlyphs, project, toPath } from './geo';
 
 const LM_LABEL = { pass: '고개', ford: '나루터', port: '항구', fortress: '산성' } as const;
 
@@ -62,6 +62,10 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
   const cities = useMemo(() => Object.values(state.cities), [state.cities]);
   const pts = useMemo(() => cities.map((c) => project([c.lon, c.lat])), [cities]);
   const glyphs = useMemo(() => RIDGES.flatMap((r) => mountainGlyphs(r.pts)), []);
+  // v3.2 군현 지도: 시·군 하나하나가 도시
+  const regionMode = state.mapScale === 'region';
+  const popK = regionMode ? 12 : 1;
+  const placed: [number, number][] = [];
 
   // 군주 깃발: 군주가 있는 도시
   const rulers = Object.values(state.factions)
@@ -148,18 +152,18 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
         {/* 세력 영역: 전국 시·군을 관할 도시 소유 세력 색으로 */}
         <g clipPath={`url(#${mini ? 'land-mini' : 'land'})`}>
           {REGIONS.map((r) => {
-            const pc = state.cities[r.parent];
+            const pc = regionMode ? state.cities[r.id] : state.cities[r.parent];
             const owner = pc?.owner;
             const f = owner ? state.factions[owner] : null;
-            const sel = r.parent === selectedCityId;
+            const sel = !!pc && pc.id === selectedCityId;
             let fill = f ? f.color : '#8a8070';
             let op = mini ? 0.9 : sel ? 0.62 : f ? 0.42 : 0.25;
             if (!mini && mode !== 'political' && pc) {
               op = sel ? 0.95 : 0.8;
               if (mode === 'terrain') { fill = elevColor(r.elev); op = sel ? 0.35 : 0.02; }
               else if (mode === 'economy') fill = ramp((pc.agriculture + pc.commerce) / 180);
-              else if (mode === 'population') fill = ramp(pc.population / 100000);
-              else if (mode === 'military') { const v = visibleTroops(state, state.playerFactionId, pc.id).value; fill = v === null ? '#4a4f58' : ramp(v / 40000); }
+              else if (mode === 'population') fill = ramp((pc.population * popK) / 100000);
+              else if (mode === 'military') { const v = visibleTroops(state, state.playerFactionId, pc.id).value; fill = v === null ? '#4a4f58' : ramp((v * popK) / 40000); }
               else if (mode === 'order') fill = ramp(pc.order / 100);
               else if (mode === 'supply') fill = pc.owner ? ramp(isConnectedToCapital(state, pc.owner, pc.id) ? supplyRatio(state, pc.owner) : 0.15) : '#4a4f58';
               else if (mode === 'weather') fill = WEATHER_COLOR[state.weather[pc.id] ?? 'clear'];
@@ -173,10 +177,10 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
                 stroke={mini ? 'none' : '#0d1420'}
                 strokeOpacity={0.28}
                 strokeWidth={0.5}
-                onClick={mini ? undefined : () => click(r.parent)}
+                onClick={mini || !pc ? undefined : () => click(pc.id)}
                 className={mini ? undefined : 'region'}
               >
-                {!mini && <title>{`${r.name} (${r.province}) — 관할: ${state.cities[r.parent]?.name}\n평균 고도 ${r.elev}m · 최고 ${r.elevMax ?? r.elev}m`}</title>}
+                {!mini && <title>{`${r.name} (${r.province}) — ${regionMode ? (f ? f.name + ' 영토' : '주인 없음') : '관할: ' + state.cities[r.parent]?.name}\n평균 고도 ${r.elev}m · 최고 ${r.elevMax ?? r.elev}m`}</title>}
               </path>
             );
           })}
@@ -201,7 +205,7 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
         {!mini && (
           <>
             {/* 시·군 이름 (확대 시) */}
-            {layers.labels && view.k >= 1.7 && REGIONS.map((r) => {
+            {layers.labels && !regionMode && view.k >= 1.7 && REGIONS.map((r) => {
               const [x, y] = project([r.lon, r.lat]);
               return <text key={r.id} x={x} y={y} textAnchor="middle" fontSize={5.5 / Math.min(view.k / 1.7, 1.6)} fill="#f3e7cc" fillOpacity={0.75} pointerEvents="none">{r.name}</text>;
             })}
@@ -211,7 +215,7 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
               const [x1, y1] = project([state.cities[r.from].lon, state.cities[r.from].lat]);
               const [x2, y2] = project([state.cities[r.to].lon, state.cities[r.to].lat]);
               const dash = r.type === 'sea' ? '2 6' : r.type === 'pass' ? '6 4' : undefined;
-              return <line key={r.from + r.to} x1={x1} y1={y1} x2={x2} y2={y2} stroke={r.type === 'sea' ? '#9cc7e0' : '#e8d9a8'} strokeOpacity={0.45} strokeWidth={1.2} strokeDasharray={dash} />;
+              return <line key={r.from + r.to} x1={x1} y1={y1} x2={x2} y2={y2} stroke={r.type === 'sea' ? '#9cc7e0' : '#e8d9a8'} strokeOpacity={regionMode ? 0.22 : 0.45} strokeWidth={regionMode ? 0.6 : 1.2} strokeDasharray={dash} />;
             })}
 
             {/* 거점: 고개·나루·항구·산성 (v1.3) */}
@@ -231,7 +235,7 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
 
             {/* v2.8 날씨·재해 효과: 그 도시 관할 시·군 안에서만 비·눈·안개·가뭄·한파·산불을 그린다 */}
             {layers.effects && cities.map((c) => {
-              const area = CITY_AREAS[c.id];
+              const area = CITY_AREAS[c.id] ?? REGION_AREAS[c.id];
               const w = state.weather[c.id];
               const fire = (c.fire ?? 0) > 0;
               if (!area || (!fire && (!w || w === 'clear'))) return null;
@@ -287,6 +291,21 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
               const f = c.owner ? state.factions[c.owner] : null;
               const sel = c.id === selectedCityId;
               const hl = highlightCityIds.includes(c.id);
+              if (regionMode) {
+                // 군현 지도: 작은 표지, 이름은 치소·선택·확대 시에만
+                const sz = 1 / Math.min(Math.max(view.k, 1), 2.4);
+                const showName = layers.labels && (sel || hl || view.k >= 1.7 || (c.seat && view.k >= 1.2));
+                return (
+                  <g key={c.id} className="city" transform={`translate(${x},${y}) scale(${sz})`} onClick={() => click(c.id)}>
+                    {(sel || hl) && <circle r={sel ? 11 : 9} fill="none" stroke={sel ? '#ffe08a' : '#ff6b5b'} strokeWidth={2} filter="url(#glow)" className="pulse" />}
+                    <rect x={-4} y={-4} width={8} height={8} rx={c.fortress ? 1 : 4} fill={f?.color ?? '#9a9080'} stroke={c.seat ? '#ffe08a' : '#f3e2b0'} strokeWidth={c.seat ? 1.6 : 0.9} />
+                    {view.k >= 1.7 && state.weather[c.id] && state.weather[c.id] !== 'clear' && <text x={6} y={-4} fontSize={8} pointerEvents="none">{WEATHER_ICON[state.weather[c.id]]}</text>}
+                    {(c.epidemic ?? 0) > 0 && <text x={-14} y={9} fontSize={8} pointerEvents="none">🦠</text>}
+                    {showName && <text y={14} textAnchor="middle" fontSize={c.seat ? 10 : 8.5} fill="#f5ecd6" fontWeight={c.seat ? 700 : 400} stroke="#10151c" strokeWidth={2.2} paintOrder="stroke" pointerEvents="none">{c.name}</text>}
+                    <title>{`${c.name} — ${f ? f.name : '주인 없음'}${c.seat ? ' (치소)' : ''}`}</title>
+                  </g>
+                );
+              }
               return (
                 <g key={c.id} className="city" transform={`translate(${x},${y})`} onClick={() => click(c.id)}>
                   {(sel || hl) && <circle r={sel ? 16 : 13} fill="none" stroke={sel ? '#ffe08a' : '#ff6b5b'} strokeWidth={2} filter="url(#glow)" className="pulse" />}
@@ -309,16 +328,21 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
 
             {/* 군주 깃발 */}
             {rulers.map(({ f, g }) => {
-              // 깃발은 세력 영토의 중심(도시 좌표 평균)에 세운다
+              // 깃발은 세력 영토의 중심(도시 좌표 평균)에 세운다. 겹치면 옆으로 비킨다 (v3.2)
               const owned = cities.filter((c) => c.owner === f.id);
               if (!owned.length) return null;
-              const [x, y] = owned
+              const [x0, y0] = owned
                 .map((c) => project([c.lon, c.lat]))
                 .reduce((a, p) => [a[0] + p[0] / owned.length, a[1] + p[1] / owned.length], [0, 0]);
+              let x = x0, y = y0;
+              const hit = (ax: number, ay: number) => placed.some(([px, py]) => Math.abs(px - ax) < 46 && Math.abs(py - ay) < 56);
+              const off = [[0, 0], [0, 58], [-48, 0], [0, -58], [-48, 58], [48, 58], [-48, -58], [48, 0]].find(([dx, dy]) => !hit(x + dx, y + dy)) ?? [0, 0];
+              x += off[0]; y += off[1];
+              placed.push([x, y]);
               return (
                 <g key={f.id} transform={`translate(${x - 15},${y - 44})`} className="banner" pointerEvents="none">
-                  <rect x={0} y={0} width={30} height={34} rx={2} fill={f.color} stroke="#e9cf86" strokeWidth={1.5} />
-                  <text x={15} y={25} textAnchor="middle" fontSize={22} fontWeight={700} fill="#fff7e0" style={{ fontFamily: 'serif' }}>{f.hanja}</text>
+                  <rect x={f.hanja.length > 1 ? -8 : 0} y={0} width={f.hanja.length > 1 ? 46 : 30} height={34} rx={2} fill={f.color} stroke="#e9cf86" strokeWidth={1.5} />
+                  <text x={15} y={f.hanja.length > 1 ? 23 : 25} textAnchor="middle" fontSize={f.hanja.length > 1 ? 17 : 22} fontWeight={700} fill="#fff7e0" style={{ fontFamily: 'serif' }}>{f.hanja}</text>
                   <rect x={-4} y={36} width={g.name.length * 13 + 8} height={17} rx={3} fill="#10151c" fillOpacity={0.8} />
                   <text x={g.name.length * 6.5} y={49} textAnchor="middle" fontSize={12} fontWeight={700} fill="#fff">{g.name}</text>
                 </g>
@@ -334,7 +358,7 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
               const owned = cities.filter((c) => c.owner === f.id);
               if (!owned.length) return null;
               const [x, y] = owned.map((c) => project([c.lon, c.lat])).reduce((a, p) => [a[0] + p[0] / owned.length, a[1] + p[1] / owned.length], [0, 0]);
-              return <text key={f.id} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={56} fontWeight={700} fill="#fff7e0" stroke="#0007" strokeWidth={2} style={{ fontFamily: 'serif' }}>{f.hanja}</text>;
+              return <text key={f.id} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={f.hanja.length > 1 ? 36 : 56} fontWeight={700} fill="#fff7e0" stroke="#0007" strokeWidth={2} style={{ fontFamily: 'serif' }}>{f.hanja}</text>;
             })}
       </g>
     </svg>

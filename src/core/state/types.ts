@@ -40,6 +40,9 @@ export interface Faction {
 export interface City {
   id: CityId;
   name: string;
+  /** 군현 지도(v3.2): 원래 관할 도시, 치소 여부 */
+  parent?: string;
+  seat?: boolean;
   /** 도성 시·군의 실측 평균 고도(m) (v1.9) */
   elev?: number;
   lon: number;
@@ -171,6 +174,8 @@ export interface DiplomaticOffer {
 export interface GameState {
   saveVersion: number;
   scenarioId: string;
+  /** 지도 규모 (v3.2): city = 24개 도시, region = 시·군 345곳 */
+  mapScale?: 'city' | 'region';
   turn: number;
   year: number;
   season: number; // 0 봄 1 여름 2 가을 3 겨울

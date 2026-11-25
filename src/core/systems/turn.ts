@@ -29,8 +29,10 @@ export function processEconomy(s: GameState) {
         const dry = Math.max(0, 1 - (c.droughtTurns ?? 0) * BALANCE.droughtHarvestLoss);
         harvest += c.agriculture * k * BALANCE.harvestPerAgriculture * orderMul * dry * (1 + traitSum(f.traits, 'harvest'));
       }
-      wood += c.wood * BALANCE.woodPerLevel * ((c.fire ?? 0) > 0 ? BALANCE.fireWoodPenalty : 1);
-      iron += c.iron * BALANCE.ironPerLevel;
+      // 군현 지도는 도시가 많아 목재·철 산출을 도시 수에 맞춰 줄인다 (v3.2)
+      const rk = s.mapScale === 'region' ? BALANCE.regionResourceScale : 1;
+      wood += c.wood * BALANCE.woodPerLevel * rk * ((c.fire ?? 0) > 0 ? BALANCE.fireWoodPenalty : 1);
+      iron += c.iron * BALANCE.ironPerLevel * rk;
       troops += c.troops;
       // 인구·민심
       c.population = Math.round(c.population * (1 + BALANCE.popGrowth * (c.order / 100) - (s.season === 3 ? 0.004 : 0)));

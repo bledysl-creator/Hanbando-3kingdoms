@@ -1,6 +1,14 @@
 [
-  { "id": "wei", "name": "위", "hanja": "魏", "color": "#2f5fb3", "rulerId": "cao_cao", "traits": ["인재", "대군"] },
-  { "id": "lu", "name": "여", "hanja": "呂", "color": "#8a4cc2", "rulerId": "lu_bu", "traits": ["최강무력", "불안정"] },
-  { "id": "shu", "name": "촉", "hanja": "蜀", "color": "#3f9a4a", "rulerId": "liu_bei", "traits": ["인덕", "곡창"] },
-  { "id": "wu", "name": "오", "hanja": "吳", "color": "#c2463c", "rulerId": "sun_quan", "traits": ["수군", "교역"] }
+  {"id": "wei", "name": "위", "hanja": "魏", "color": "#2f5fb3", "rulerId": "cao_cao", "traits": ["인재", "대군"]},
+  {"id": "lu", "name": "여", "hanja": "呂", "color": "#8a4cc2", "rulerId": "lu_bu", "traits": ["최강무력", "불안정"]},
+  {"id": "shu", "name": "촉", "hanja": "蜀", "color": "#3f9a4a", "rulerId": "liu_bei", "traits": ["인덕", "곡창"]},
+  {"id": "wu", "name": "오", "hanja": "吳", "color": "#c2463c", "rulerId": "sun_quan", "traits": ["수군", "교역"]},
+  {"id": "yuan", "name": "원", "hanja": "袁", "color": "#b8a03a", "rulerId": "yuan_shao", "traits": ["대군", "인재"]},
+  {"id": "dong", "name": "동", "hanja": "董", "color": "#5a4a3a", "rulerId": "dong_zhuo", "traits": ["대군", "불안정"]},
+  {"id": "gongsun", "name": "공손", "hanja": "公孫", "color": "#e0e0d0", "rulerId": "gongsun_zan", "traits": ["최강무력"]},
+  {"id": "jing", "name": "형", "hanja": "荊", "color": "#3a8a8a", "rulerId": "liu_biao", "traits": ["곡창", "교역"]},
+  {"id": "ma", "name": "마", "hanja": "馬", "color": "#a06a2a", "rulerId": "ma_teng", "traits": ["최강무력"]},
+  {"id": "zhanglu", "name": "장", "hanja": "張", "color": "#7a7ab0", "rulerId": "zhang_lu", "traits": ["인덕"]},
+  {"id": "yuanshu", "name": "원술", "hanja": "術", "color": "#d07aa0", "rulerId": "yuan_shu", "traits": ["교역"]},
+  {"id": "yan", "name": "엄", "hanja": "嚴", "color": "#4a7a5a", "rulerId": "yan_baihu", "traits": ["수군"]}
 ]

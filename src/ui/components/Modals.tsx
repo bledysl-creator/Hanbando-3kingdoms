@@ -338,7 +338,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
 }
 
 import type { SimProgress } from '../../sim/simWorker';
-import { DATA } from '../../core';
+import { DATA, SCENARIOS } from '../../core';
 
 export function SimStatsModal({ onClose }: { onClose: () => void }) {
   const [p, setP] = useState<SimProgress | null>(null);
@@ -353,7 +353,7 @@ export function SimStatsModal({ onClose }: { onClose: () => void }) {
     setW(worker);
     setP(null);
   };
-  const facs = DATA.factions;
+  const facs = DATA.factions.filter((f) => SCENARIOS['197_sabun'].factions[f.id]);
   const avgTurn = p && p.turns.length ? (p.turns.reduce((a, b) => a + b, 0) / p.turns.length).toFixed(1) : '-';
   const hot = p ? Object.entries(p.battles).sort((a, b) => b[1] - a[1]).slice(0, 5) : [];
   return (

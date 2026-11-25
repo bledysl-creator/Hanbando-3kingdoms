@@ -82,10 +82,10 @@ export const LAND_PATH = Object.values(REGION_PATHS).join('');
 
 /** 게임 도시별: 관할 시·군을 합친 path와 화면 범위 (날씨·산불 효과용, v2.8) */
 export interface CityArea { path: string; x: number; y: number; w: number; h: number; spots: [number, number][] }
-export const CITY_AREAS: Record<string, CityArea> = (() => {
+function areasBy(key: (r: Region) => string): Record<string, CityArea> {
   const out: Record<string, CityArea> = {};
   const by: Record<string, Region[]> = {};
-  for (const r of REGIONS) (by[r.parent] ??= []).push(r);
+  for (const r of REGIONS) (by[key(r)] ??= []).push(r);
   for (const [cid, rs] of Object.entries(by)) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const r of rs) for (const ring of r.rings) for (const p of ring) {
@@ -97,4 +97,7 @@ export const CITY_AREAS: Record<string, CityArea> = (() => {
     out[cid] = { path: rs.map((r) => REGION_PATHS[r.id]).join(''), x: x0, y: y0, w: x1 - x0, h: y1 - y0, spots };
   }
   return out;
-})();
+}
+export const CITY_AREAS = areasBy((r) => r.parent);
+/** 군현 지도(v3.2): 시·군 하나하나의 범위 */
+export const REGION_AREAS = areasBy((r) => r.id);

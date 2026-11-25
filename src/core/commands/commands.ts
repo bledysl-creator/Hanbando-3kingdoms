@@ -9,7 +9,7 @@ import { chance, pick } from '../rng/rng';
 import { estimateRatio } from '../battle/estimate';
 import { killGeneral } from '../systems/lifecycle';
 import { discord, rumor, scout, withinTwo } from '../systems/intrigue';
-import { generalsIn, isConnectedToCapital, neighbors, roadBetween, supplyRatio } from '../query';
+import { generalsIn, isConnectedToCapital, minGarrison, minMarch, neighbors, roadBetween, supplyRatio } from '../query';
 import type { GameState, LogKind } from '../state/types';
 import { refuseChance, remember } from '../systems/persona';
 import { canAttack, pairKey, statusOf, tryProposal, type Proposal } from '../diplomacy/diplomacy';
@@ -108,7 +108,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       const to = s.cities[cmd.toCityId];
       if (!to || to.owner !== factionId) return { ok: false, error: '우리 도시로만 이동할 수 있습니다.' };
       if (!roadBetween(s, city.id, to.id)) return { ok: false, error: '인접한 도시가 아닙니다.' };
-      const troops = Math.max(0, Math.min(Math.floor(cmd.troops), city.troops - 500));
+      const troops = Math.max(0, Math.min(Math.floor(cmd.troops), city.troops - minGarrison(s)));
       city.troops -= troops;
       if (to.troops + troops > 0) {
         to.training = Math.round((to.training * to.troops + city.training * troops) / (to.troops + troops));
@@ -125,8 +125,8 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (!to || !road) return { ok: false, error: '인접한 도시가 아닙니다.' };
       if (to.owner === factionId) return { ok: false, error: '우리 도시는 공격할 수 없습니다.' };
       if (!canAttack(s, factionId, to.owner)) return { ok: false, error: `${s.factions[to.owner!].name}과(와)는 ${statusOf(s, factionId, to.owner) === 'truce' ? '휴전' : '동맹'} 중이라 공격할 수 없습니다. 먼저 맹약을 파기하세요.` };
-      const troops = Math.min(Math.floor(cmd.troops), city.troops - 500);
-      if (troops < 1000) return { ok: false, error: '출진 병력은 1,000명 이상이어야 합니다 (도시에 500명은 남겨야 함).' };
+      const troops = Math.min(Math.floor(cmd.troops), city.troops - minGarrison(s));
+      if (troops < minMarch(s)) return { ok: false, error: `출진 병력은 ${minMarch(s).toLocaleString()}명 이상이어야 합니다 (도시에 ${minGarrison(s)}명은 남겨야 함).` };
       const foodNeed = Math.ceil(troops * BALANCE.foodPerTroop);
       if (f.food < foodNeed) return { ok: false, error: '군량이 부족합니다.' };
       // 장수가 명령을 거부할 수도 있다 (복종도·성향·승산)
@@ -190,6 +190,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
           else if (d.faction) d.faction = null; // 군주도 도망칠 곳이 없으면 재야로
         }
         log(s, `${s.factions[factionId].name}군 ${g.name}이(가) ${defName}의 ${to.name}을(를) 함락했습니다!`, 'danger', factionId);
+        if (to.seat && defenderFaction) submitCounties(s, to.id, factionId, defenderFaction);
         checkFactionDestroyed(s, defenderFaction);
         return { ok: true, message: `${to.name} 함락! (아군 손실 ${out.attackerLoss.toLocaleString()})` };
       } else {
@@ -360,6 +361,23 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       return { ok: true, message: `${t.name}에 선전포고했습니다. 의리를 중시하는 장수들이 실망했습니다.` };
     }
   }
+}
+
+/** 군현 지도(v3.2): 치소가 함락되면 장수 없는 같은 관할의 속현이 확률적으로 귀부한다 */
+export function submitCounties(s: GameState, seatId: string, to: string, from: string) {
+  const seat = s.cities[seatId];
+  const names: string[] = [];
+  for (const c of Object.values(s.cities)) {
+    if (c.id === seatId || c.parent !== seat.parent || c.owner !== from) continue;
+    if (c.troops > BALANCE.regionSubmitMaxTroops || Object.values(s.generals).some((x) => x.alive && x.city === c.id && x.faction === from)) continue;
+    if (!chance(s, BALANCE.regionSubmitChance)) continue;
+    c.owner = to;
+    c.troops = Math.round(c.troops * BALANCE.regionSubmitTroopKeep);
+    c.order = Math.max(10, c.order - 10);
+    c.governor = undefined;
+    names.push(c.name);
+  }
+  if (names.length) log(s, `${seat.name} 함락 소식에 ${names.join('·')}이(가) ${s.factions[to].name}에 귀부했습니다.`, 'warn', to);
 }
 
 export function checkFactionDestroyed(s: GameState, factionId: string | null) {

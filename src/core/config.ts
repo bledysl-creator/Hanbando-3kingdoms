@@ -39,6 +39,16 @@ export const BALANCE = {
   } as Record<string, string>,
   /** v3.1 모든 장수 등장 모드: 등장 예정 장수의 최소 나이 */
   allGeneralsMinAge: 18,
+  /** 군현 지도 (v3.2): 치소(중심 시·군)가 받는 병력 비율, 시·군 최소 병력 */
+  regionSeatTroopShare: 0.4, regionMinTroops: 300,
+  /** 군현 지도에서 산불·역병 발생 확률 배율 (도시 수가 많아 전국 빈도를 맞춤) */
+  regionEventScale: 0.1,
+  /** 군현 지도: AI 병력 기준 배율, 목재·철 산출 배율 (24/345 ≈ 0.07) */
+  regionAiTroopScale: 0.15, regionResourceScale: 0.09,
+  /** 군현 지도: 치소 함락 시 속현 귀부 (병력 이하·장수 없음일 때 확률, 귀부 병력 유지 비율) */
+  regionSubmitMaxTroops: 3000, regionSubmitChance: 0.6, regionSubmitTroopKeep: 0.5,
+  /** 신군주 거병 (v3.2): 아무 시·군에서 새 세력을 세울 때 */
+  newRulerGold: 3000, newRulerFood: 30000, newRulerWood: 8000, newRulerIron: 8000, newRulerTroops: 3000, newRulerColor: '#d4a72c',
   /** 관직 (v2.4): 태수 정치/이 값 = 계절마다 농업·상업 +1 확률, 정치 70+ 또는 매력 80+ 이면 민심 + */
   governorDevDivisor: 250, governorOrder: 1, governorLoyalty: 5,
   /** 산불 (v2.8): 확률 = 계절 기본 + 산악 + 목재 등급 + 고도 + 가뭄 */

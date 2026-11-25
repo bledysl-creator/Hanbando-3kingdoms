@@ -23,7 +23,7 @@ export function processEpidemics(s: GameState) {
       for (const n of neighbors(s, c.id)) if (n.road.type !== 'sea' && !(n.city.epidemic ?? 0) && chance(s, BALANCE.epidemicSpread)) spreading.push(n.city.id);
       c.epidemic = (c.epidemic ?? 0) - 1;
       if (c.epidemic === 0) log(s, `${c.name}의 역병이 가라앉았습니다.`, 'info', c.owner);
-    } else if (chance(s, Math.max(0, outbreakChance(s, c.id)))) {
+    } else if (chance(s, Math.max(0, outbreakChance(s, c.id)) * (s.mapScale === 'region' ? BALANCE.regionEventScale : 1))) {
       c.epidemic = BALANCE.epidemicTurns;
       log(s, `${c.name}에 역병이 돌기 시작했습니다! 구휼로 막을 수 있습니다.`, 'danger', c.owner);
     }

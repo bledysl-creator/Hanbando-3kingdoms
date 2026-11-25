@@ -86,3 +86,7 @@ export function supplyRatio(s: GameState, f: FactionId): number {
   const eat = totalTroops(s, f) * 0.25;
   return eat <= 0 ? 1 : Math.min(1, s.factions[f].food / eat);
 }
+
+/** 도시에 남겨야 하는 최소 병력과 최소 출진 병력 (군현 지도는 도시가 작아 기준이 낮다, v3.2) */
+export const minGarrison = (s: GameState) => (s.mapScale === 'region' ? 100 : 500);
+export const minMarch = (s: GameState) => (s.mapScale === 'region' ? 300 : 1000);

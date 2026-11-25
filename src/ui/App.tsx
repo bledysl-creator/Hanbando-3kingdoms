@@ -1,6 +1,6 @@
 // 앱 루트: 타이틀 → 메인 지도 화면. 게임 상태는 core 함수로만 바꾼다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BALANCE, applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
+import { BALANCE, canFound, applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
 import { DEFAULT_LAYERS, KoreaMap, LAYER_LABELS, MAP_MODES, type MapLayers, type MapMode } from '../map/KoreaMap';
 import { indexedDbRepo } from '../save/saveRepository';
 import { VERSION } from '../version';
@@ -23,10 +23,26 @@ function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
   const [stats, setStats] = useState(false);
   const [allGen, setAllGen] = useState(() => localStorage.getItem('hanbando.allGenerals') !== '0');
   useEffect(() => { indexedDbRepo.list().then((l) => setHasAuto(l.some((m) => m.slot === 'auto'))).catch(() => {}); }, []);
-  const sc = SCENARIOS['197_sabun'];
-  const preview = useMemo(() => createGame(DATA, sc, { allGenerals: allGen }), [sc, allGen]);
-  const start = (fid: string | null) =>
-    onStart(createGame(DATA, sc, { seed: Math.floor(Date.now() % 2147483647), playerFactionId: fid, allGenerals: allGen }));
+  const [scId, setScId] = useState(() => localStorage.getItem('hanbando.scenario') ?? '197_sabun');
+  const [scale, setScale] = useState<'city' | 'region'>(() => (localStorage.getItem('hanbando.scale') === 'region' ? 'region' : 'city'));
+  const sc = SCENARIOS[scId] ?? SCENARIOS['197_sabun'];
+  const preview = useMemo(() => createGame(DATA, sc, { allGenerals: allGen, scale }), [sc, allGen, scale]);
+  const opts = { allGenerals: allGen, scale };
+  const seed = () => Math.floor(Date.now() % 2147483647);
+  const start = (fid: string | null) => onStart(createGame(DATA, sc, { ...opts, seed: seed(), playerFactionId: fid }));
+  // v3.2 신군주: 아무 도시(시·군)와 아무 장수
+  const [nrCity, setNrCity] = useState('');
+  const [nrGen, setNrGen] = useState('');
+  const cityList = useMemo(() => Object.values(preview.cities).sort((a, b) => a.name.localeCompare(b.name, 'ko')), [preview]);
+  const genList = useMemo(() => {
+    const rulers = new Set(Object.values(preview.factions).map((f) => f.rulerId));
+    const sum = (g: GameState['generals'][string]) => Object.values(g.stats).reduce((a, b) => a + b, 0);
+    return Object.values(preview.generals).filter((g) => g.alive && !rulers.has(g.id)).sort((a, b) => sum(b) - sum(a));
+  }, [preview]);
+  const nrErr = nrCity && nrGen ? canFound(preview, nrCity, nrGen) : '도시와 장수를 고르세요.';
+  const startNew = () => onStart(createGame(DATA, sc, { ...opts, seed: seed(), newRuler: { cityId: nrCity, generalId: nrGen } }));
+  const setSc = (id: string) => { setScId(id); localStorage.setItem('hanbando.scenario', id); };
+  const setSl = (v: 'city' | 'region') => { setScale(v); localStorage.setItem('hanbando.scale', v); setNrCity(''); };
   return (
     <div className="title-screen">
       <div className="title-bg"><KoreaMap state={preview} mini /></div>
@@ -46,8 +62,12 @@ function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
           </>
         ) : (
           <>
-            <p className="scenario">플레이할 군주를 고르세요.</p>
-            <div className="faction-pick">
+            <div className="opt-row">
+              <label>시나리오 <select value={sc.id} onChange={(e) => setSc(e.target.value)}>{Object.values(SCENARIOS).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+              <label>지도 <select value={scale} onChange={(e) => setSl(e.target.value as 'city' | 'region')}><option value="city">주요 도시 24곳</option><option value="region">군현 지도 — 시·군 345곳이 모두 도시</option></select></label>
+            </div>
+            <p className="scenario"><b>{sc.name}</b> — {sc.description}<br />플레이할 군주를 고르세요.</p>
+            <div className={`faction-pick ${Object.keys(preview.factions).length > 4 ? "many" : ""}`}>
               {Object.values(preview.factions).map((f) => {
                 const ruler = preview.generals[f.rulerId];
                 const cities = citiesOf(preview, f.id);
@@ -55,7 +75,7 @@ function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
                 const troops = cities.reduce((a, c) => a + c.troops, 0);
                 return (
                   <button key={f.id} className="faction-card" style={{ borderColor: f.color }} onClick={() => start(f.id)}>
-                    <span className="fc-hanja" style={{ background: f.color }}>{f.hanja}</span>
+                    <span className="fc-hanja" style={{ background: f.color, fontSize: f.hanja.length > 1 ? 20 : undefined }}>{f.hanja}</span>
                     <b>{ruler.name}</b>
                     <small>도시 {cities.length} · 장수 {gens.length} · 병력 {troops.toLocaleString()}</small>
                     <p>{sc.factionIntro?.[f.id]}</p>
@@ -63,6 +83,21 @@ function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
                   </button>
                 );
               })}
+            </div>
+            <div className="new-ruler">
+              <b>🚩 신군주로 시작</b> <span className="muted small">— 아무 {scale === 'region' ? '시·군' : '도시'}에서 아무 장수를 군주로 세워 새 세력으로 거병합니다 (가상 설정)</span>
+              <div className="opt-row">
+                <select value={nrCity} onChange={(e) => setNrCity(e.target.value)}>
+                  <option value="">{scale === 'region' ? '시·군' : '도시'} 고르기 ({cityList.length}곳)</option>
+                  {cityList.map((c) => <option key={c.id} value={c.id}>{c.name} — {c.owner ? preview.factions[c.owner].name : '주인 없음'}</option>)}
+                </select>
+                <select value={nrGen} onChange={(e) => setNrGen(e.target.value)}>
+                  <option value="">군주 고르기 ({genList.length}명)</option>
+                  {genList.map((g) => <option key={g.id} value={g.id}>{g.name} {g.hanja} — 통{g.stats.leadership} 무{g.stats.war} 지{g.stats.intellect} 정{g.stats.politics} 매{g.stats.charm} ({g.faction ? preview.factions[g.faction].name : '재야'})</option>)}
+                </select>
+                <button className="primary" disabled={!!nrErr} title={nrErr ?? ''} onClick={startNew}>거병</button>
+              </div>
+              {nrErr && nrCity && nrGen && <p className="small warn-text">{nrErr}</p>}
             </div>
             <label className="opt-line"><input type="checkbox" checked={allGen} onChange={(e) => { setAllGen(e.target.checked); localStorage.setItem('hanbando.allGenerals', e.target.checked ? '1' : '0'); }} /> 모든 장수 등장 — 후대 인물(사마의·강유·육항 등)도 처음부터 성인으로 등장 (가상 설정). 끄면 실제 생년에 맞춰 차례로 등장</label>
             <div className="actions row"><button onClick={() => setPick(false)}>← 뒤로</button></div>
