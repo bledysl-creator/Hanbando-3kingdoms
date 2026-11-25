@@ -1,0 +1,192 @@
+/* 삼국지 한반도전 — 고풍스러운 동양 전략 지도 톤 (짙은 남색 바다 + 금색 테두리 + 한지색 글자) */
+:root {
+  --gold: #c9a65a;
+  --gold-hi: #f0d68e;
+  --ink: #0f141b;
+  --panel: rgba(16, 21, 28, 0.86);
+  --hanji: #f3e7cc;
+  --muted: #a99d84;
+  --wei: #2f5fb3; --lu: #8a4cc2; --shu: #3f9a4a; --wu: #c2463c;
+  font-family: 'Noto Serif KR', 'Nanum Myeongjo', 'Batang', 'AppleMyungjo', serif;
+  color: var(--hanji);
+}
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #0a1420; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.45; }
+select, input { font: inherit; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px #000a, 0 6px 24px #0009, inset 0 0 18px #c9a65a14;
+  backdrop-filter: blur(2px);
+}
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 4px; border: 1px solid var(--gold-hi); border-radius: 3px; color: #fff7e0; font-weight: 700; font-size: 15px; }
+
+/* ── 지도 ── */
+.game { position: fixed; inset: 0; }
+.map-layer {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 45%, #1d3b55 0%, #102638 45%, #08121d 100%);
+}
+.map-layer::after { /* 물결 질감 */
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.18;
+  background-image: repeating-radial-gradient(circle at 30% 70%, #ffffff10 0 2px, transparent 2px 22px);
+}
+.map { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.map:active { cursor: grabbing; }
+.map .city { cursor: pointer; }
+.map .city:hover rect { filter: brightness(1.25); }
+.pulse { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+
+/* ── 상단 바 ── */
+.topbar {
+  position: absolute; top: 0; left: 0; right: 0; height: 48px; z-index: 5;
+  display: flex; align-items: center; gap: 28px; padding: 0 16px;
+  background: linear-gradient(#141a22f2, #0f141bd9);
+  border-bottom: 1px solid var(--gold);
+  box-shadow: 0 2px 12px #000a;
+}
+.topbar .title { font-size: 24px; font-weight: 800; letter-spacing: 1px; color: var(--hanji); text-shadow: 0 0 8px #000; white-space: nowrap; }
+.topbar .date { font-size: 17px; white-space: nowrap; }
+.resources { display: flex; gap: 26px; margin-left: auto; font-size: 16px; white-space: nowrap; }
+.top-icons { display: flex; gap: 8px; }
+.icon-btn { background: none; border: none; font-size: 20px; padding: 4px 6px; }
+.icon-btn.round { font-size: 14px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--gold); padding: 0; vertical-align: middle; }
+
+/* ── 좌측 ── */
+.left-col { position: absolute; top: 62px; left: 14px; z-index: 4; display: flex; flex-direction: column; gap: 18px; }
+.ruler-card { display: flex; align-items: center; gap: 12px; padding: 10px 16px 10px 10px; }
+.ruler-name { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.ruler-info dl { display: grid; grid-template-columns: auto auto; gap: 1px 16px; margin: 0; font-size: 15px; }
+.ruler-info dt { color: var(--muted); }
+.ruler-info dd { margin: 0; text-align: right; }
+.portrait {
+  position: relative; border-radius: 50%; border: 2px solid var(--gold-hi); flex: none;
+  display: flex; align-items: center; justify-content: center; color: #fff7e0; font-weight: 700;
+  box-shadow: 0 0 10px #0009, inset 0 0 12px #000a;
+}
+.portrait-name { position: absolute; bottom: 8%; color: #f3e7ccaa; }
+.side-menu { display: flex; flex-direction: column; gap: 10px; width: 128px; }
+.menu-btn {
+  position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 18px; text-align: left;
+  background: linear-gradient(90deg, #1a212b, #11161d); border: 1px solid #6e5a33; border-radius: 22px 6px 6px 22px;
+}
+.menu-btn:hover:not(:disabled), .menu-btn.active { border-color: var(--gold-hi); background: linear-gradient(90deg, #2c2717, #151a21); }
+.menu-btn .mi { width: 26px; text-align: center; }
+.menu-btn .soon, .bar-btn .soon { position: absolute; right: 6px; top: 2px; font-size: 9px; color: var(--muted); }
+
+/* ── 우측 ── */
+.right-col { position: absolute; top: 62px; right: 14px; z-index: 4; width: 250px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 190px); }
+.minimap { height: 230px; padding: 4px; background: #0d1a26e6; }
+.minimap .map { cursor: default; }
+.missions { padding: 8px 12px; }
+.missions h3 { margin: 0 0 6px; font-size: 18px; color: var(--hanji); }
+.missions ul { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.missions li { display: flex; gap: 6px; padding: 3px 0; }
+.missions li .prog { margin-left: auto; color: var(--muted); }
+.missions li.done { color: var(--gold-hi); }
+
+.city-panel {
+  position: fixed; top: 62px; right: 278px; width: 340px; max-height: calc(100vh - 200px); overflow-y: auto; padding: 12px 14px; z-index: 6;
+}
+.city-panel h2 { margin: 0 0 8px; font-size: 22px; display: flex; align-items: center; gap: 8px; }
+.city-panel h2 small { font-size: 12px; color: var(--muted); font-weight: 400; }
+.city-panel h4 { margin: 10px 0 4px; color: var(--gold-hi); font-size: 14px; }
+.close { position: absolute; top: 8px; right: 10px; background: none; border: none; font-size: 16px; color: var(--muted); }
+.stat-grid { display: grid; grid-template-columns: 52px 1fr; gap: 4px 8px; font-size: 14px; align-items: center; }
+.stat-grid > span { color: var(--muted); }
+.bar { position: relative; height: 14px; background: #ffffff12; border-radius: 3px; overflow: hidden; }
+.bar div { height: 100%; background: linear-gradient(90deg, #8b6d2e, var(--gold-hi)); }
+.bar em { position: absolute; right: 4px; top: -2px; font-size: 12px; font-style: normal; }
+.gen-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.gen-chip { display: flex; flex-direction: column; align-items: center; font-size: 11px; width: 50px; }
+.gen-chip.acted { opacity: 0.4; }
+.tabs { display: flex; gap: 4px; margin: 10px 0 8px; }
+.tabs button { flex: 1; padding: 5px; background: #1a212b; border: 1px solid #6e5a33; border-radius: 4px; }
+.tabs button.active { border-color: var(--gold-hi); background: #2c2717; color: var(--gold-hi); }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.field select, .sub select { width: 100%; background: #0f141b; color: var(--hanji); border: 1px solid #6e5a33; padding: 5px; border-radius: 4px; }
+.actions { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.actions.row { flex-direction: row; flex-wrap: wrap; }
+.actions button, .file-btn {
+  padding: 8px 10px; text-align: left; background: linear-gradient(#232b36, #171d25); border: 1px solid #6e5a33; border-radius: 4px;
+}
+.actions button:hover:not(:disabled), .file-btn:hover { border-color: var(--gold-hi); }
+.actions button small { color: var(--muted); margin-left: 6px; }
+.actions button.primary { background: linear-gradient(#6b5221, #3d2e12); border-color: var(--gold-hi); text-align: center; font-weight: 700; }
+.file-btn input { display: none; }
+.sub { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid #ffffff14; border-radius: 4px; }
+.sub input[type=range] { width: 100%; accent-color: var(--gold); }
+.hint { margin: 0; font-size: 12px; color: var(--muted); }
+
+/* ── 하단 ── */
+.event-log { position: absolute; left: 14px; bottom: 14px; z-index: 4; width: 380px; padding: 8px 12px; cursor: pointer; }
+.log-line { font-size: 14px; padding: 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-line .mark { display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center; border-radius: 3px; background: #b8902e; color: #111; font-size: 11px; font-weight: 800; margin-right: 6px; }
+.log-line.danger .mark { background: #c2463c; color: #fff; }
+.log-line.good .mark { background: #3f9a4a; color: #fff; }
+.bottom-right { position: absolute; right: 14px; bottom: 14px; z-index: 4; display: flex; align-items: flex-end; gap: 14px; }
+.command-bar { display: flex; gap: 4px; padding: 6px 10px; background: var(--panel); border: 1px solid var(--gold); border-radius: 8px; }
+.bar-btn { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 62px; padding: 4px; background: none; border: none; font-size: 14px; }
+.bar-btn .bi { font-size: 24px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border: 1px solid #6e5a33; border-radius: 50%; background: radial-gradient(#2a323d, #12171e); }
+.bar-btn:hover:not(:disabled) .bi { border-color: var(--gold-hi); }
+.turn-btn {
+  width: 128px; height: 128px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font-size: 22px; font-weight: 800; color: var(--hanji);
+  background: radial-gradient(circle at 50% 35%, #3a3322, #15120b 75%);
+  border: 3px solid var(--gold); box-shadow: 0 0 0 4px #0008, 0 0 0 6px #8b6d2e, 0 8px 24px #000c;
+}
+.turn-btn:hover:not(:disabled) { box-shadow: 0 0 0 4px #0008, 0 0 0 6px var(--gold-hi), 0 0 24px #f0d68e66; }
+.turn-btn .arrow { font-size: 30px; }
+.idle-hint { position: absolute; right: 0; bottom: -2px; transform: translateY(100%); font-size: 11px; color: var(--muted); width: 128px; text-align: center; }
+
+.toast { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 20; padding: 10px 18px; border-radius: 6px; border: 1px solid var(--gold); background: #141a22f0; font-size: 15px; }
+.toast.err { border-color: #c2463c; color: #ffb4aa; }
+
+/* ── 모달 ── */
+.modal-back { position: fixed; inset: 0; z-index: 30; background: #0008; display: flex; align-items: center; justify-content: center; }
+.modal { width: min(560px, 92vw); max-height: 84vh; display: flex; flex-direction: column; position: relative; }
+.modal.wide { width: min(940px, 94vw); }
+.modal header { padding: 10px 16px; border-bottom: 1px solid #6e5a33; }
+.modal header h2 { margin: 0; font-size: 20px; }
+.modal-body { padding: 12px 16px 16px; overflow-y: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table th { text-align: left; color: var(--gold-hi); font-weight: 600; border-bottom: 1px solid #6e5a33; padding: 5px; }
+.table td { padding: 4px 5px; border-bottom: 1px solid #ffffff10; }
+.table tbody tr:hover { background: #ffffff0a; cursor: pointer; }
+.table tr.dead { opacity: 0.45; }
+.chronicle { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+.chronicle li { padding: 4px 0; border-bottom: 1px solid #ffffff0d; }
+.chronicle .when { color: var(--gold-hi); margin-right: 8px; font-size: 12px; }
+.chronicle li.danger { color: #ffb4aa; } .chronicle li.good { color: #b8e6b0; }
+.battle-report { padding: 8px; margin-bottom: 10px; border: 1px solid #ffffff18; border-radius: 4px; }
+.battle-report.won h3 { color: var(--gold-hi); } .battle-report.lost h3 { color: #ffb4aa; }
+.battle-report h3 { margin: 0 0 8px; font-size: 17px; }
+.battle-report .vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; font-size: 14px; }
+.battle-report .x { font-size: 20px; font-weight: 800; color: var(--gold); }
+.battle-report h4 { margin: 10px 0 4px; font-size: 14px; color: var(--gold-hi); }
+.battle-report ul { margin: 0; padding-left: 18px; font-size: 13px; }
+.help li { margin-bottom: 6px; line-height: 1.5; }
+
+/* ── 타이틀 ── */
+.title-screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 45%, #1d3b55, #08121d); }
+.title-bg { position: absolute; inset: 0; opacity: 0.35; }
+.title-box { position: relative; width: min(520px, 92vw); padding: 28px 32px; text-align: center; }
+.title-box h1 { margin: 0 0 12px; font-size: 44px; letter-spacing: 4px; color: var(--gold-hi); }
+.title-box h1 span { display: block; font-size: 24px; letter-spacing: 2px; color: var(--hanji); }
+.quote { line-height: 1.8; color: var(--hanji); }
+.scenario { font-size: 14px; color: var(--muted); }
+.title-box .actions button { text-align: center; font-size: 17px; }
+
+@media (max-width: 1200px) {
+  .resources { gap: 12px; font-size: 14px; }
+  .topbar .title { font-size: 18px; }
+  .city-panel { right: 14px; top: auto; bottom: 160px; }
+}

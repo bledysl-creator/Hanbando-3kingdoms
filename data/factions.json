@@ -1,0 +1,6 @@
+[
+  { "id": "wei", "name": "위", "hanja": "魏", "color": "#2f5fb3", "rulerId": "cao_cao", "traits": ["인재", "대군"] },
+  { "id": "lu", "name": "여", "hanja": "呂", "color": "#8a4cc2", "rulerId": "lu_bu", "traits": ["최강무력", "불안정"] },
+  { "id": "shu", "name": "촉", "hanja": "蜀", "color": "#3f9a4a", "rulerId": "liu_bei", "traits": ["인덕", "곡창"] },
+  { "id": "wu", "name": "오", "hanja": "吳", "color": "#c2463c", "rulerId": "sun_quan", "traits": ["수군", "교역"] }
+]

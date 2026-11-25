@@ -1,0 +1,50 @@
+// 저장 계층. 게임 코드는 이 인터페이스만 사용한다 → 나중에 Supabase로 교체 가능.
+import { del, get, keys, set } from 'idb-keyval';
+import { SAVE_VERSION, type GameState } from '../core';
+
+export interface SaveMeta { slot: string; label: string; savedAt: string; turn: number; year: number; season: number }
+
+export interface SaveRepository {
+  save(slot: string, state: GameState): Promise<void>;
+  load(slot: string): Promise<GameState | null>;
+  list(): Promise<SaveMeta[]>;
+  remove(slot: string): Promise<void>;
+}
+
+const PREFIX = 'hanbando3k:save:';
+
+/** 구버전 세이브를 현재 구조로 올린다. 구조가 바뀌면 여기에 단계를 추가한다. */
+export function migrate(raw: unknown): GameState {
+  const s = raw as GameState;
+  if (!s || typeof s !== 'object' || typeof s.saveVersion !== 'number') throw new Error('세이브 파일 형식이 아닙니다.');
+  if (s.saveVersion > SAVE_VERSION) throw new Error('더 새로운 버전의 세이브입니다.');
+  return s;
+}
+
+export const indexedDbRepo: SaveRepository = {
+  async save(slot, state) {
+    const meta: SaveMeta = { slot, label: slot === 'auto' ? '자동 저장' : `슬롯 ${slot}`, savedAt: new Date().toISOString(), turn: state.turn, year: state.year, season: state.season };
+    await set(PREFIX + slot, { meta, state });
+  },
+  async load(slot) {
+    const v = await get<{ meta: SaveMeta; state: GameState }>(PREFIX + slot);
+    return v ? migrate(v.state) : null;
+  },
+  async list() {
+    const ks = (await keys()).filter((k) => typeof k === 'string' && k.startsWith(PREFIX)) as string[];
+    const metas = await Promise.all(ks.map(async (k) => (await get<{ meta: SaveMeta }>(k))?.meta));
+    return metas.filter((m): m is SaveMeta => !!m).sort((a, b) => a.slot.localeCompare(b.slot));
+  },
+  async remove(slot) {
+    await del(PREFIX + slot);
+  },
+};
+
+export function exportJson(state: GameState) {
+  const blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `hanbando3k-${state.year}-${state.season}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
