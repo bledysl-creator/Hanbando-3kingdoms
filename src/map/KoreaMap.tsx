@@ -40,7 +40,14 @@ function elevColor(m: number): string {
   return 'rgb(220,215,205)';
 }
 
+export interface MapLayers { landmarks: boolean; rivers: boolean; roads: boolean; labels: boolean; relief: boolean }
+export const DEFAULT_LAYERS: MapLayers = { landmarks: true, rivers: true, roads: true, labels: true, relief: true };
+export const LAYER_LABELS: { key: keyof MapLayers; label: string }[] = [
+  { key: 'relief', label: '음영 기복' }, { key: 'rivers', label: '강' }, { key: 'roads', label: '길' }, { key: 'landmarks', label: '거점' }, { key: 'labels', label: '시·군 이름' },
+];
+
 interface Props {
+  layers?: MapLayers;
   mode?: MapMode;
   state: GameState;
   selectedCityId?: string | null;
@@ -50,7 +57,7 @@ interface Props {
 }
 
 
-export function KoreaMap({ mode = 'political', state, selectedCityId, highlightCityIds = [], onSelectCity, mini }: Props) {
+export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, selectedCityId, highlightCityIds = [], onSelectCity, mini }: Props) {
   const cities = useMemo(() => Object.values(state.cities), [state.cities]);
   const pts = useMemo(() => cities.map((c) => project([c.lon, c.lat])), [cities]);
   const glyphs = useMemo(() => RIDGES.flatMap((r) => mountainGlyphs(r.pts)), []);
@@ -127,7 +134,7 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
         {/* 육지 */}
         <path d={LAND_PATH} fill="url(#landShade)" stroke="#c9b37a" strokeWidth={mini ? 2 : 1.2} filter={mini ? undefined : 'url(#coast)'} />
         {/* v1.9 실측 고도 음영 기복도 (Terrain Tiles DEM, tools/geo/build_terrain.py) */}
-        {!mini && <image href={`${import.meta.env.BASE_URL}terrain.webp`} x={0} y={0} width={VIEW_W} height={VIEW_H} preserveAspectRatio="none" opacity={mode === 'terrain' ? 1 : 0.6} pointerEvents="none" />}
+        {!mini && layers.relief && <image href={`${import.meta.env.BASE_URL}terrain.webp`} x={0} y={0} width={VIEW_W} height={VIEW_H} preserveAspectRatio="none" opacity={mode === 'terrain' ? 1 : 0.6} pointerEvents="none" />}
 
         {/* 세력 영역: 전국 시·군을 관할 도시 소유 세력 색으로 */}
         <g clipPath={`url(#${mini ? 'land-mini' : 'land'})`}>
@@ -170,10 +177,10 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
                 <path key={i} d={`M${x - 6},${y + 4}L${x},${y - 6}L${x + 6},${y + 4}`} fill="#3b3426" fillOpacity={0.55} stroke="#d8cba3" strokeOpacity={0.45} strokeWidth={0.8} />
               ))}
               {/* 강 */}
-              {RIVERS.map((r, i) => (
+              {layers.rivers && RIVERS.map((r, i) => (
                 <path key={i} d={toPath(r.pts)} fill="none" stroke="#7fb6d6" strokeOpacity={r.estimated ? 0.65 : 0.85} strokeWidth={r.name === '압록강' || r.name === '두만강' || r.name === '한강' || r.name === '낙동강' ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round"><title>{r.name + (r.estimated ? ' (추정선)' : '')}</title></path>
               ))}
-              {view.k >= 1.2 && RIVERS.filter((r, i) => RIVERS.findIndex((x) => x.name === r.name) === i).map((r) => {
+              {layers.rivers && view.k >= 1.2 && RIVERS.filter((r, i) => RIVERS.findIndex((x) => x.name === r.name) === i).map((r) => {
                 const [x, y] = project(r.pts[Math.floor(r.pts.length / 2)]);
                 return <text key={'rl' + r.name} x={x + 4} y={y - 3} fontSize={6} fill="#a8d4ee" fontStyle="italic" pointerEvents="none" stroke="#14202a" strokeWidth={1.4} paintOrder="stroke">{r.name}</text>;
               })}
@@ -184,13 +191,13 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
         {!mini && (
           <>
             {/* 시·군 이름 (확대 시) */}
-            {view.k >= 1.7 && REGIONS.map((r) => {
+            {layers.labels && view.k >= 1.7 && REGIONS.map((r) => {
               const [x, y] = project([r.lon, r.lat]);
               return <text key={r.id} x={x} y={y} textAnchor="middle" fontSize={5.5 / Math.min(view.k / 1.7, 1.6)} fill="#f3e7cc" fillOpacity={0.75} pointerEvents="none">{r.name}</text>;
             })}
 
             {/* 도로 */}
-            {state.roads.map((r) => {
+            {layers.roads && state.roads.map((r) => {
               const [x1, y1] = project([state.cities[r.from].lon, state.cities[r.from].lat]);
               const [x2, y2] = project([state.cities[r.to].lon, state.cities[r.to].lat]);
               const dash = r.type === 'sea' ? '2 6' : r.type === 'pass' ? '6 4' : undefined;
@@ -198,7 +205,7 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
             })}
 
             {/* 거점: 고개·나루·항구·산성 (v1.3) */}
-            {LANDMARKS.map((l) => {
+            {layers.landmarks && LANDMARKS.map((l) => {
               const [x, y] = project([l.lon, l.lat]);
               const sz = 1 / Math.min(Math.max(view.k, 1), 2.2);
               const icon = l.type === 'pass' ? '⛰' : l.type === 'ford' ? '⛴' : l.type === 'port' ? '⚓' : '🏯';

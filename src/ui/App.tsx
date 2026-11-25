@@ -1,7 +1,7 @@
 // 앱 루트: 타이틀 → 메인 지도 화면. 게임 상태는 core 함수로만 바꾼다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
-import { KoreaMap, MAP_MODES, type MapMode } from '../map/KoreaMap';
+import { DEFAULT_LAYERS, KoreaMap, LAYER_LABELS, MAP_MODES, type MapLayers, type MapMode } from '../map/KoreaMap';
 import { indexedDbRepo } from '../save/saveRepository';
 import { VERSION } from '../version';
 import { CityPanel } from './components/CityPanel';
@@ -83,6 +83,10 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
   const [auto, setAuto] = useState(false);
   const [offersHidden, setOffersHidden] = useState(false);
   const [mapMode, setMapMode] = useState<MapMode>('political');
+  const [layers, setLayers] = useState<MapLayers>(() => {
+    try { return { ...DEFAULT_LAYERS, ...JSON.parse(localStorage.getItem('hanbando.layers') ?? '{}') }; } catch { return DEFAULT_LAYERS; }
+  });
+  const toggleLayer = (k: keyof MapLayers) => setLayers((l) => { const n = { ...l, [k]: !l[k] }; localStorage.setItem('hanbando.layers', JSON.stringify(n)); return n; });
   useEffect(() => setOffersHidden(false), [state.turn]);
 
   const flash = (text: string, ok = true) => { setToast({ text, ok }); setTimeout(() => setToast(null), 2600); };
@@ -133,7 +137,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
   return (
     <div className="game">
       <div className="map-layer">
-        <KoreaMap mode={mapMode} state={state} selectedCityId={selected} highlightCityIds={hover} onSelectCity={setSelected} />
+        <KoreaMap layers={layers} mode={mapMode} state={state} selectedCityId={selected} highlightCityIds={hover} onSelectCity={setSelected} />
       </div>
 
       <TopBar state={state} onHelp={() => setModal('help')} onSettings={() => setModal('settings')} onMail={() => setModal('battles')} onTrophy={() => setModal('factions')} />
@@ -149,6 +153,11 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
           {MAP_MODES.map((m) => (
             <button key={m.key} className={mapMode === m.key ? 'active' : ''} onClick={() => setMapMode(m.key)}>{m.label}</button>
           ))}
+          <div className="layers">
+            {LAYER_LABELS.map((l) => (
+              <label key={l.key}><input type="checkbox" checked={layers[l.key]} onChange={() => toggleLayer(l.key)} /> {l.label}</label>
+            ))}
+          </div>
           {mapMode !== 'political' && (
             <div className="legend">
               {mapMode === 'terrain' ? <><span className="lg terrain" /> 저지대 → 고산 <small>(실측 고도 음영)</small></> : mapMode === 'weather' ? <span>☀️맑음 🌧️비 ⛈️폭우 🌀태풍 🌨️눈 ❄️폭설 🥶한파 🏜️가뭄 🌫️안개</span> : <><span className="lg ramp" /> 낮음 → 높음</>}
