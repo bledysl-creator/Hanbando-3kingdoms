@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, createGame, DATA, endTurn, SCENARIOS, missionProgress, citiesOf } from '../src/core';
+import { applyCommand, createGame, DATA, endTurn, SCENARIOS, missionProgress, citiesOf, minGarrison, neighbors } from '../src/core';
 import { rand } from '../src/core/rng/rng';
 import { endTurnMut } from '../src/core/systems/turn';
 
 const sc = SCENARIOS['197_sabun'];
+const neighborsOf = (s: ReturnType<typeof createGame>, id: string) => neighbors(s, id).map((n) => n.city.id);
 const newGame = (seed = 1, player: string | null = 'shu') => createGame(DATA, sc, { seed, playerFactionId: player });
 
 describe('데이터 무결성', () => {
@@ -771,5 +772,24 @@ describe('v3.4 장수 편제·연의 장수·반란', () => {
     const e = s.log.find((l) => l.event === 'capture')!;
     expect(e).toBeTruthy();
     expect(e.factionId).not.toBe(e.other);
+  });
+});
+
+describe('병력 이동 양', () => {
+  it('정한 만큼만 옮기고, 넘치게 보내도 최소 수비병은 남는다', () => {
+    const s = newGame(3);
+    const g = Object.values(s.generals).find((x) => x.alive && x.faction === 'shu' && x.id !== s.factions.shu.rulerId
+      && neighborsOf(s, x.city).some((c) => s.cities[c].owner === 'shu'))!;
+    const from = g.city;
+    const to = neighborsOf(s, from).find((c) => s.cities[c].owner === 'shu')!;
+    s.cities[from].troops = 17500;
+    const before = s.cities[to].troops;
+    const r = applyCommand(s, 'shu', { type: 'transfer', generalId: g.id, toCityId: to, troops: 3000 });
+    expect(r.result.ok).toBe(true);
+    expect(r.state.cities[from].troops).toBe(14500);
+    expect(r.state.cities[to].troops).toBe(before + 3000);
+    const g2 = Object.values(r.state.generals).find((x) => x.alive && x.faction === 'shu' && x.city === from && !x.acted && x.id !== g.id)!;
+    const r2 = applyCommand(r.state, 'shu', { type: 'transfer', generalId: g2.id, toCityId: to, troops: 999999 });
+    expect(r2.state.cities[from].troops).toBe(minGarrison(r2.state));
   });
 });

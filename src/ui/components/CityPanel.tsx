@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Command, GameState, General, TacticKind } from '../../core';
-import { BALANCE, DATA, foodPrice, governorOf, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
+import { BALANCE, DATA, foodPrice, governorOf, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, minGarrison, minMarch, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -99,7 +99,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
             </label>
           )}
           {actor && tab === '내정' && <DomesticTab state={state} cityId={c.id} actor={actor} onCommand={onCommand} />}
-          {actor && tab === '군사' && <MilitaryTab state={state} actor={actor} cityTroops={c.troops} population={c.population} neighbors={ns} onCommand={onCommand} onTargetHover={onTargetHover} />}
+          {actor && tab === '군사' && <MilitaryTab key={`${c.id}:${actor.id}`} state={state} actor={actor} cityTroops={c.troops} population={c.population} neighbors={ns} onCommand={onCommand} onTargetHover={onTargetHover} />}
           {actor && tab === '계략' && <IntrigueTab state={state} actor={actor} onCommand={onCommand} />}
           {actor && tab === '인재' && <TalentTab state={state} actor={actor} free={free} onCommand={onCommand} />}
         </>
@@ -164,9 +164,15 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
   const pf = state.playerFactionId!;
   const maxConscript = Math.floor(population * BALANCE.conscriptMaxPopRatio);
   const [amount, setAmount] = useState(Math.min(5000, maxConscript));
-  const maxOut = Math.max(0, cityTroops - 500);
+  const keep = minGarrison(state);
+  const least = minMarch(state);
+  const step = state.mapScale === 'region' ? 100 : 500;
+  const maxOut = Math.max(0, cityTroops - keep);
   const [tactic, setTactic] = useState<TacticKind | ''>('');
-  const [troops, setTroops] = useState(Math.round(maxOut * 0.7));
+  const [troopsRaw, setTroops] = useState(Math.floor((maxOut * 0.7) / step) * step);
+  const troops = Math.min(troopsRaw, maxOut);
+  const [moveRaw, setMove] = useState(0);
+  const moveTroops = Math.min(moveRaw, maxOut);
   const enemies = ns.filter((n) => n.city.owner !== pf);
   const friends = ns.filter((n) => n.city.owner === pf);
   const [target, setTarget] = useState(enemies[0]?.city.id ?? '');
@@ -211,9 +217,9 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
                 </option>
               ))}
             </select>
-            <input type="range" min={0} max={maxOut} step={500} value={Math.min(troops, maxOut)} onChange={(e) => setTroops(+e.target.value)} />
+            <TroopSlider value={troops} max={maxOut} step={step} total={cityTroops} keep={keep} onChange={setTroops} />
             {target && (() => {
-              const ratio = estimateRatio(state, actor, city, state.cities[target], Math.min(troops, maxOut));
+              const ratio = estimateRatio(state, actor, city, state.cities[target], troops);
               const ops = marchOpinions(state, city.id, ratio, supply < 1, statusOf(state, pf, state.cities[target].owner ?? '') !== 'war');
               return (
                 <div className="council">
@@ -244,8 +250,8 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
                 </div>
               );
             })()}
-            <button disabled={troops < 1000} onClick={() => onCommand({ type: 'march', generalId: actor.id, toCityId: target, troops, tactic: tactic || undefined })}>⚔️ {Math.min(troops, maxOut).toLocaleString()}명 출진</button>
-            <p className="hint">군량 {Math.ceil(Math.min(troops, maxOut) * BALANCE.foodPerTroop).toLocaleString()} 소모. 도하·고개·겨울은 공격에 불리합니다.</p>
+            <button disabled={troops < least} onClick={() => onCommand({ type: 'march', generalId: actor.id, toCityId: target, troops, tactic: tactic || undefined })}>⚔️ {troops < least ? `최소 ${least.toLocaleString()}명 필요` : `${troops.toLocaleString()}명 출진`}</button>
+            <p className="hint">군량 {Math.ceil(troops * BALANCE.foodPerTroop).toLocaleString()} 소모. 도하·고개·겨울은 공격에 불리합니다.</p>
           </>
         )}
       </div>
@@ -256,9 +262,31 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
             <select value={dest} onChange={(e) => setDest(e.target.value)}>
               {friends.map((n) => <option key={n.city.id} value={n.city.id}>{n.city.name} (병력 {n.city.troops.toLocaleString()})</option>)}
             </select>
-            <button onClick={() => onCommand({ type: 'transfer', generalId: actor.id, toCityId: dest, troops: Math.min(troops, maxOut) })}>🚶 장수 + 병력 {Math.min(troops, maxOut).toLocaleString()}명 이동</button>
+            <TroopSlider value={moveTroops} max={maxOut} step={step} total={cityTroops} keep={keep} onChange={setMove} />
+            <button onClick={() => onCommand({ type: 'transfer', generalId: actor.id, toCityId: dest, troops: moveTroops })}>🚶 {moveTroops > 0 ? `장수 + 병력 ${moveTroops.toLocaleString()}명 이동` : '장수만 이동'}</button>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** 병력 양 슬라이더: 0 ~ (도시 병력 − 최소 수비병). 남는 병력도 함께 보여 준다. */
+function TroopSlider({ value, max, step, total, keep, onChange }: {
+  value: number; max: number; step: number; total: number; keep: number; onChange: (v: number) => void;
+}) {
+  if (max <= 0) return <p className="muted small">보낼 병력이 없습니다 (도시에 최소 {keep.toLocaleString()}명은 남겨야 함).</p>;
+  const pct = (r: number) => Math.floor((max * r) / step) * step;
+  return (
+    <div className="troop-slider">
+      <input type="range" min={0} max={max} step={1} value={value}
+        onChange={(e) => { const v = +e.target.value; onChange(v >= max ? max : Math.round(v / step) * step); }} />
+      <div className="troop-slider-row">
+        <span>보냄 <b>{value.toLocaleString()}</b> · 남김 <b>{(total - value).toLocaleString()}</b> <small>(최대 {max.toLocaleString()})</small></span>
+        <span className="troop-quick">
+          {[0, 0.25, 0.5, 0.75].map((r) => <button key={r} type="button" onClick={() => onChange(pct(r))}>{r * 100}%</button>)}
+          <button type="button" onClick={() => onChange(max)}>최대</button>
+        </span>
       </div>
     </div>
   );

@@ -306,3 +306,11 @@ button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 @media (prefers-reduced-motion: reduce) { .art-wave, .art-flicker, .art-smoke, .art-flash, .event-card, .event-backdrop { animation: none; } }
 .event-actions button { background: #1b222c; color: #f3e7cc; border: 1px solid #a88d4f; padding: 7px 16px; border-radius: 5px; font-size: 14px; cursor: pointer; }
 .event-actions button.primary { background: linear-gradient(#e2c06a, #b88f36); color: #1a1208; font-weight: 700; }
+
+/* 병력 양 슬라이더 (출진·이동) */
+.troop-slider { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 6px; }
+.troop-slider input[type=range] { width: 100%; }
+.troop-slider-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; font-size: 13px; }
+.troop-slider-row small { color: var(--muted); }
+.troop-quick { display: flex; gap: 3px; }
+.actions .troop-quick button { width: auto; padding: 2px 7px; font-size: 12px; text-align: center; }
