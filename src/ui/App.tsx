@@ -1,7 +1,7 @@
 // 앱 루트: 타이틀 → 메인 지도 화면. 게임 상태는 core 함수로만 바꾼다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { applyCommand, respondOffer, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
-import { KoreaMap } from '../map/KoreaMap';
+import { KoreaMap, MAP_MODES, type MapMode } from '../map/KoreaMap';
 import { indexedDbRepo } from '../save/saveRepository';
 import { VERSION } from '../version';
 import { CityPanel } from './components/CityPanel';
@@ -79,6 +79,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
   const [report, setReport] = useState<number | null>(null);
   const [auto, setAuto] = useState(false);
   const [offersHidden, setOffersHidden] = useState(false);
+  const [mapMode, setMapMode] = useState<MapMode>('political');
   useEffect(() => setOffersHidden(false), [state.turn]);
 
   const flash = (text: string, ok = true) => { setToast({ text, ok }); setTimeout(() => setToast(null), 2600); };
@@ -127,7 +128,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
   return (
     <div className="game">
       <div className="map-layer">
-        <KoreaMap state={state} selectedCityId={selected} highlightCityIds={hover} onSelectCity={setSelected} />
+        <KoreaMap mode={mapMode} state={state} selectedCityId={selected} highlightCityIds={hover} onSelectCity={setSelected} />
       </div>
 
       <TopBar state={state} onHelp={() => setModal('help')} onSettings={() => setModal('settings')} onMail={() => setModal('battles')} onTrophy={() => setModal('factions')} />
@@ -139,6 +140,16 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
 
       <div className="right-col">
         <MiniMap state={state} />
+        <div className="map-modes panel">
+          {MAP_MODES.map((m) => (
+            <button key={m.key} className={mapMode === m.key ? 'active' : ''} onClick={() => setMapMode(m.key)}>{m.label}</button>
+          ))}
+          {mapMode !== 'political' && (
+            <div className="legend">
+              {mapMode === 'terrain' ? <><span className="lg terrain" /> 저지대 → 고산 <small>(추정 고도)</small></> : <><span className="lg ramp" /> 낮음 → 높음</>}
+            </div>
+          )}
+        </div>
         <MissionPanel state={state} />
         {selected && (
           <CityPanel state={state} cityId={selected} tab={tab} onTab={setTab} onCommand={onCommand} onClose={() => setSelected(null)} onTargetHover={setHover} />

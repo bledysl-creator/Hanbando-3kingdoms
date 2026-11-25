@@ -3,7 +3,38 @@ import { useMemo, useRef, useState } from 'react';
 import type { GameState } from '../core';
 import { LAND_PATH, REGIONS, REGION_PATHS, RIDGES, RIVERS, VIEW_H, VIEW_W, mountainGlyphs, project, toPath } from './geo';
 
+export type MapMode = 'political' | 'terrain' | 'economy' | 'population' | 'military' | 'order';
+export const MAP_MODES: { key: MapMode; label: string }[] = [
+  { key: 'political', label: '정치' },
+  { key: 'terrain', label: '지형' },
+  { key: 'economy', label: '경제' },
+  { key: 'population', label: '인구' },
+  { key: 'military', label: '병력' },
+  { key: 'order', label: '민심' },
+];
+
+// 값(0~1) → 색 (어두운 남색 → 금색 → 붉은색)
+function ramp(t: number): string {
+  t = Math.max(0, Math.min(1, t));
+  const stops = [[24, 40, 64], [64, 110, 90], [201, 166, 90], [220, 90, 60]];
+  const x = t * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(x));
+  const f = x - i;
+  const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+// 고도 색 (저지대 녹색 → 구릉 황토 → 고산 갈색·흰색)
+function elevColor(m: number): string {
+  const stops: [number, number[]][] = [[0, [70, 120, 70]], [300, [120, 140, 80]], [700, [160, 140, 90]], [1100, [130, 100, 70]], [1500, [220, 215, 205]]];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const [a, ca] = stops[i], [b, cb] = stops[i + 1];
+    if (m <= b) { const f = (m - a) / (b - a); return `rgb(${ca.map((v, k) => Math.round(v + (cb[k] - v) * f)).join(',')})`; }
+  }
+  return 'rgb(220,215,205)';
+}
+
 interface Props {
+  mode?: MapMode;
   state: GameState;
   selectedCityId?: string | null;
   highlightCityIds?: string[];
@@ -12,7 +43,7 @@ interface Props {
 }
 
 
-export function KoreaMap({ state, selectedCityId, highlightCityIds = [], onSelectCity, mini }: Props) {
+export function KoreaMap({ mode = 'political', state, selectedCityId, highlightCityIds = [], onSelectCity, mini }: Props) {
   const cities = useMemo(() => Object.values(state.cities), [state.cities]);
   const pts = useMemo(() => cities.map((c) => project([c.lon, c.lat])), [cities]);
   const glyphs = useMemo(() => RIDGES.flatMap((r) => mountainGlyphs(r.pts)), []);
@@ -92,15 +123,26 @@ export function KoreaMap({ state, selectedCityId, highlightCityIds = [], onSelec
         {/* 세력 영역: 전국 시·군을 관할 도시 소유 세력 색으로 */}
         <g clipPath={`url(#${mini ? 'land-mini' : 'land'})`}>
           {REGIONS.map((r) => {
-            const owner = state.cities[r.parent]?.owner;
+            const pc = state.cities[r.parent];
+            const owner = pc?.owner;
             const f = owner ? state.factions[owner] : null;
             const sel = r.parent === selectedCityId;
+            let fill = f ? f.color : '#8a8070';
+            let op = mini ? 0.9 : sel ? 0.62 : f ? 0.42 : 0.25;
+            if (!mini && mode !== 'political' && pc) {
+              op = sel ? 0.95 : 0.8;
+              if (mode === 'terrain') fill = elevColor(r.elev);
+              else if (mode === 'economy') fill = ramp((pc.agriculture + pc.commerce) / 180);
+              else if (mode === 'population') fill = ramp(pc.population / 100000);
+              else if (mode === 'military') fill = ramp(pc.troops / 40000);
+              else if (mode === 'order') fill = ramp(pc.order / 100);
+            }
             return (
               <path
                 key={r.id}
                 d={REGION_PATHS[r.id]}
-                fill={f ? f.color : '#8a8070'}
-                fillOpacity={mini ? 0.9 : sel ? 0.62 : f ? 0.42 : 0.25}
+                fill={fill}
+                fillOpacity={op}
                 stroke={mini ? 'none' : '#0d1420'}
                 strokeOpacity={0.28}
                 strokeWidth={0.5}

@@ -193,3 +193,12 @@ describe('전국 시·군 (v0.5)', () => {
     for (const n of ['서울특별시', '부산광역시', '수원시', '안동시', '울릉군', '서귀포시', '평양', '신의주시', '함흥시', '개성시']) expect(names.has(n), n).toBe(true);
   });
 });
+
+describe('지형 고도 (v0.6)', () => {
+  it('모든 시·군에 추정 고도가 있고 개마고원이 평야보다 높다', () => {
+    const rs = regions as { name: string; elev: number }[];
+    for (const r of rs) expect(typeof r.elev).toBe('number');
+    const get = (n: string) => rs.find((r) => r.name === n)!.elev;
+    expect(get('삼지연')).toBeGreaterThan(get('김제시'));
+  });
+});

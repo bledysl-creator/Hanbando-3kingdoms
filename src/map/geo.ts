@@ -70,6 +70,7 @@ export interface Region {
   lon: number;
   lat: number;
   parent: string; // 관할 게임 도시 id
+  elev: number; // 추정 평균 고도(m) — tools/geo/estimate_elevation.py
   rings: LonLat[][];
 }
 
