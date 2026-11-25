@@ -465,3 +465,20 @@ describe('수군 (v2.0)', () => {
     expect(fleet.reasons.join()).toContain('전선 30척');
   });
 });
+
+import { surrenderCandidate, processSurrenders } from '../src/core';
+describe('귀순 (v2.1)', () => {
+  it('대세가 기운 약소 AI 세력은 강국에 귀순할 수 있고, 플레이어 세력은 귀순하지 않는다', () => {
+    const s = newGame(7, 'wei');
+    // 여포에게 혜산 하나만 남기고 나머지를 위에 넘긴다
+    for (const c of Object.values(s.cities)) if (c.owner !== 'lu' || c.id !== 'hyesan') c.owner = c.owner === 'lu' || c.owner === 'shu' || c.owner === 'wu' ? 'wei' : c.owner;
+    s.cities.hyesan.troops = 1000;
+    expect(surrenderCandidate(s, 'lu')?.to).toBe('wei');
+    expect(surrenderCandidate(s, 'wei')).toBeNull();
+    s.season = 0;
+    for (let i = 0; i < 40 && s.factions.lu.alive; i++) processSurrenders(s);
+    expect(s.factions.lu.alive).toBe(false);
+    expect(s.cities.hyesan.owner).toBe('wei');
+    expect(s.generals.lu_bu.faction).toBe('wei');
+  });
+});

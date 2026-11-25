@@ -27,6 +27,8 @@ export const BALANCE = {
   summerRainPenalty: 1, // v0.7부터 날씨 시스템으로 대체
   roadAttackModifier: { land: 1, river: 0.8, pass: 0.85, sea: 0.75 } as Record<string, number>,
   mountainDefenseBonus: 1.2,
+  /** 귀순 (v2.1): 도시 이 수 이하, 이웃 강국이 전체 도시의 이 비율 이상, 병력이 강국의 이 비율 이하일 때 해마다 확률 */
+  surrenderMaxCities: 3, surrenderDominance: 0.4, surrenderTroopRatio: 0.3, surrenderChance: 0.35,
   /** 수군 (v2.0) */
   shipWood: 400, shipGold: 40, shipsPerBuild: 10, maxShipsPerCity: 60,
   /** 전선 1척당 상륙 작전 공격 보정, 상한 */

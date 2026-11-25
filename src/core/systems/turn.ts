@@ -9,6 +9,7 @@ import { expireTreaties } from '../diplomacy/diplomacy';
 import { applyWeatherEffects, rollWeather } from './weather';
 import { canRise, processAiUprisings, processLifecycle } from './lifecycle';
 import { recordAnnal } from './chronicle';
+import { processSurrenders } from './surrender';
 import { landmarksOfCity } from '../data';
 
 export function processEconomy(s: GameState) {
@@ -118,6 +119,7 @@ export function endTurnMut(s: GameState) {
   processLifecycle(s);
   if (s.season === 0) recordAnnal(s);
   processAiUprisings(s);
+  processSurrenders(s);
   checkOutcome(s);
   expireTreaties(s, (t) => log(s, t, 'info'));
   if (s.outcome === 'playing') log(s, `${s.year}년 ${SEASONS[s.season]}이 되었습니다.`, 'info');
