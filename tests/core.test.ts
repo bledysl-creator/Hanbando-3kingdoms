@@ -223,3 +223,31 @@ describe('날씨 (v0.7)', () => {
     expect(b.reasons.join()).toContain('폭설');
   });
 });
+
+import { isConnectedToCapital } from '../src/core';
+describe('사기·훈련·보급 (v0.8)', () => {
+  it('훈련은 훈련도를 올리고 곡식을 쓴다', () => {
+    const s = newGame();
+    const { state, result } = applyCommand(s, 'shu', { type: 'train', generalId: 'guan_yu' });
+    expect(result.ok).toBe(true);
+    expect(state.cities.hanyang.training).toBeGreaterThan(s.cities.hanyang.training);
+    expect(state.factions.shu.food).toBeLessThan(s.factions.shu.food);
+  });
+  it('징병하면 신병이 섞여 훈련도가 내려간다', () => {
+    const s = newGame();
+    const { state } = applyCommand(s, 'shu', { type: 'conscript', generalId: 'guan_yu', amount: 9000 });
+    expect(state.cities.hanyang.training).toBeLessThan(s.cities.hanyang.training);
+  });
+  it('본거지와 끊긴 도시는 고립으로 판정된다', () => {
+    const s = newGame();
+    expect(isConnectedToCapital(s, 'shu', 'naju')).toBe(true);
+    s.cities.gwangju.owner = 'wu'; s.cities.jeonju.owner = 'wu';
+    expect(isConnectedToCapital(s, 'shu', 'naju')).toBe(false);
+  });
+  it('사기가 낮으면 같은 병력이라도 약하다', () => {
+    const s = newGame();
+    const base = { attackerTroops: 20000, attackerGeneral: s.generals.guan_yu, defenderCity: s.cities.kaesong, defenderGenerals: [], road: { from: 'hanyang', to: 'kaesong', type: 'land' as const }, season: 0, weather: 'clear' as const };
+    expect(resolveBattle({ rng: 1 }, { ...base, attackerMorale: 30, attackerTraining: 20 }).attackerPower)
+      .toBeLessThan(resolveBattle({ rng: 1 }, { ...base, attackerMorale: 90, attackerTraining: 90 }).attackerPower);
+  });
+});

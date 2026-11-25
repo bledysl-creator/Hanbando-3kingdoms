@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Command, GameState, General } from '../../core';
-import { BALANCE, WEATHER_ICON, WEATHER_LABEL, freeGeneralsIn, generalsIn, neighbors } from '../../core';
+import { BALANCE, WEATHER_ICON, WEATHER_LABEL, freeGeneralsIn, generalsIn, isConnectedToCapital, neighbors, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -51,6 +51,8 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
         <Bar label="농업" v={c.agriculture} />
         <Bar label="상업" v={c.commerce} />
         <Bar label="성벽" v={c.wall} />
+        <Bar label="사기" v={c.morale} />
+        <Bar label="훈련" v={c.training} />
         <span>특산</span><b>목재 {c.wood} · 철 {c.iron}</b>
         <span>날씨</span><b>{WEATHER_ICON[state.weather[c.id] ?? 'clear']} {WEATHER_LABEL[state.weather[c.id] ?? 'clear']}</b>
       </div>
@@ -138,13 +140,23 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
   const [dest, setDest] = useState(friends[0]?.city.id ?? '');
   useEffect(() => { onTargetHover(target ? [target] : []); return () => onTargetHover([]); }, [target]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const supply = supplyRatio(state, pf);
+  const isolated = !isConnectedToCapital(state, pf, actor.city);
+  const city = state.cities[actor.city];
   return (
     <div className="actions">
+      {(supply < 1 || isolated) && (
+        <p className="warn-line">{supply < 1 ? `⚠ 군량 보급 ${Math.round(supply * 100)}% — 출진 시 공격력 감소. ` : ''}{isolated ? '⚠ 본거지와 끊긴 고립 도시 — 출진 시 −20%' : ''}</p>
+      )}
+      <div className="sub">
+        <b>훈련</b> <small>곡 {Math.ceil(city.troops * BALANCE.trainFood).toLocaleString()} · 훈련 +{Math.max(3, Math.round(4 + actor.stats.leadership / 10))} · 사기 +3</small>
+        <button disabled={city.training >= 100} onClick={() => onCommand({ type: 'train', generalId: actor.id })}>🎯 병사 훈련 (현재 {city.training})</button>
+      </div>
       <div className="sub">
         <b>징병</b> <small>금 {Math.ceil(amount * BALANCE.conscriptGoldPerTroop)} · 철 {Math.ceil(amount * BALANCE.conscriptIronPerTroop)} · 인구 −{amount.toLocaleString()}</small>
         <input type="range" min={0} max={maxConscript} step={500} value={amount} onChange={(e) => setAmount(+e.target.value)} />
         <button disabled={amount < 100} onClick={() => onCommand({ type: 'conscript', generalId: actor.id, amount })}>🛡️ {amount.toLocaleString()}명 징병</button>
-        <p className="hint">병사도 결국 백성입니다. 징병하면 생산 인구와 민심이 줄어듭니다.</p>
+        <p className="hint">병사도 결국 백성입니다. 징병하면 생산 인구와 민심이 줄고, 신병이 섞여 훈련도·사기가 내려갑니다.</p>
       </div>
       <div className="sub">
         <b>출진</b>

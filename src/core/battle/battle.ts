@@ -5,6 +5,10 @@ import type { City, General, Road } from '../state/types';
 import { weatherAttackModifier } from '../systems/weather';
 
 export interface BattleInput {
+  attackerMorale?: number;
+  attackerTraining?: number;
+  supply?: number; // 0~1 보급 충족률
+  isolated?: boolean;
   weather?: import('../state/types').WeatherKind;
   attackerTroops: number;
   attackerGeneral: General;
@@ -24,12 +28,24 @@ export interface BattleOutcome {
 }
 
 const commandFactor = (lead: number, war: number) => (0.5 + lead / 100) * (0.7 + war / 333);
+/** 사기·훈련 배율 (둘 다 70·55 근처면 약 1) */
+export const qualityFactor = (morale: number, training: number) => (0.62 + morale / 250) * (0.78 + training / 250);
 
 export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   const reasons: string[] = [];
   const g = b.attackerGeneral;
   let atk = b.attackerTroops * commandFactor(g.stats.leadership, g.stats.war);
 
+  const aq = qualityFactor(b.attackerMorale ?? 70, b.attackerTraining ?? 55);
+  atk *= aq;
+  if (aq < 0.93) reasons.push(`아군 사기·훈련 부족 (×${aq.toFixed(2)})`);
+  else if (aq > 1.07) reasons.push(`높은 사기·훈련 (×${aq.toFixed(2)})`);
+  if (b.supply !== undefined && b.supply < 1) {
+    const sm = 0.6 + 0.4 * b.supply;
+    atk *= sm;
+    reasons.push(`군량 보급 부족으로 공격력 ${Math.round((1 - sm) * 100)}% 감소`);
+  }
+  if (b.isolated) { atk *= BALANCE.isolatedPenalty; reasons.push('본거지와 끊긴 고립된 도시에서 출진 −20%'); }
   const roadMod = BALANCE.roadAttackModifier[b.road.type] ?? 1;
   if (roadMod < 1) {
     const label = { river: '도하 공격', pass: '산길 행군', sea: '상륙 작전', land: '' }[b.road.type];
@@ -51,7 +67,10 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   );
   const dLead = best?.stats.leadership ?? BALANCE.neutralLeadership;
   const dWar = best?.stats.war ?? BALANCE.neutralWar;
-  let def = city.troops * commandFactor(dLead, dWar);
+  const dq = qualityFactor(city.morale ?? 70, city.training ?? 55);
+  let def = city.troops * commandFactor(dLead, dWar) * dq;
+  if (dq > 1.07) reasons.push(`수비군의 높은 사기·훈련 (×${dq.toFixed(2)})`);
+  else if (dq < 0.93) reasons.push(`수비군 사기·훈련 부족 (×${dq.toFixed(2)})`);
   const wallMul = 1 + (city.wall / 200) * (city.fortress ? BALANCE.fortressWallMultiplier : 1);
   def *= wallMul;
   if (city.fortress) reasons.push(`${city.name}은(는) 산성/요새라 수비력 상승`);

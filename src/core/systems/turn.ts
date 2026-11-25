@@ -27,6 +27,8 @@ export function processEconomy(s: GameState) {
       // 인구·민심
       c.population = Math.round(c.population * (1 + BALANCE.popGrowth * (c.order / 100) - (s.season === 3 ? 0.004 : 0)));
       c.order = Math.min(100, c.order + 2);
+      c.morale += (70 - c.morale) * 0.1; // 사기는 서서히 평상(70)으로
+      c.morale = Math.round(c.morale);
     }
     f.gold += Math.round(gold);
     f.food += Math.round(harvest);
@@ -43,6 +45,7 @@ export function processEconomy(s: GameState) {
         const lost = Math.round(c.troops * deficitRatio);
         c.troops -= lost;
         c.order = Math.max(0, c.order - 5);
+        c.morale = Math.max(0, c.morale - BALANCE.starvationMorale);
       }
       log(s, `${f.name}군 군량 부족! 병사들이 탈영하고 있습니다.`, 'danger', f.id);
     }

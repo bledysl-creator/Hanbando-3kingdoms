@@ -2,7 +2,7 @@ import type { GameData, ScenarioDef } from '../data';
 import type { GameState } from './types';
 import { rollWeather } from '../systems/weather';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
 export function createGame(
@@ -45,7 +45,7 @@ export function createGame(
 
   for (const c of data.cities) {
     const sc = scenario.cities[c.id];
-    s.cities[c.id] = { ...c, owner: sc?.owner ?? null, troops: sc?.troops ?? 2000, order: 70 };
+    s.cities[c.id] = { ...c, owner: sc?.owner ?? null, troops: sc?.troops ?? 2000, order: 70, morale: 70, training: sc?.owner ? 55 : 40 };
   }
 
   for (const g of data.generals) {

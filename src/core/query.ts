@@ -58,3 +58,23 @@ export function isAdjacent(s: GameState, a: CityId, b: CityId): boolean {
 export function relationBetween(s: GameState, a: string, b: string) {
   return s.relations.find((r) => (r.a === a && r.b === b) || (r.a === b && r.b === a));
 }
+
+/** 군주가 있는 도시와 우리 영토로 이어져 있는가 (보급선) */
+export function isConnectedToCapital(s: GameState, f: FactionId, cityId: CityId): boolean {
+  const ruler = s.generals[s.factions[f]?.rulerId];
+  if (!ruler || s.cities[ruler.city]?.owner !== f) return true; // 본거지가 없으면 판단 안 함
+  const seen = new Set([ruler.city]);
+  const q = [ruler.city];
+  while (q.length) {
+    const c = q.pop()!;
+    if (c === cityId) return true;
+    for (const n of neighbors(s, c)) if (n.city.owner === f && !seen.has(n.city.id)) { seen.add(n.city.id); q.push(n.city.id); }
+  }
+  return false;
+}
+
+/** 보급 충족률 0~1: 군량이 한 계절 소비량 대비 얼마나 있는가 */
+export function supplyRatio(s: GameState, f: FactionId): number {
+  const eat = totalTroops(s, f) * 0.25;
+  return eat <= 0 ? 1 : Math.min(1, s.factions[f].food / eat);
+}

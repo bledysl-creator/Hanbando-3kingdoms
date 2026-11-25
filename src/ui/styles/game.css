@@ -220,3 +220,4 @@ select, input { font: inherit; }
 .lg { display: inline-block; width: 70px; height: 8px; border-radius: 2px; }
 .lg.ramp { background: linear-gradient(90deg, rgb(24,40,64), rgb(64,110,90), rgb(201,166,90), rgb(220,90,60)); }
 .lg.terrain { background: linear-gradient(90deg, rgb(70,120,70), rgb(120,140,80), rgb(160,140,90), rgb(130,100,70), rgb(220,215,205)); }
+.warn-line { margin: 0; padding: 6px 8px; font-size: 12px; color: #ffcf8a; border: 1px solid #8b6d2e; border-radius: 4px; background: #2c271755; }

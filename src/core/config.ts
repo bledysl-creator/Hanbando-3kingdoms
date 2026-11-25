@@ -40,6 +40,16 @@ export const BALANCE = {
   weatherAttack: { clear: 1, rain: 0.92, storm: 0.78, typhoon: 0.65, snow: 0.9, blizzard: 0.7, cold: 0.88, drought: 1, fog: 0.95 } as Record<string, number>,
   droughtHarvestLoss: 0.3, // 가뭄 1계절당 가을 수확 감소율
 
+  // 사기·훈련·보급 (v0.8)
+  newRecruitTraining: 20,
+  newRecruitMorale: 50,
+  trainFood: 0.05, // 훈련 시 병사 1명당 곡식
+  victoryMorale: 12,
+  defeatMorale: 15,
+  starvationMorale: 10,
+  isolatedPenalty: 0.8, // 본거지와 끊긴 도시에서 출진
+  lowSupplyThreshold: 1, // 군량이 1계절치 미만이면 보급 부족
+
   // 외교 (v0.4)
   truceBase: 0.35,
   allianceBase: 0.2,

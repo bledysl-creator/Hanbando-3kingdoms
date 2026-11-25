@@ -2,7 +2,7 @@
 import { BALANCE } from '../config';
 import { resolveBattle } from '../battle/battle';
 import { chance, pick } from '../rng/rng';
-import { generalsIn, neighbors, roadBetween } from '../query';
+import { generalsIn, isConnectedToCapital, neighbors, roadBetween, supplyRatio } from '../query';
 import type { GameState, LogKind } from '../state/types';
 import { canAttack, pairKey, statusOf, tryProposal, type Proposal } from '../diplomacy/diplomacy';
 
@@ -11,6 +11,7 @@ export type DevelopField = 'agriculture' | 'commerce' | 'wall';
 export type Command =
   | { type: 'develop'; generalId: string; field: DevelopField }
   | { type: 'conscript'; generalId: string; amount: number }
+  | { type: 'train'; generalId: string }
   | { type: 'march'; generalId: string; toCityId: string; troops: number }
   | { type: 'transfer'; generalId: string; toCityId: string; troops: number }
   | { type: 'recruit'; generalId: string; targetId: string }
@@ -61,10 +62,24 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       f.gold -= gold;
       f.iron -= iron;
       city.population -= amount; // 병사도 결국 백성이다 — 노동력이 줄어든다
-      city.troops += amount;
+      const total = city.troops + amount;
+      city.training = Math.round((city.training * city.troops + BALANCE.newRecruitTraining * amount) / total);
+      city.morale = Math.round((city.morale * city.troops + BALANCE.newRecruitMorale * amount) / total);
+      city.troops = total;
       city.order = Math.max(0, city.order - (amount / 1000) * BALANCE.conscriptOrderLossPer1000);
       g.acted = true;
       return { ok: true, message: `${g.name}이(가) ${city.name}에서 ${amount.toLocaleString()}명을 징병했습니다.` };
+    }
+    case 'train': {
+      if (city.training >= 100) return { ok: false, error: '이미 최고 수준으로 훈련되었습니다.' };
+      const food = Math.ceil(city.troops * BALANCE.trainFood);
+      if (f.food < food) return { ok: false, error: '군량이 부족합니다.' };
+      f.food -= food;
+      const gain = Math.max(3, Math.round(4 + g.stats.leadership / 10));
+      city.training = Math.min(100, city.training + gain);
+      city.morale = Math.min(100, city.morale + 3);
+      g.acted = true;
+      return { ok: true, message: `${g.name}이(가) ${city.name}의 병사를 훈련했습니다. (훈련 +${gain}, 사기 +3)` };
     }
     case 'transfer': {
       const to = s.cities[cmd.toCityId];
@@ -72,6 +87,10 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (!roadBetween(s, city.id, to.id)) return { ok: false, error: '인접한 도시가 아닙니다.' };
       const troops = Math.max(0, Math.min(Math.floor(cmd.troops), city.troops - 500));
       city.troops -= troops;
+      if (to.troops + troops > 0) {
+        to.training = Math.round((to.training * to.troops + city.training * troops) / (to.troops + troops));
+        to.morale = Math.round((to.morale * to.troops + city.morale * troops) / (to.troops + troops));
+      }
       to.troops += troops;
       g.city = to.id;
       g.acted = true;
@@ -95,6 +114,8 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       const defenders = generalsIn(s, to.id).filter((x) => x.faction === defenderFaction);
       const out = resolveBattle(s, {
         attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id],
+        attackerMorale: city.morale, attackerTraining: city.training, supply: supplyRatio(s, factionId) < BALANCE.lowSupplyThreshold ? supplyRatio(s, factionId) : undefined,
+        isolated: !isConnectedToCapital(s, factionId, city.id),
       });
       s.lastBattles.push({
         turn: s.turn, attackerFaction: factionId, defenderFaction, fromCity: city.id, toCity: to.id, generalId: g.id,
@@ -106,6 +127,8 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       const defName = defenderFaction ? s.factions[defenderFaction].name : '중립';
       if (out.won) {
         to.troops = survivors;
+        to.morale = Math.min(100, city.morale + BALANCE.victoryMorale);
+        to.training = city.training;
         to.owner = factionId;
         to.order = Math.max(10, to.order - 20);
         to.population = Math.round(to.population * 0.95);
@@ -124,7 +147,9 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         return { ok: true, message: `${to.name} 함락! (아군 손실 ${out.attackerLoss.toLocaleString()})` };
       } else {
         to.troops = Math.max(1, to.troops - out.defenderLoss);
+        to.morale = Math.min(100, to.morale + 5);
         city.troops += survivors;
+        city.morale = Math.max(0, city.morale - BALANCE.defeatMorale);
         log(s, `${g.name}의 ${to.name} 공격이 실패했습니다.`, 'warn', factionId);
         return { ok: true, message: `${to.name} 공격 실패 (아군 손실 ${out.attackerLoss.toLocaleString()})` };
       }

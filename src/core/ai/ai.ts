@@ -6,6 +6,7 @@ import type { City, GameState, General } from '../state/types';
 import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/diplomacy';
 import { chance } from '../rng/rng';
 import { weatherAttackModifier } from '../systems/weather';
+import { qualityFactor } from '../battle/battle';
 import { log } from '../commands/commands';
 
 interface Option { score: number; cmd: Command; why: string }
@@ -14,11 +15,11 @@ function estimateRatio(s: GameState, g: General, from: City, to: City, troops: n
   const road = neighbors(s, from.id).find((n) => n.city.id === to.id)?.road;
   const roadMod = road ? BALANCE.roadAttackModifier[road.type] ?? 1 : 1;
   const wm = weatherAttackModifier(s.weather[to.id], road?.type ?? 'land').mul;
-  const atk = troops * (0.5 + g.stats.leadership / 100) * (0.7 + g.stats.war / 333) * roadMod * wm;
+  const atk = troops * (0.5 + g.stats.leadership / 100) * (0.7 + g.stats.war / 333) * roadMod * wm * qualityFactor(from.morale, from.training);
   const defs = generalsIn(s, to.id).filter((x) => x.faction === to.owner);
   const best = defs.reduce<number>((a, x) => Math.max(a, x.stats.leadership), BALANCE.neutralLeadership);
   const wallMul = 1 + (to.wall / 200) * (to.fortress ? BALANCE.fortressWallMultiplier : 1);
-  const def = to.troops * (0.5 + best / 100) * 1.0 * wallMul * (to.terrain === 'mountain' ? BALANCE.mountainDefenseBonus : 1);
+  const def = to.troops * (0.5 + best / 100) * qualityFactor(to.morale, to.training) * wallMul * (to.terrain === 'mountain' ? BALANCE.mountainDefenseBonus : 1);
   return atk / Math.max(1, def);
 }
 
@@ -73,6 +74,10 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
       if (need > 2000 && (!best || need > best.need)) best = { id: n.city.id, need };
     }
     if (best) opts.push({ score: 42 + best.need / 1000, cmd: { type: 'transfer', generalId: g.id, toCityId: best.id, troops: Math.min(surplus, best.need + 2000) }, why: '병력 재배치' });
+  }
+  // 훈련: 전선 도시의 훈련도가 낮으면
+  if (isFrontier && city.training < 65 && f.food > city.troops) {
+    opts.push({ score: 26 + (65 - city.training) / 3, cmd: { type: 'train', generalId: g.id }, why: '훈련' });
   }
   // 등용
   const free = freeGeneralsIn(s, city.id);
