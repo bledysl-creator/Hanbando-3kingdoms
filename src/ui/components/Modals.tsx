@@ -1,7 +1,7 @@
 // 목록·보고서 창: 장수, 도시, 연표, 세력 정보, 전투 보고, 설정/저장, 도움말
 import { useEffect, useState, type ReactNode } from 'react';
 import type { BattleReport, GameState } from '../../core';
-import { SEASONS, citiesOf, factionPower, generalsOf, statusOf, totalTroops } from '../../core';
+import { MEMORY_LABEL, SEASONS, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
 import { exportJson, indexedDbRepo, migrate, type SaveMeta } from '../../save/saveRepository';
 import { Portrait } from './Portrait';
 
@@ -23,8 +23,41 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
   );
 }
 
+export function GeneralDetail({ state, id, onBack, onPickCity }: { state: GameState; id: string; onBack: () => void; onPickCity: (id: string) => void }) {
+  const g = state.generals[id];
+  const f = g.faction ? state.factions[g.faction] : null;
+  const rels = state.relations.filter((r) => r.a === id || r.b === id);
+  const P = [['야망', g.persona.ambition], ['의리', g.persona.righteousness], ['탐욕', g.persona.greed], ['자존심', g.persona.pride], ['위험감수', g.persona.risk]] as const;
+  const S = [['통솔', g.stats.leadership], ['무력', g.stats.war], ['지력', g.stats.intellect], ['정치', g.stats.politics], ['매력', g.stats.charm]] as const;
+  const REL = { sworn: '의형제', trust: '신뢰', enmity: '원한' } as const;
+  return (
+    <div className="gen-detail">
+      <div className="gd-head">
+        <Portrait general={g} color={f?.color ?? '#777'} size={72} />
+        <div>
+          <h3>{g.name} <small className="muted">{g.hanja} · {state.year - g.birth}세</small></h3>
+          <div>{f ? `${f.name}(${f.hanja})` : '재야'} · {state.cities[g.city].name}{g.faction ? ` · 충성 ${g.loyalty} · 복종도 ${obedience(state, g)}` : ''}</div>
+        </div>
+      </div>
+      <div className="gd-cols">
+        <div><h4>능력</h4>{S.map(([k, v]) => <div key={k} className="gd-bar"><span>{k}</span><div className="bar"><div style={{ width: `${v}%` }} /><em>{v}</em></div></div>)}</div>
+        <div><h4>성격</h4>{P.map(([k, v]) => <div key={k} className="gd-bar"><span>{k}</span><div className="bar persona"><div style={{ width: `${v}%` }} /><em>{v}</em></div></div>)}</div>
+      </div>
+      <h4>인간관계</h4>
+      {rels.length === 0 ? <p className="muted small">특별한 관계 없음</p> : <p>{rels.map((r) => { const o = r.a === id ? r.b : r.a; return <span key={o} className={`rel ${r.type}`}>{state.generals[o]?.name} ({REL[r.type]})</span>; })}</p>}
+      <h4>기억</h4>
+      {(g.memories ?? []).length === 0 ? <p className="muted small">아직 기억할 만한 일이 없음</p> : (
+        <ul className="small">{[...(g.memories ?? [])].reverse().map((m, i) => <li key={i}>{m.turn}턴 — {state.generals[m.with]?.name ?? ''} {MEMORY_LABEL[m.kind]}</li>)}</ul>
+      )}
+      <div className="actions row"><button onClick={onBack}>← 목록</button><button onClick={() => onPickCity(g.city)}>도시로 이동</button></div>
+    </div>
+  );
+}
+
 export function GeneralsModal({ state, onClose, onPickCity }: { state: GameState; onClose: () => void; onPickCity: (id: string) => void }) {
   const [filter, setFilter] = useState<'mine' | 'free' | 'all'>('mine');
+  const [detail, setDetail] = useState<string | null>(null);
+  if (detail) return <Modal title="장수 정보" onClose={onClose}><GeneralDetail state={state} id={detail} onBack={() => setDetail(null)} onPickCity={(c) => { onPickCity(c); onClose(); }} /></Modal>;
   const pf = state.playerFactionId;
   const list = Object.values(state.generals)
     .filter((g) => g.alive && (filter === 'all' || (filter === 'free' ? g.faction === null : g.faction === pf)))
@@ -42,7 +75,7 @@ export function GeneralsModal({ state, onClose, onPickCity }: { state: GameState
           {list.map((g) => {
             const f = g.faction ? state.factions[g.faction] : null;
             return (
-              <tr key={g.id} onClick={() => { onPickCity(g.city); onClose(); }}>
+              <tr key={g.id} onClick={() => setDetail(g.id)}>
                 <td><Portrait general={g} color={f?.color ?? '#777'} size={30} /></td>
                 <td>{g.name} <small className="muted">{g.hanja}</small></td>
                 <td>{f ? f.name : '재야'}</td>
@@ -194,6 +227,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <li><b>군사</b>: 징병(금·철 소모, 인구·민심 감소), 출진(인접 도시 공격, 군량 소모), 이동.</li>
         <li><b>지형</b>: 강을 건너는 도하 공격, 고개, 해로, 겨울 행군은 불리. 산성·산악 도시는 수비 유리.</li>
         <li><b>인재</b>: 재야 장수 등용(매력), 포상(충성 상승). 충성이 낮고 야망이 큰 장수는 떠날 수 있습니다.</li>
+        <li><b>장수 인격</b>: 장수마다 야망·의리·자존심·위험감수 성향이 있어 복종도가 다릅니다. 승산이 낮거나 충성이 낮으면 출진 명령을 거부할 수 있고(의형제·군주는 항상 따름), 출진 전에 장수들이 의견을 냅니다. 장수는 포상·패전·등용을 기억합니다. 장수 목록에서 이름을 누르면 상세 정보가 보입니다.</li>
         <li><b>사기·훈련·보급</b>: 병력의 질이 전투력을 바꿉니다. 훈련으로 올리고, 징병한 신병은 훈련도를 낮춥니다. 승리하면 사기가 오르고 패배·굶주림에 떨어집니다. 군량이 한 계절치보다 적으면 보급 부족, 본거지와 끊긴 도시는 고립되어 공격력이 줄어듭니다.</li>
         <li><b>날씨</b>: 계절과 지역에 따라 도시마다 날씨가 바뀝니다. 폭우·태풍·폭설인 도시를 공격하면 불리하고(특히 강을 건널 때), 태풍은 농업·성벽, 가뭄은 가을 수확, 한파·폭설은 병력을 깎습니다. 지력 높은 장수는 안개를 기습에 씁니다.</li>
         <li><b>군량</b>: 병사는 매 계절 곡식을 먹습니다. 부족하면 탈영이 일어납니다.</li>

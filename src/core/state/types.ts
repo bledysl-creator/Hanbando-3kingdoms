@@ -77,6 +77,14 @@ export interface General {
   loyalty: number;
   acted: boolean; // 이번 턴 행동했는가
   alive: boolean;
+  memories?: Memory[]; // 기억 (v0.9)
+}
+
+export type MemoryKind = 'rewarded' | 'ignored' | 'defeatedBy' | 'defeated' | 'recruitedBy' | 'refusedOrder';
+export interface Memory {
+  turn: number;
+  kind: MemoryKind;
+  with: GeneralId; // 관련 인물
 }
 
 export type RelationType = 'sworn' | 'trust' | 'enmity';

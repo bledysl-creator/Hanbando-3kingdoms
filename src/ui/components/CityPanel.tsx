@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Command, GameState, General } from '../../core';
-import { BALANCE, WEATHER_ICON, WEATHER_LABEL, freeGeneralsIn, generalsIn, isConnectedToCapital, neighbors, supplyRatio } from '../../core';
+import { BALANCE, WEATHER_ICON, WEATHER_LABEL, estimateRatio, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -170,6 +170,18 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
               ))}
             </select>
             <input type="range" min={0} max={maxOut} step={500} value={Math.min(troops, maxOut)} onChange={(e) => setTroops(+e.target.value)} />
+            {target && (() => {
+              const ratio = estimateRatio(state, actor, city, state.cities[target], Math.min(troops, maxOut));
+              const ops = marchOpinions(state, city.id, ratio, supply < 1, statusOf(state, pf, state.cities[target].owner ?? '') !== 'war');
+              return (
+                <div className="council">
+                  <div className="muted small">예상 승산 <b className={ratio >= 1 ? 'good' : 'bad'}>{ratio.toFixed(2)}배</b> · {actor.name}의 복종도 {obedience(state, actor)}</div>
+                  {ops.map((o) => (
+                    <div key={o.generalId} className={`op ${o.stance}`}><b>{state.generals[o.generalId].name}</b> “{o.text}”</div>
+                  ))}
+                </div>
+              );
+            })()}
             <button disabled={troops < 1000} onClick={() => onCommand({ type: 'march', generalId: actor.id, toCityId: target, troops })}>⚔️ {Math.min(troops, maxOut).toLocaleString()}명 출진</button>
             <p className="hint">군량 {Math.ceil(Math.min(troops, maxOut) * BALANCE.foodPerTroop).toLocaleString()} 소모. 도하·고개·겨울은 공격에 불리합니다.</p>
           </>

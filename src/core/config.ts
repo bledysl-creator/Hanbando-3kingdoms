@@ -50,6 +50,12 @@ export const BALANCE = {
   isolatedPenalty: 0.8, // 본거지와 끊긴 도시에서 출진
   lowSupplyThreshold: 1, // 군량이 1계절치 미만이면 보급 부족
 
+  // 인격 (v0.9)
+  refuseBaseObedience: 62, // 복종도가 이보다 낮으면 거부 가능성
+  refuseMax: 0.45,
+  memoryLimit: 10,
+  grudgeRecruitPenalty: 0.2, // 나를 이긴 세력의 등용 제안 수락률 감소
+
   // 외교 (v0.4)
   truceBase: 0.35,
   allianceBase: 0.2,

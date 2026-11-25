@@ -9,3 +9,5 @@ export * from './query';
 export { DATA, SCENARIOS } from './data';
 export { BALANCE, SEASONS } from './config';
 export { WEATHER_ICON, WEATHER_LABEL } from './systems/weather';
+export { estimateRatio } from './battle/estimate';
+export { marchOpinions, obedience, MEMORY_LABEL } from './systems/persona';

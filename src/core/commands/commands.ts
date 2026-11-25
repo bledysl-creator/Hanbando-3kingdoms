@@ -2,8 +2,10 @@
 import { BALANCE } from '../config';
 import { resolveBattle } from '../battle/battle';
 import { chance, pick } from '../rng/rng';
+import { estimateRatio } from '../battle/estimate';
 import { generalsIn, isConnectedToCapital, neighbors, roadBetween, supplyRatio } from '../query';
 import type { GameState, LogKind } from '../state/types';
+import { refuseChance, remember } from '../systems/persona';
 import { canAttack, pairKey, statusOf, tryProposal, type Proposal } from '../diplomacy/diplomacy';
 
 export type DevelopField = 'agriculture' | 'commerce' | 'wall';
@@ -106,6 +108,15 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (troops < 1000) return { ok: false, error: '출진 병력은 1,000명 이상이어야 합니다 (도시에 500명은 남겨야 함).' };
       const foodNeed = Math.ceil(troops * BALANCE.foodPerTroop);
       if (f.food < foodNeed) return { ok: false, error: '군량이 부족합니다.' };
+      // 장수가 명령을 거부할 수도 있다 (복종도·성향·승산)
+      const pRefuse = refuseChance(s, g, estimateRatio(s, g, city, to, troops));
+      if (pRefuse > 0 && chance(s, pRefuse)) {
+        g.acted = true;
+        g.loyalty = Math.max(0, g.loyalty - 2);
+        remember(g, s.turn, 'refusedOrder', f.rulerId);
+        log(s, `${g.name}이(가) ${to.name} 출진 명령을 거부했습니다.`, 'warn', factionId);
+        return { ok: true, message: `${g.name}: "이 싸움은 따를 수 없습니다." — 명령 거부 (거부 확률 ${Math.round(pRefuse * 100)}%)` };
+      }
       f.food -= foodNeed;
       city.troops -= troops;
       g.acted = true;
@@ -134,7 +145,9 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         to.population = Math.round(to.population * 0.95);
         g.city = to.id;
         // 패배한 수비 장수: 인접 아군 도시로 퇴각, 없으면 재야
+        remember(g, s.turn, 'defeated', defenders[0]?.id ?? g.id);
         for (const d of defenders) {
+          remember(d, s.turn, 'defeatedBy', g.id);
           const retreat = defenderFaction
             ? pick(s, neighbors(s, to.id).filter((n) => n.city.owner === defenderFaction).map((n) => n.city.id))
             : undefined;
@@ -159,12 +172,15 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (!t || !t.alive || t.faction !== null) return { ok: false, error: '등용할 수 있는 재야 장수가 아닙니다.' };
       if (t.city !== g.city) return { ok: false, error: '같은 도시에 있어야 등용할 수 있습니다.' };
       const ruler = s.generals[f.rulerId];
+      // 이 세력 장수에게 패한 기억이 있으면 마음을 열지 않는다
+      const grudge = (t.memories ?? []).some((m) => m.kind === 'defeatedBy' && s.generals[m.with]?.faction === factionId) ? BALANCE.grudgeRecruitPenalty : 0;
       const p = Math.min(0.9, Math.max(0.1,
-        (g.stats.charm - 30 + ((ruler?.stats.charm ?? 50) - 50) / 2 - (t.persona.pride - 50) / 3) / 100));
+        (g.stats.charm - 30 + ((ruler?.stats.charm ?? 50) - 50) / 2 - (t.persona.pride - 50) / 3) / 100 - grudge));
       g.acted = true;
       if (chance(s, p)) {
         t.faction = factionId;
         t.loyalty = Math.round(60 + g.stats.charm / 5);
+        remember(t, s.turn, 'recruitedBy', g.id);
         s.recruits[factionId] = (s.recruits[factionId] ?? 0) + 1;
         log(s, `${t.name}이(가) ${f.name}군에 합류했습니다.`, 'good', factionId);
         return { ok: true, message: `${t.name} 등용 성공!` };
@@ -177,6 +193,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (f.gold < BALANCE.rewardGold) return { ok: false, error: '금이 부족합니다.' };
       f.gold -= BALANCE.rewardGold;
       t.loyalty = Math.min(100, t.loyalty + BALANCE.rewardLoyalty);
+      remember(t, s.turn, 'rewarded', f.rulerId);
       g.acted = true;
       return { ok: true, message: `${t.name}에게 포상했습니다. (충성 ${t.loyalty})` };
     }

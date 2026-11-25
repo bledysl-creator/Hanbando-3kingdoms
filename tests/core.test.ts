@@ -251,3 +251,23 @@ describe('사기·훈련·보급 (v0.8)', () => {
       .toBeLessThan(resolveBattle({ rng: 1 }, { ...base, attackerMorale: 90, attackerTraining: 90 }).attackerPower);
   });
 });
+
+import { obedience, refuseChance } from '../src/core/systems/persona';
+describe('장수 인격 (v0.9)', () => {
+  it('의형제와 군주는 항상 복종한다', () => {
+    const s = newGame();
+    expect(obedience(s, s.generals.guan_yu)).toBe(100);
+    expect(refuseChance(s, s.generals.zhang_fei, 0.3)).toBe(0);
+  });
+  it('충성 낮고 자존심 높은 장수는 승산 낮은 출진을 거부할 수 있다', () => {
+    const s = newGame(1, 'lu');
+    const g = s.generals.wei_xu;
+    g.loyalty = 30;
+    expect(refuseChance(s, g, 0.5)).toBeGreaterThan(0.2);
+    expect(refuseChance(s, g, 0.5)).toBeGreaterThan(refuseChance(s, g, 2));
+  });
+  it('포상은 기억으로 남는다', () => {
+    const { state } = applyCommand(newGame(), 'shu', { type: 'reward', generalId: 'zhuge_liang', targetId: 'jian_yong' });
+    expect(state.generals.jian_yong.memories?.at(-1)?.kind).toBe('rewarded');
+  });
+});

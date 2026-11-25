@@ -221,3 +221,15 @@ select, input { font: inherit; }
 .lg.ramp { background: linear-gradient(90deg, rgb(24,40,64), rgb(64,110,90), rgb(201,166,90), rgb(220,90,60)); }
 .lg.terrain { background: linear-gradient(90deg, rgb(70,120,70), rgb(120,140,80), rgb(160,140,90), rgb(130,100,70), rgb(220,215,205)); }
 .warn-line { margin: 0; padding: 6px 8px; font-size: 12px; color: #ffcf8a; border: 1px solid #8b6d2e; border-radius: 4px; background: #2c271755; }
+
+/* ── 장수 인격 (v0.9) ── */
+.council { display: flex; flex-direction: column; gap: 3px; padding: 6px; border: 1px dashed #6e5a33; border-radius: 4px; font-size: 12px; }
+.council .op.for b { color: #b8e6b0; } .council .op.against b { color: #ffb4aa; } .council .op.caution b { color: var(--gold-hi); }
+.good { color: #b8e6b0; } .bad { color: #ffb4aa; }
+.gen-detail h3 { margin: 0 0 4px; } .gen-detail h4 { margin: 12px 0 4px; color: var(--gold-hi); font-size: 14px; }
+.gd-head { display: flex; gap: 14px; align-items: center; }
+.gd-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.gd-bar { display: grid; grid-template-columns: 56px 1fr; gap: 6px; align-items: center; font-size: 13px; margin: 3px 0; }
+.bar.persona div { background: linear-gradient(90deg, #4f3a6e, #b48ad8); }
+.rel { display: inline-block; margin: 0 8px 4px 0; padding: 2px 8px; border-radius: 10px; font-size: 13px; border: 1px solid #6e5a33; }
+.rel.sworn { border-color: #3f9a4a; } .rel.enmity { border-color: #c2463c; } .rel.trust { border-color: var(--gold-hi); }
