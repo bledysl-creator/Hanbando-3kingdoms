@@ -393,3 +393,29 @@ describe('계책 (v1.6)', () => {
     expect(r.reasons.join()).toContain('야습');
   });
 });
+
+import { foodPrice } from '../src/core';
+describe('시장·귀농·노획 (v1.7)', () => {
+  it('곡식을 사면 금이 줄고 곡식이 늘며, 가을이 봄보다 싸다', () => {
+    const s = newGame(2, 'shu');
+    const gid = Object.values(s.generals).find((g) => g.faction === 'shu' && g.city === 'hanyang')!.id;
+    const r = applyCommand(s, 'shu', { type: 'trade', generalId: gid, action: 'buyFood', amount: 5000 });
+    expect(r.result.ok).toBe(true);
+    expect(r.state.factions.shu.food).toBe(s.factions.shu.food + 5000);
+    expect(r.state.factions.shu.gold).toBeLessThan(s.factions.shu.gold);
+    const spring = foodPrice({ ...s, season: 0 }, 'hanyang', 'buyFood');
+    const autumn = foodPrice({ ...s, season: 2 }, 'hanyang', 'buyFood');
+    expect(autumn).toBeLessThan(spring);
+  });
+  it('귀농하면 병력이 인구로 돌아간다', () => {
+    const s = newGame(2, 'shu');
+    const gid = Object.values(s.generals).find((g) => g.faction === 'shu' && g.city === 'hanyang')!.id;
+    const r = applyCommand(s, 'shu', { type: 'disband', generalId: gid, amount: 4000 });
+    expect(r.state.cities.hanyang.troops).toBe(s.cities.hanyang.troops - 4000);
+    expect(r.state.cities.hanyang.population).toBe(s.cities.hanyang.population + 4000);
+  });
+  it('197년 시작 시 위·여는 1년 휴전 중이다', () => {
+    const s = newGame(2, 'shu');
+    expect(statusOf(s, 'wei', 'lu')).toBe('truce');
+  });
+});

@@ -1,4 +1,5 @@
 import type { GameData, ScenarioDef } from '../data';
+import { pairKey } from '../diplomacy/diplomacy';
 import type { GameState } from './types';
 import { rollWeather } from '../systems/weather';
 import { recordAnnal } from '../systems/chronicle';
@@ -46,6 +47,10 @@ export function createGame(
     if (!res) continue;
     s.factions[f.id] = { ...f, traits: [...f.traits], ...res, alive: true };
     s.recruits[f.id] = 0;
+  }
+
+  for (const t of scenario.treaties ?? []) {
+    if (s.factions[t.a] && s.factions[t.b]) s.diplomacy[pairKey(t.a, t.b)] = { status: t.status, until: t.turns === null ? null : s.turn + t.turns };
   }
 
   for (const c of data.cities) {

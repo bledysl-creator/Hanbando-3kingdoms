@@ -26,6 +26,8 @@ export interface ScenarioDef {
   debuts?: Record<string, { year: number; city: string; faction: string | null }>;
   heirs?: Record<string, string[]>;
   factionIntro?: Record<string, string>;
+  /** 시작 시 맺어진 맹약 (v1.7) */
+  treaties?: { a: string; b: string; status: 'truce' | 'alliance'; turns: number | null; note?: string }[];
 }
 
 export type LandmarkType = 'pass' | 'ford' | 'port' | 'fortress';

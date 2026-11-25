@@ -36,6 +36,22 @@ export const BALANCE = {
   fordEase: 1.05,
   /** 도시에 딸린 항구 하나당 상업 수입 보너스 */
   portLandmarkCommerce: 0.08,
+  /** 시장 (v1.7): 곡식 1000석 매입가·매각가(금). 가을엔 싸고 봄엔 비싸다 */
+  foodBuyPer1000: 110,
+  foodSellPer1000: 60,
+  seasonFoodPrice: [1.2, 1.0, 0.8, 1.1] as number[],
+  /** 상업 수치 100일 때 거래가 할인 */
+  marketCommerceDiscount: 0.2,
+  /** 한 번 거래 상한 (석) */
+  tradeMax: 30000,
+  /** 귀농: 병사를 고향으로 돌려보내면 인구로 돌아가고 민심이 오른다 */
+  disbandOrderPer1000: 1,
+  /** 함락한 도시의 곡식 노획: 패배 세력 곡식 × (그 도시 인구 비중) × 계수 */
+  plunderRatio: 0.6,
+  /** AI가 군량을 사들이는 기준: 곡식 < 병력 × 이 값 */
+  aiBuyFoodBelow: 0.6,
+  /** AI 징병 조건: 늘어난 병력을 이 계절 수만큼 먹일 곡식 */
+  aiConscriptFoodSeasons: 3,
   /** 계책 성공 시 공격 배율 (v1.6) */
   tacticBonus: { fire: 1.3, ambush: 1.25, night: 1.18 } as Record<'fire' | 'ambush' | 'night', number>,
   /** 계책 실패 시 공격 배율 */

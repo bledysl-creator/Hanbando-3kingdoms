@@ -25,7 +25,9 @@ export type Command =
   | { type: 'breakTreaty'; generalId: string; targetFactionId: string }
   | { type: 'scout'; generalId: string; cityId: string }
   | { type: 'rumor'; generalId: string; cityId: string }
-  | { type: 'discord'; generalId: string; targetId: string };
+  | { type: 'discord'; generalId: string; targetId: string }
+  | { type: 'trade'; generalId: string; action: 'buyFood' | 'sellFood'; amount: number }
+  | { type: 'disband'; generalId: string; amount: number };
 
 export type CommandResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -151,6 +153,12 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         to.troops = survivors;
         to.morale = Math.min(100, city.morale + BALANCE.victoryMorale);
         to.training = city.training;
+        if (defenderFaction) {
+          const dPop = Object.values(s.cities).filter((c) => c.owner === defenderFaction).reduce((a, c) => a + c.population, 0);
+          const df = s.factions[defenderFaction];
+          const loot = Math.round(df.food * (to.population / Math.max(1, dPop)) * BALANCE.plunderRatio);
+          if (loot > 0) { df.food -= loot; f.food += loot; out.reasons.push(`${to.name}의 창고에서 곡식 ${loot.toLocaleString()}석 노획`); }
+        }
         to.owner = factionId;
         to.order = Math.max(10, to.order - 20);
         to.population = Math.round(to.population * 0.95);
@@ -200,6 +208,30 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         return { ok: true, message: `${t.name} 등용 성공!` };
       }
       return { ok: true, message: `${t.name}이(가) 등용을 거절했습니다. (성공률 ${Math.round(p * 100)}%)` };
+    }
+    case 'trade': {
+      const amount = Math.min(BALANCE.tradeMax, Math.max(0, Math.floor(cmd.amount / 1000) * 1000));
+      if (amount < 1000) return { ok: false, error: '1,000석 단위로 거래합니다.' };
+      const price = foodPrice(s, city.id, cmd.action);
+      const gold = Math.round((amount / 1000) * price);
+      if (cmd.action === 'buyFood') {
+        if (f.gold < gold) return { ok: false, error: '금이 부족합니다.' };
+        f.gold -= gold; f.food += amount;
+      } else {
+        if (f.food < amount) return { ok: false, error: '곡식이 부족합니다.' };
+        f.food -= amount; f.gold += gold;
+      }
+      g.acted = true;
+      return { ok: true, message: `${city.name} 시장에서 곡식 ${amount.toLocaleString()}석을 ${cmd.action === 'buyFood' ? '사들였' : '팔았'}습니다. (금 ${gold.toLocaleString()})` };
+    }
+    case 'disband': {
+      const amount = Math.min(Math.floor(cmd.amount), city.troops - 500);
+      if (amount < 500) return { ok: false, error: '돌려보낼 병사가 없습니다 (500명은 남겨야 함).' };
+      city.troops -= amount;
+      city.population += amount;
+      city.order = Math.min(100, city.order + Math.round((amount / 1000) * BALANCE.disbandOrderPer1000));
+      g.acted = true;
+      return { ok: true, message: `병사 ${amount.toLocaleString()}명이 고향으로 돌아가 농사를 짓습니다. (인구 +${amount.toLocaleString()})` };
     }
     case 'reward': {
       const t = s.generals[cmd.targetId];
@@ -306,4 +338,13 @@ export function respondOffer(state: GameState, factionId: string, index: number,
   const draft = structuredClone(state);
   const result = respondOfferMut(draft, factionId, index, accept);
   return { state: result.ok ? draft : state, result };
+}
+
+/** 곡식 1000석 시세(금). 계절·도시 상업·항구에 따라 달라진다 */
+export function foodPrice(s: GameState, cityId: string, action: 'buyFood' | 'sellFood'): number {
+  const c = s.cities[cityId];
+  const base = action === 'buyFood' ? BALANCE.foodBuyPer1000 : BALANCE.foodSellPer1000;
+  const season = BALANCE.seasonFoodPrice[s.season] ?? 1;
+  const market = (c.commerce / 100) * BALANCE.marketCommerceDiscount + (c.port ? 0.05 : 0);
+  return Math.round(action === 'buyFood' ? base * season * (1 - market) : base * season * (1 + market));
 }

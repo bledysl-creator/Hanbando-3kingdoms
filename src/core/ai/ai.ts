@@ -1,7 +1,7 @@
 import { TACTICS, tacticChance, type TacticKind } from '../battle/tactics';
 // 규칙 기반 + Utility AI (Game.md 5-5). 플레이어와 같은 명령만 사용한다.
 import { BALANCE } from '../config';
-import { executeCommand, type Command } from '../commands/commands';
+import { executeCommand, foodPrice, type Command } from '../commands/commands';
 import { freeGeneralsIn, generalsIn, neighbors } from '../query';
 import type { City, GameState, General, Road } from '../state/types';
 import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/diplomacy';
@@ -42,12 +42,14 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
     }
   }
   // 징병: 위협 대비 병력이 부족할 때
+  const totalT = Object.values(s.cities).filter((c) => c.owner === fid).reduce((a, c) => a + c.troops, 0);
+  // v1.7: 늘어난 병력을 3계절 먹일 곡식이 없으면 징병하지 않는다 (여포 군량 붕괴 방지)
+  const canFeed = (amount: number) => f.food > (totalT + amount) * BALANCE.foodPerTroop * BALANCE.aiConscriptFoodSeasons;
   if (isFrontier && city.troops < threat * 0.9 && f.gold > 800 && f.iron > 3000) {
     const amount = Math.min(Math.floor(city.population * 0.08), Math.floor(f.iron / BALANCE.conscriptIronPerTroop), 10000);
-    if (amount >= 1000) opts.push({ score: 40 + (threat / Math.max(1, city.troops)) * 10, cmd: { type: 'conscript', generalId: g.id, amount }, why: '전선 방어 보강' });
+    if (amount >= 1000 && canFeed(amount)) opts.push({ score: 40 + (threat / Math.max(1, city.troops)) * 10, cmd: { type: 'conscript', generalId: g.id, amount }, why: '전선 방어 보강' });
   }
   // 공세 준비: 여유 자원이 많으면 전선에서 병력을 키운다
-  const totalT = Object.values(s.cities).filter((c) => c.owner === fid).reduce((a, c) => a + c.troops, 0);
   if (isFrontier && f.gold > 2500 && f.iron > 5000 && f.food > totalT * 1.2) {
     const amount = Math.min(Math.floor(city.population * 0.08), Math.floor(f.iron / BALANCE.conscriptIronPerTroop), 10000);
     if (amount >= 1000) opts.push({ score: 30 + f.gold / 1000, cmd: { type: 'conscript', generalId: g.id, amount }, why: '공세 준비' });
@@ -75,6 +77,14 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
   // 훈련: 전선 도시의 훈련도가 낮으면
   if (isFrontier && city.training < 65 && f.food > city.troops) {
     opts.push({ score: 26 + (65 - city.training) / 3, cmd: { type: 'train', generalId: g.id }, why: '훈련' });
+  }
+  // 군량: 부족하면 시장에서 사고, 그래도 모자라면 후방 병사를 귀농시킨다
+  if (f.food < totalT * BALANCE.aiBuyFoodBelow) {
+    const need = Math.min(BALANCE.tradeMax, Math.ceil((totalT * BALANCE.aiBuyFoodBelow - f.food) / 1000) * 1000);
+    const price = foodPrice(s, city.id, 'buyFood');
+    const afford = Math.floor((f.gold - 500) / price) * 1000;
+    if (Math.min(need, afford) >= 1000) opts.push({ score: 55, cmd: { type: 'trade', generalId: g.id, action: 'buyFood', amount: Math.min(need, afford) }, why: '군량 매입' });
+    else if (!isFrontier && city.troops > 4000 && f.food < totalT * 0.3) opts.push({ score: 50, cmd: { type: 'disband', generalId: g.id, amount: Math.floor(city.troops * 0.4) }, why: '귀농' });
   }
   // 등용
   const free = freeGeneralsIn(s, city.id);

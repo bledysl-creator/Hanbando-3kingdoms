@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Command, GameState, General, TacticKind } from '../../core';
-import { BALANCE, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
+import { BALANCE, foodPrice, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -94,7 +94,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
               </select>
             </label>
           )}
-          {actor && tab === '내정' && <DomesticTab actor={actor} onCommand={onCommand} />}
+          {actor && tab === '내정' && <DomesticTab state={state} cityId={c.id} actor={actor} onCommand={onCommand} />}
           {actor && tab === '군사' && <MilitaryTab state={state} actor={actor} cityTroops={c.troops} population={c.population} neighbors={ns} onCommand={onCommand} onTargetHover={onTargetHover} />}
           {actor && tab === '계략' && <IntrigueTab state={state} actor={actor} onCommand={onCommand} />}
           {actor && tab === '인재' && <TalentTab state={state} actor={actor} free={free} onCommand={onCommand} />}
@@ -118,10 +118,28 @@ function Bar({ label, v }: { label: string; v: number }) {
   );
 }
 
-function DomesticTab({ actor, onCommand }: { actor: General; onCommand: (c: Command) => void }) {
+function DomesticTab({ state, cityId, actor, onCommand }: { state: GameState; cityId: string; actor: General; onCommand: (c: Command) => void }) {
   const gain = Math.max(1, Math.round(2 + actor.stats.politics / 15));
+  const [amt, setAmt] = useState(10000);
+  const [disband, setDisband] = useState(3000);
+  const buy = foodPrice(state, cityId, 'buyFood');
+  const sell = foodPrice(state, cityId, 'sellFood');
+  const city = state.cities[cityId];
   return (
     <div className="actions">
+      <div className="sub">
+        <b>시장</b> <small>곡식 1,000석 — 사기 금 {buy} · 팔기 금 {sell} (계절·상업·항구에 따라 변동)</small>
+        <input type="range" min={1000} max={BALANCE.tradeMax} step={1000} value={amt} onChange={(e) => setAmt(+e.target.value)} />
+        <div className="row2">
+          <button onClick={() => onCommand({ type: 'trade', generalId: actor.id, action: 'buyFood', amount: amt })}>🛒 곡식 {amt.toLocaleString()}석 사기 <small>금 {Math.round((amt / 1000) * buy).toLocaleString()}</small></button>
+          <button onClick={() => onCommand({ type: 'trade', generalId: actor.id, action: 'sellFood', amount: amt })}>💰 팔기 <small>금 +{Math.round((amt / 1000) * sell).toLocaleString()}</small></button>
+        </div>
+      </div>
+      <div className="sub">
+        <b>귀농</b> <small>병사를 고향으로 돌려보내 인구·민심을 회복</small>
+        <input type="range" min={0} max={Math.max(0, city.troops - 500)} step={500} value={Math.min(disband, Math.max(0, city.troops - 500))} onChange={(e) => setDisband(+e.target.value)} />
+        <button disabled={disband < 500} onClick={() => onCommand({ type: 'disband', generalId: actor.id, amount: disband })}>🏡 {Math.min(disband, Math.max(0, city.troops - 500)).toLocaleString()}명 귀농</button>
+      </div>
       <button onClick={() => onCommand({ type: 'develop', generalId: actor.id, field: 'agriculture' })}>🌾 농업 개발 <small>금 {BALANCE.developGold} · +{gain}</small></button>
       <button onClick={() => onCommand({ type: 'develop', generalId: actor.id, field: 'commerce' })}>🪙 상업 개발 <small>금 {BALANCE.developGold} · +{gain}</small></button>
       <button onClick={() => onCommand({ type: 'develop', generalId: actor.id, field: 'wall' })}>🧱 성벽 보수 <small>금 {BALANCE.wallGold} · 목재 {BALANCE.wallWood} · +{gain}</small></button>

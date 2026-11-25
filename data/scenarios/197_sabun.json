@@ -15,8 +15,8 @@
       "iron": 32000
     },
     "lu": {
-      "gold": 5000,
-      "food": 75000,
+      "gold": 7000,
+      "food": 130000,
       "wood": 26000,
       "iron": 22000
     },
@@ -64,15 +64,15 @@
     },
     "chongjin": {
       "owner": "lu",
-      "troops": 10000
+      "troops": 8000
     },
     "hamhung": {
       "owner": "lu",
-      "troops": 30000
+      "troops": 26000
     },
     "wonsan": {
       "owner": "lu",
-      "troops": 18000
+      "troops": 26000
     },
     "hanyang": {
       "owner": "shu",
@@ -456,5 +456,14 @@
       "zhang_liao",
       "gao_shun"
     ]
-  }
+  },
+  "treaties": [
+    {
+      "a": "wei",
+      "b": "lu",
+      "status": "truce",
+      "turns": 4,
+      "note": "197년 조조가 여포를 좌장군에 임명해 달랜 일을 바탕으로 한 1년 휴전"
+    }
+  ]
 }
