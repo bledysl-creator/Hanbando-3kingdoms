@@ -691,3 +691,33 @@ it('치소 함락 시 장수 없는 약한 속현이 귀부한다', () => {
   const n = Object.values(s.cities).filter((c) => c.parent === 'jeonju' && c.owner === 'wu').length;
   expect(n).toBeGreaterThan(1);
 });
+
+import { lastStandBonus, hegemonOf, expectedHarvest } from '../src/core';
+import { aiWantsTruce } from '../src/core/diplomacy/diplomacy';
+import { processEconomy } from '../src/core/systems/turn';
+describe('밸런스 장치 (v3.3)', () => {
+  it('배수진: 땅이 얼마 남지 않은 세력은 수비 보너스를 받는다', () => {
+    const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1 });
+    expect(lastStandBonus(s, 'shu')).toBe(1);
+    for (const c of Object.values(s.cities)) if (c.owner === 'lu' && c.id !== 'hamhung') c.owner = 'wei';
+    expect(lastStandBonus(s, 'lu')).toBeGreaterThan(1);
+  });
+  it('합종: 패자가 있으면 나머지 세력은 서로 휴전을 원한다', () => {
+    const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1 });
+    s.diplomacy = {};
+    for (const id of ['daegu', 'gyeongju', 'jinju', 'chuncheon', 'kaesong', 'haeju']) s.cities[id].owner = 'shu';
+    expect(hegemonOf(s)).toBe('shu');
+    expect(aiWantsTruce(s, 'wei', 'lu')).toBe(true);
+    expect(aiWantsTruce(s, 'wei', 'shu')).toBe(false);
+  });
+  it('어업: 항구 도시는 계절마다 곡식을 더 얻고, AI 군량 계획에 수확이 반영된다', () => {
+    const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1 });
+    s.season = 0;
+    const port = Object.values(s.cities).filter((c) => c.owner === 'lu');
+    const before = s.factions.lu.food;
+    for (const c of port) c.troops = 0;
+    processEconomy(s);
+    expect(s.factions.lu.food).toBeGreaterThan(before);
+    expect(expectedHarvest(s, 'lu')).toBeGreaterThan(0);
+  });
+});

@@ -1,5 +1,5 @@
 // 상태 조회용 순수 함수 모음.
-import { SEASONS } from './config';
+import { BALANCE, SEASONS } from './config';
 import type { City, CityId, FactionId, General, GameState, Road } from './state/types';
 
 export function neighbors(s: GameState, cityId: CityId): { city: City; road: Road }[] {
@@ -90,3 +90,30 @@ export function supplyRatio(s: GameState, f: FactionId): number {
 /** 도시에 남겨야 하는 최소 병력과 최소 출진 병력 (군현 지도는 도시가 작아 기준이 낮다, v3.2) */
 export const minGarrison = (s: GameState) => (s.mapScale === 'region' ? 100 : 500);
 export const minMarch = (s: GameState) => (s.mapScale === 'region' ? 300 : 1000);
+
+/** v3.3 배수진: 남은 도시가 적은 세력은 마지막 땅을 결사적으로 지킨다 (수비 배율). 도시 비율로 판단해 군현 지도에도 맞춘다 */
+export function lastStandBonus(s: GameState, fid: string | null): number {
+  if (!fid) return 1;
+  const all = Object.keys(s.cities).length;
+  const mine = Object.values(s.cities).filter((c) => c.owner === fid).length;
+  return mine > 0 && mine / all <= BALANCE.lastStandCityShare ? 1 + BALANCE.lastStandDefense : 1;
+}
+/** v3.3 패권 세력: 도시의 일정 비율 이상을 가진 세력 (없으면 null) */
+export function hegemonOf(s: GameState): string | null {
+  const all = Object.keys(s.cities).length;
+  const cnt: Record<string, number> = {};
+  for (const c of Object.values(s.cities)) if (c.owner) cnt[c.owner] = (cnt[c.owner] ?? 0) + 1;
+  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+  return top && top[1] / all >= BALANCE.hegemonShare ? top[0] : null;
+}
+
+/** v3.3 한 해 예상 수확 + 어업 (가뭄·세력 특성 제외의 대략값) — AI 군량 계획용 */
+export function expectedHarvest(s: GameState, fid: string): number {
+  let h = 0;
+  for (const c of Object.values(s.cities)) {
+    if (c.owner !== fid) continue;
+    h += c.agriculture * (c.population / 1000) * BALANCE.harvestPerAgriculture * (0.5 + c.order / 200);
+    if (c.port) h += (c.population / 1000) * BALANCE.fishPerPort1000 * 3.5 * (0.5 + c.order / 200); // 어업 4계절(겨울 절반)
+  }
+  return h;
+}

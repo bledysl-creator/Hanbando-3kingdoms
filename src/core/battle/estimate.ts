@@ -1,6 +1,6 @@
 // 전투 결과 예측 (난수 없이). AI 판단과 장수 의견·거부 판단에 쓴다.
 import { BALANCE } from '../config';
-import { generalsIn, neighbors } from '../query';
+import { generalsIn, lastStandBonus, neighbors } from '../query';
 import type { City, GameState, General } from '../state/types';
 import { weatherAttackModifier } from '../systems/weather';
 import { qualityFactor } from './battle';
@@ -28,5 +28,5 @@ export function estimateRatio(s: GameState, g: General, from: City, to: City, tr
   const def = to.troops * (0.5 + best / 100) * qualityFactor(to.morale, to.training) * wallMul * (to.terrain === 'mountain' ? BALANCE.mountainDefenseBonus : 1);
   const forts = 1 + BALANCE.landmarkFortressBonus * landmarksOfCity(to.id, 'fortress').length;
   const elev = 1 + Math.min(BALANCE.elevDefenseCap, ((to.elev ?? 0) / 1000) * BALANCE.elevDefensePer1000m);
-  return atk / Math.max(1, def * forts * elev);
+  return atk / Math.max(1, def * forts * elev * lastStandBonus(s, to.owner));
 }

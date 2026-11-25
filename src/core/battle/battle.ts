@@ -17,6 +17,8 @@ export interface BattleInput {
   attackerGeneral: General;
   defenderCity: City;
   defenderGenerals: General[];
+  /** v3.3 배수진 수비 배율 (1 = 없음) */
+  lastStand?: number;
   road: Road;
   season: number;
   tactic?: TacticKind;
@@ -123,6 +125,10 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
     reasons.push('험준한 산악 지형이 수비에 유리');
   }
   if (!best) reasons.push('수비 측에 지휘관이 없음');
+  if (b.lastStand && b.lastStand > 1) {
+    def *= b.lastStand;
+    reasons.push(`땅이 얼마 남지 않은 수비군의 배수진 +${Math.round((b.lastStand - 1) * 100)}%`);
+  }
 
   atk *= randRange(rng, 0.88, 1.12);
   def *= randRange(rng, 0.88, 1.12);

@@ -6,6 +6,8 @@ export const BALANCE = {
   // 경제 (계절당)
   goldPerCommerce: 0.1, // 상업 × 인구(천명) × 계수
   harvestPerAgriculture: 6, // 가을 수확: 농업 × 인구(천명) × 계수
+  /** v3.3 어업: 항구 도시 인구 1천 명당 계절마다 얻는 곡식 */
+  fishPerPort1000: 20,
   foodPerTroop: 0.25, // 병사 1명이 계절마다 먹는 곡식
   woodPerLevel: 400,
   ironPerLevel: 400,
@@ -25,7 +27,7 @@ export const BALANCE = {
   // 전투
   winterAttackPenalty: 0.95, // 겨울 보급 난이도 (날씨와 별도)
   summerRainPenalty: 1, // v0.7부터 날씨 시스템으로 대체
-  roadAttackModifier: { land: 1, river: 0.8, pass: 0.85, sea: 0.75 } as Record<string, number>,
+  roadAttackModifier: { land: 1, river: 0.8, pass: 0.75, sea: 0.75 } as Record<string, number>,
   mountainDefenseBonus: 1.2,
   /** 세력 특성 효과 (v2.7) */
   traitEffects: {
@@ -105,6 +107,10 @@ export const BALANCE = {
   aiBuyFoodBelow: 0.6,
   /** AI 징병 조건: 늘어난 병력을 이 계절 수만큼 먹일 곡식 */
   aiConscriptFoodSeasons: 3,
+  /** v3.3 AI가 군량 계획에 반영하는 예상 수확 비율 (가뭄·전란 대비 할인) */
+  aiHarvestTrust: 0.8,
+  /** v3.3 한 해 군량이 필요량의 이 비율보다 적으면 AI가 병력을 줄인다 */
+  aiFoodDeficitDisband: 0.75,
   /** AI 후방 도시에 남기는 최소 병력 (v1.8) */
   aiRearGarrison: 3000,
   /** 공세 집결 목표: 적 도시 병력의 몇 배를 모을지 */
@@ -167,6 +173,10 @@ export const BALANCE = {
   diplomacyGoldPerPercent: 50, // 금 50당 수락률 +1%
   breakTreatyLoyaltyLoss: 6, // 맹약 파기 시 의리 높은 장수 충성 하락
   aiProposalChance: 0.35,
+  /** v3.3 배수진: 도시 비율이 이 값 이하인 세력의 수비 보너스 */
+  lastStandCityShare: 0.13, lastStandDefense: 0.4,
+  /** v3.3 합종: 도시 비율이 이 값 이상이면 패자, 나머지 세력 사이 휴전 수락 + */
+  hegemonShare: 0.33, coalitionAccept: 0.25,
 
   // AI
   failedAttackAttrition: 0.45, // 공격 실패 시에도 수비 측이 입는 소모 비율

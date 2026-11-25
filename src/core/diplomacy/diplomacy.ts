@@ -1,7 +1,7 @@
 // 외교 (v0.4): 휴전·동맹·파기. 플레이어와 AI가 같은 규칙을 쓴다 (Game.md 5-4).
 import { BALANCE } from '../config';
 import { chance } from '../rng/rng';
-import { relationBetween, totalTroops } from '../query';
+import { hegemonOf, relationBetween, totalTroops } from '../query';
 import type { DiplomaticStatus, GameState, Treaty } from '../state/types';
 
 export const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
@@ -47,6 +47,9 @@ export function acceptanceChance(
   // 상대가 다른 적과 싸우는 중이면 등 뒤를 지키고 싶어 한다
   const otherWars = Object.keys(s.factions).filter((f) => f !== to && f !== from && s.factions[f].alive && statusOf(s, to, f) === 'war').length;
   if (otherWars > 0) { p += 0.05 * otherWars; reasons.push(`상대는 다른 세력 ${otherWars}곳과 대치 중 +${otherWars * 5}%`); }
+  // v3.3 합종: 천하의 패자가 따로 있으면 나머지끼리는 손잡기 쉽다
+  const heg = hegemonOf(s);
+  if (heg && heg !== from && heg !== to) { p += BALANCE.coalitionAccept; reasons.push(`공동의 적 ${s.factions[heg].name}에 맞서 +${Math.round(BALANCE.coalitionAccept * 100)}%`); }
   const rulerRel = relationBetween(s, s.factions[from].rulerId, s.factions[to].rulerId);
   if (rulerRel?.type === 'enmity') { p -= 0.25; reasons.push('두 군주는 원수 사이 −25%'); }
   if (proposal === 'alliance' && statusOf(s, from, to) !== 'truce') { p -= 0.15; reasons.push('휴전 없이 바로 동맹은 어려움 −15%'); }
@@ -83,6 +86,9 @@ export function tryProposal(
 }
 
 export function aiWantsTruce(s: GameState, fid: string, other: string): boolean {
+  // v3.3 합종: 패자가 따로 있으면 패자가 아닌 세력과는 휴전해 힘을 모은다
+  const heg = hegemonOf(s);
+  if (heg && heg !== fid) return other !== heg && statusOf(s, fid, heg) === 'war';
   // 두 곳 이상과 대치 중이면 가장 강한 적과는 휴전을 원한다
   const enemies = Object.keys(s.factions).filter((f) => f !== fid && s.factions[f].alive && statusOf(s, fid, f) === 'war');
   if (enemies.length < 2) return false;

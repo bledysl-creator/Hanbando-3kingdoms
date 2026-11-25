@@ -9,7 +9,7 @@ import { chance, pick } from '../rng/rng';
 import { estimateRatio } from '../battle/estimate';
 import { killGeneral } from '../systems/lifecycle';
 import { discord, rumor, scout, withinTwo } from '../systems/intrigue';
-import { generalsIn, isConnectedToCapital, minGarrison, minMarch, neighbors, roadBetween, supplyRatio } from '../query';
+import { generalsIn, isConnectedToCapital, lastStandBonus, minGarrison, minMarch, neighbors, roadBetween, supplyRatio } from '../query';
 import type { GameState, LogKind } from '../state/types';
 import { refuseChance, remember } from '../systems/persona';
 import { canAttack, pairKey, statusOf, tryProposal, type Proposal } from '../diplomacy/diplomacy';
@@ -148,6 +148,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: cmd.tactic, traitAttack: traitSum(f.traits, 'attack'), attackerShips: city.ships ?? 0, navalTrait: f.traits.includes('수군'),
         attackerMorale: city.morale, attackerTraining: city.training, supply: supplyRatio(s, factionId) < BALANCE.lowSupplyThreshold ? supplyRatio(s, factionId) : undefined,
         isolated: !isConnectedToCapital(s, factionId, city.id),
+        lastStand: lastStandBonus(s, defenderFaction),
       });
       s.lastBattles.push({
         turn: s.turn, attackerFaction: factionId, defenderFaction, fromCity: city.id, toCity: to.id, generalId: g.id,

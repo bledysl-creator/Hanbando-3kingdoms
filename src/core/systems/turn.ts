@@ -19,7 +19,7 @@ import { landmarksOfCity } from '../data';
 export function processEconomy(s: GameState) {
   for (const f of Object.values(s.factions)) {
     if (!f.alive) continue;
-    let gold = 0, harvest = 0, wood = 0, iron = 0, troops = 0;
+    let gold = 0, harvest = 0, wood = 0, iron = 0, troops = 0, fish = 0;
     for (const c of Object.values(s.cities)) {
       if (c.owner !== f.id) continue;
       const k = c.population / 1000;
@@ -29,6 +29,8 @@ export function processEconomy(s: GameState) {
         const dry = Math.max(0, 1 - (c.droughtTurns ?? 0) * BALANCE.droughtHarvestLoss);
         harvest += c.agriculture * k * BALANCE.harvestPerAgriculture * orderMul * dry * (1 + traitSum(f.traits, 'harvest'));
       }
+      // v3.3 어업: 항구 도시는 계절마다 바다에서 곡식(어물)을 얻는다 (겨울은 절반)
+      if (c.port) fish += (c.population / 1000) * BALANCE.fishPerPort1000 * orderMul * (s.season === 3 ? 0.5 : 1);
       // 군현 지도는 도시가 많아 목재·철 산출을 도시 수에 맞춰 줄인다 (v3.2)
       const rk = s.mapScale === 'region' ? BALANCE.regionResourceScale : 1;
       wood += c.wood * BALANCE.woodPerLevel * rk * ((c.fire ?? 0) > 0 ? BALANCE.fireWoodPenalty : 1);
@@ -41,7 +43,7 @@ export function processEconomy(s: GameState) {
       c.morale = Math.round(c.morale);
     }
     f.gold += Math.round(gold);
-    f.food += Math.round(harvest);
+    f.food += Math.round(harvest + fish);
     f.wood += wood;
     f.iron += iron;
     const eat = Math.round(troops * BALANCE.foodPerTroop);
