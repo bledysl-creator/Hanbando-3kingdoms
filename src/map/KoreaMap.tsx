@@ -226,6 +226,9 @@ export function KoreaMap({ mode = 'political', state, selectedCityId, highlightC
                   {state.weather[c.id] && state.weather[c.id] !== 'clear' && (
                     <text x={10} y={-6} fontSize={11} pointerEvents="none"><title>{WEATHER_LABEL[state.weather[c.id]]}</title>{WEATHER_ICON[state.weather[c.id]]}</text>
                   )}
+                  {view.k >= 1.2 && (c.ships ?? 0) > 0 && (
+                    <text x={-22} y={-4} fontSize={8} fill="#bfe3ff" stroke="#0d1420" strokeWidth={1.5} paintOrder="stroke" pointerEvents="none">⛵{c.ships}</text>
+                  )}
                   <g transform="translate(0,19)">
                     <rect x={-c.name.length * 7 - 6} y={-9} width={c.name.length * 14 + 12} height={18} rx={4} fill="#141a22" fillOpacity={0.85} stroke={sel ? '#ffe08a' : '#a88d4f'} strokeWidth={0.9} />
                     <text textAnchor="middle" dy={4.5} fontSize={12} fill="#f5ecd6" fontWeight={600}>{c.name}</text>

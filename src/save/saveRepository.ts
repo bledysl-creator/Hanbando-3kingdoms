@@ -1,6 +1,6 @@
 // 저장 계층. 게임 코드는 이 인터페이스만 사용한다 → 나중에 Supabase로 교체 가능.
 import { del, get, keys, set } from 'idb-keyval';
-import { DATA, SAVE_VERSION, type GameState } from '../core';
+import { BALANCE, DATA, SAVE_VERSION, type GameState } from '../core';
 
 export interface SaveMeta { slot: string; label: string; savedAt: string; turn: number; year: number; season: number }
 
@@ -34,6 +34,11 @@ export function migrate(raw: unknown): GameState {
   if (s.saveVersion < 8) {
     for (const c of DATA.cities) if (s.cities[c.id] && s.cities[c.id].elev === undefined) s.cities[c.id].elev = c.elev;
     s.saveVersion = 8;
+  }
+  // v8 → v9: 수군 (v2.0)
+  if (s.saveVersion < 9) {
+    for (const c of Object.values(s.cities)) if (c.ships === undefined) c.ships = c.port ? BALANCE.startShipsPort : 0;
+    s.saveVersion = 9;
   }
   return s;
 }

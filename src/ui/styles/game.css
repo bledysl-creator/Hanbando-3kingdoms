@@ -249,3 +249,4 @@ select, input { font: inherit; }
 .tactic-pick button { padding: 3px 8px; font-size: 12px; }
 .tactic-pick button.active { background: #8a6d2a; color: #fff3cf; }
 .row2 { display: flex; gap: 4px; } .row2 button { flex: 1; }
+.ships-line { margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed #5a4a2a; } .ships-line button { margin-left: 8px; }

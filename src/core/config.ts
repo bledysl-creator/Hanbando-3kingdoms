@@ -27,6 +27,20 @@ export const BALANCE = {
   summerRainPenalty: 1, // v0.7부터 날씨 시스템으로 대체
   roadAttackModifier: { land: 1, river: 0.8, pass: 0.85, sea: 0.75 } as Record<string, number>,
   mountainDefenseBonus: 1.2,
+  /** 수군 (v2.0) */
+  shipWood: 400, shipGold: 40, shipsPerBuild: 10, maxShipsPerCity: 60,
+  /** 전선 1척당 상륙 작전 공격 보정, 상한 */
+  shipAttackPer: 0.01, shipAttackCap: 0.35,
+  /** 수비 항구의 전선 1척당 해상 방어, 상한 */
+  shipDefensePer: 0.007, shipDefenseCap: 0.25,
+  /** '수군' 특성 세력의 해상 공격 추가 보정 */
+  navalTraitBonus: 0.1,
+  /** 해상 공격 실패 시 전선 손실 비율 */
+  shipLossOnFail: 0.2,
+  /** 시작 전선: 수군 특성 세력 항구 / 그 외 항구 */
+  startShipsNaval: 30, startShipsPort: 10,
+  /** AI가 항구마다 갖추려는 전선 수 */
+  aiShipTarget: 30,
   fortressWallMultiplier: 1.5,
   /** 도시에 딸린 산성 하나당 수비 보너스 (v1.3) */
   landmarkFortressBonus: 0.06,

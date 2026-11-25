@@ -58,6 +58,8 @@ export interface City {
   training: number; // 훈련도 0~100 (v0.8)
   wood: number; // 목재 생산 등급
   iron: number; // 철 생산 등급
+  /** 전선(戰船) 척수 — 항구 도시만 (v2.0) */
+  ships?: number;
   droughtTurns?: number; // 이번 해 가뭄을 겪은 계절 수 (가을 수확 감소)
 }
 

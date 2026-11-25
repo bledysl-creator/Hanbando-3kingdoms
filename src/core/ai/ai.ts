@@ -107,6 +107,10 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
       if (next) opts.push({ score: 41, cmd: { type: 'transfer', generalId: g.id, toCityId: next.city.id, troops: spare }, why: '후방 병력 전진' });
     }
   }
+  // v2.0 수군: 바닷길로 적과 닿은 항구는 전선을 만든다
+  if (city.port && (city.ships ?? 0) < BALANCE.aiShipTarget && f.wood > 8000 && f.gold > 1500 && ns.some((n) => n.road.type === 'sea' && n.city.owner !== fid)) {
+    opts.push({ score: 24 + (f.traits.includes('수군') ? 10 : 0), cmd: { type: 'buildShips', generalId: g.id }, why: '전선 건조' });
+  }
   // 계략: 지력 높은 장수는 공격 대상에 유언비어·이간
   if (isFrontier && g.stats.intellect >= 80 && f.gold > 1500) {
     const tgt = enemyNs.filter((n) => n.city.owner && canAttack(s, fid, n.city.owner)).sort((a, b) => a.city.troops - b.city.troops)[0];

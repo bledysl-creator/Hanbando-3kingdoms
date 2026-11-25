@@ -19,6 +19,9 @@ export interface BattleInput {
   road: Road;
   season: number;
   tactic?: TacticKind;
+  /** 출진 도시의 전선 수와 공격 세력의 수군 특성 (v2.0) */
+  attackerShips?: number;
+  navalTrait?: boolean;
 }
 
 export interface BattleOutcome {
@@ -56,6 +59,13 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
     reasons.push(`${label}으로 공격력 ${Math.round((1 - roadMod) * 100)}% 감소`);
   }
   atk *= roadMod;
+  if (b.road.type === 'sea') {
+    const sb = Math.min(BALANCE.shipAttackCap, (b.attackerShips ?? 0) * BALANCE.shipAttackPer) + (b.navalTrait ? BALANCE.navalTraitBonus : 0);
+    if (sb > 0) { atk *= 1 + sb; reasons.push(`전선 ${b.attackerShips ?? 0}척${b.navalTrait ? '과 수군의 솜씨' : ''}로 상륙 지원 +${Math.round(sb * 100)}%`); }
+    else reasons.push('전선 없이 바다를 건너 상륙이 매우 어려움');
+    const ds = Math.min(BALANCE.shipDefenseCap, (b.defenderCity.ships ?? 0) * BALANCE.shipDefensePer);
+    if (ds > 0) { atk /= 1 + ds; reasons.push(`${b.defenderCity.name} 항구의 전선 ${b.defenderCity.ships}척이 막아섬 −${Math.round(ds * 100)}%`); }
+  }
   for (const lm of landmarksOnRoad(b.road.from, b.road.to)) {
     if (lm.type === 'pass') { atk *= BALANCE.namedPassPenalty; reasons.push(`${lm.name}을(를) 넘는 험한 길 −${Math.round((1 - BALANCE.namedPassPenalty) * 100)}%`); }
     else if (lm.type === 'ford') { atk *= BALANCE.fordEase; reasons.push(`${lm.name}로 강을 건너 도하 부담 완화 +${Math.round((BALANCE.fordEase - 1) * 100)}%`); }

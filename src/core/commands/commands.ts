@@ -27,7 +27,8 @@ export type Command =
   | { type: 'rumor'; generalId: string; cityId: string }
   | { type: 'discord'; generalId: string; targetId: string }
   | { type: 'trade'; generalId: string; action: 'buyFood' | 'sellFood'; amount: number }
-  | { type: 'disband'; generalId: string; amount: number };
+  | { type: 'disband'; generalId: string; amount: number }
+  | { type: 'buildShips'; generalId: string };
 
 export type CommandResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -137,7 +138,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       const defenderFaction = to.owner;
       const defenders = generalsIn(s, to.id).filter((x) => x.faction === defenderFaction);
       const out = resolveBattle(s, {
-        attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: cmd.tactic,
+        attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: cmd.tactic, attackerShips: city.ships ?? 0, navalTrait: f.traits.includes('수군'),
         attackerMorale: city.morale, attackerTraining: city.training, supply: supplyRatio(s, factionId) < BALANCE.lowSupplyThreshold ? supplyRatio(s, factionId) : undefined,
         isolated: !isConnectedToCapital(s, factionId, city.id),
       });
@@ -153,6 +154,12 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         to.troops = survivors;
         to.morale = Math.min(100, city.morale + BALANCE.victoryMorale);
         to.training = city.training;
+        if (to.port) {
+          // 항구 함락: 남은 전선 절반을 노획하고, 바다로 왔다면 함대 절반이 따라 들어간다
+          const moved = road.type === 'sea' ? Math.floor((city.ships ?? 0) / 2) : 0;
+          city.ships = (city.ships ?? 0) - moved;
+          to.ships = Math.min(BALANCE.maxShipsPerCity, Math.floor((to.ships ?? 0) / 2) + moved);
+        }
         if (defenderFaction) {
           const dPop = Object.values(s.cities).filter((c) => c.owner === defenderFaction).reduce((a, c) => a + c.population, 0);
           const df = s.factions[defenderFaction];
@@ -182,6 +189,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         to.morale = Math.min(100, to.morale + 5);
         city.troops += survivors;
         city.morale = Math.max(0, city.morale - BALANCE.defeatMorale);
+        if (road.type === 'sea' && (city.ships ?? 0) > 0) city.ships = Math.floor((city.ships ?? 0) * (1 - BALANCE.shipLossOnFail));
         if (chance(s, BALANCE.battleDeathChance * (g.persona.risk / 60))) {
           killGeneral(s, g, `${g.name}이(가) ${to.name} 공격 중 전사했습니다!`);
         }
@@ -208,6 +216,19 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         return { ok: true, message: `${t.name} 등용 성공!` };
       }
       return { ok: true, message: `${t.name}이(가) 등용을 거절했습니다. (성공률 ${Math.round(p * 100)}%)` };
+    }
+    case 'buildShips': {
+      if (!city.port) return { ok: false, error: '항구가 있는 도시에서만 전선을 만들 수 있습니다.' };
+      const have = city.ships ?? 0;
+      const n = Math.min(BALANCE.shipsPerBuild, BALANCE.maxShipsPerCity - have);
+      if (n <= 0) return { ok: false, error: `이 항구에는 더 이상 전선을 둘 수 없습니다 (최대 ${BALANCE.maxShipsPerCity}척).` };
+      const naval = f.traits.includes('수군') ? 0.7 : 1;
+      const wood = Math.round(n * BALANCE.shipWood * naval), gold = Math.round(n * BALANCE.shipGold * naval);
+      if (f.wood < wood || f.gold < gold) return { ok: false, error: `목재 ${wood.toLocaleString()} · 금 ${gold.toLocaleString()}이 필요합니다.` };
+      f.wood -= wood; f.gold -= gold;
+      city.ships = have + n;
+      g.acted = true;
+      return { ok: true, message: `${city.name}에서 전선 ${n}척을 건조했습니다. (보유 ${city.ships}척)` };
     }
     case 'trade': {
       const amount = Math.min(BALANCE.tradeMax, Math.max(0, Math.floor(cmd.amount / 1000) * 1000));

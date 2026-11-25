@@ -444,7 +444,24 @@ describe('실측 고도 (v1.9)', () => {
     s.saveVersion = 7;
     for (const c of Object.values(s.cities) as { elev?: number }[]) delete c.elev;
     const m = migrate(s);
-    expect(m.saveVersion).toBe(8);
+    expect(m.saveVersion).toBe(9);
     expect(m.cities.hyesan.elev).toBeGreaterThan(900);
+  });
+});
+
+describe('수군 (v2.0)', () => {
+  it('오의 항구는 전선 30척으로 시작하고, 항구 아닌 도시는 전선을 못 만든다', () => {
+    const s = newGame(2, 'wu');
+    expect(s.cities.busan.ships).toBe(30);
+    const inland = Object.values(s.generals).find((g) => g.faction === 'wu' && !s.cities[g.city].port)!;
+    expect(applyCommand(s, 'wu', { type: 'buildShips', generalId: inland.id }).result.ok).toBe(false);
+  });
+  it('전선이 많을수록 상륙 공격력이 높다', () => {
+    const s = newGame();
+    const base = { attackerTroops: 20000, attackerGeneral: s.generals.guan_yu, defenderCity: { ...s.cities.jeju, ships: 0 }, defenderGenerals: [], road: { from: 'naju', to: 'jeju', type: 'sea' as const }, season: 0, weather: 'clear' as const };
+    const none = resolveBattle({ rng: 1 }, { ...base, attackerShips: 0 });
+    const fleet = resolveBattle({ rng: 1 }, { ...base, attackerShips: 30 });
+    expect(fleet.attackerPower).toBeGreaterThan(none.attackerPower);
+    expect(fleet.reasons.join()).toContain('전선 30척');
   });
 });

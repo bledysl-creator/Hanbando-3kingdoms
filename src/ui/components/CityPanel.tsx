@@ -48,7 +48,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
       </h2>
       <div className="stat-grid">
         <span>세력</span><b>{owner ? `${owner.name}(${owner.hanja})` : '중립'}</b>
-        <span>병력</span><b>{(() => { const v = visibleTroops(state, pf, c.id); return v.value === null ? '알 수 없음 (첩보 필요)' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)} (${v.age}턴 전 첩보)`; })()}</b>
+        <span>병력</span><b>{(() => { const v = visibleTroops(state, pf, c.id); return v.value === null ? '알 수 없음 (첩보 필요)' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)} (${v.age}턴 전 첩보)`; })()}</b>{c.port && <><span>전선</span><b>⛵ {c.ships ?? 0}척</b></>}
         <span>인구</span><b>{fmt(c.population)}</b>
         <span>민심</span><b>{Math.round(c.order)}</b>
         <Bar label="농업" v={c.agriculture} />
@@ -172,6 +172,15 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
         <p className="warn-line">{supply < 1 ? `⚠ 군량 보급 ${Math.round(supply * 100)}% — 출진 시 공격력 감소. ` : ''}{isolated ? '⚠ 본거지와 끊긴 고립 도시 — 출진 시 −20%' : ''}</p>
       )}
       <div className="sub">
+        {city.port && (
+          <div className="ships-line">
+            ⛵ 전선 <b>{city.ships ?? 0}</b>척 / {BALANCE.maxShipsPerCity}
+            <button disabled={(city.ships ?? 0) >= BALANCE.maxShipsPerCity} onClick={() => onCommand({ type: 'buildShips', generalId: actor.id })}>
+              전선 {BALANCE.shipsPerBuild}척 건조 <small>목재 {BALANCE.shipWood * BALANCE.shipsPerBuild} · 금 {BALANCE.shipGold * BALANCE.shipsPerBuild}{state.factions[pf].traits.includes('수군') ? ' (수군 −30%)' : ''}</small>
+            </button>
+            <p className="hint">바닷길 상륙은 전선이 많을수록 유리하고, 적 항구의 전선은 상륙을 막습니다.</p>
+          </div>
+        )}
         <b>훈련</b> <small>곡 {Math.ceil(city.troops * BALANCE.trainFood).toLocaleString()} · 훈련 +{Math.max(3, Math.round(4 + actor.stats.leadership / 10))} · 사기 +3</small>
         <button disabled={city.training >= 100} onClick={() => onCommand({ type: 'train', generalId: actor.id })}>🎯 병사 훈련 (현재 {city.training})</button>
       </div>

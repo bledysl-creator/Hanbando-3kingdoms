@@ -1,10 +1,11 @@
 import type { GameData, ScenarioDef } from '../data';
 import { pairKey } from '../diplomacy/diplomacy';
+import { BALANCE } from '../config';
 import type { GameState } from './types';
 import { rollWeather } from '../systems/weather';
 import { recordAnnal } from '../systems/chronicle';
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
 export function createGame(
@@ -55,7 +56,7 @@ export function createGame(
 
   for (const c of data.cities) {
     const sc = scenario.cities[c.id];
-    s.cities[c.id] = { ...c, owner: sc?.owner ?? null, troops: sc?.troops ?? 2000, order: 70, morale: 70, training: sc?.owner ? 55 : 40 };
+    s.cities[c.id] = { ...c, owner: sc?.owner ?? null, troops: sc?.troops ?? 2000, ships: c.port ? (sc?.owner && data.factions.find((f) => f.id === sc.owner)?.traits.includes('수군') ? BALANCE.startShipsNaval : BALANCE.startShipsPort) : 0, order: 70, morale: 70, training: sc?.owner ? 55 : 40 };
   }
 
   for (const g of data.generals) {
