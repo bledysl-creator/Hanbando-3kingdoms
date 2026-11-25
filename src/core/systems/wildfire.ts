@@ -44,7 +44,7 @@ export function processWildfires(s: GameState) {
       if (c.fire === 0) log(s, `${c.name}의 산불이 잦아들었습니다.`, 'info', c.owner);
     } else if (chance(s, fireChance(s, c.id))) {
       c.fire = BALANCE.fireTurns;
-      log(s, `${c.name} 일대 산에서 큰 산불이 났습니다! 인구·농지가 타고 목재 생산이 줄어듭니다.`, 'danger', c.owner);
+      log(s, `${c.name} 일대 산에서 큰 산불이 났습니다! 인구·농지가 타고 목재 생산이 줄어듭니다.`, 'danger', c.owner, { event: 'fire' });
     }
   }
   for (const id of spread) {

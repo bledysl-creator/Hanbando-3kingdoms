@@ -118,7 +118,11 @@ export interface LogEntry {
   text: string;
   kind: LogKind;
   factionId?: FactionId | null;
+  /** v3.4 그림 안내 카드용 사건 종류와 상대 세력 */
+  event?: EventKind;
+  other?: FactionId | null;
 }
+export type EventKind = 'capture' | 'destroyed' | 'rebel' | 'debut' | 'death' | 'uprising' | 'plague' | 'fire' | 'harvest' | 'surrender' | 'treaty';
 
 export type MissionKind = 'own_all_cities' | 'destroy_faction' | 'recruit';
 export interface Mission {

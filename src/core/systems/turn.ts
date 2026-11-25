@@ -10,6 +10,7 @@ import { applyWeatherEffects, rollWeather } from './weather';
 import { canRise, processAiUprisings, processLifecycle } from './lifecycle';
 import { recordAnnal } from './chronicle';
 import { processSurrenders } from './surrender';
+import { processRebellions } from './rebellion';
 import { processEpidemics } from './epidemic';
 import { processWildfires } from './wildfire';
 import { processGovernors } from './office';
@@ -61,7 +62,7 @@ export function processEconomy(s: GameState) {
       }
       log(s, `${f.name}군 군량 부족! 병사들이 탈영하고 있습니다.`, 'danger', f.id);
     }
-    if (s.season === 2 && harvest > 0) log(s, `${f.name}: 가을 수확으로 곡식 ${Math.round(harvest).toLocaleString()}을(를) 거두었습니다.`, 'info', f.id);
+    if (s.season === 2 && harvest > 0) log(s, `${f.name}: 가을 수확으로 곡식 ${Math.round(harvest).toLocaleString()}을(를) 거두었습니다.`, 'info', f.id, { event: 'harvest' });
   }
   // 중립 도시는 병력이 천천히 회복
   for (const c of Object.values(s.cities)) if (c.owner === null) c.troops = Math.min(8000, c.troops + 300);
@@ -131,6 +132,7 @@ export function endTurnMut(s: GameState) {
   processLifecycle(s);
   if (s.season === 0) recordAnnal(s);
   processAiUprisings(s);
+  processRebellions(s);
   processSurrenders(s);
   checkOutcome(s);
   expireTreaties(s, (t) => log(s, t, 'info'));

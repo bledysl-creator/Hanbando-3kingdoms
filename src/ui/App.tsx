@@ -5,6 +5,7 @@ import { DEFAULT_LAYERS, KoreaMap, LAYER_LABELS, MAP_MODES, type MapLayers, type
 import { indexedDbRepo } from '../save/saveRepository';
 import { VERSION } from '../version';
 import { CityPanel } from './components/CityPanel';
+import { EventCards, pickEvents, type EventCardItem } from './components/EventCard';
 import { DiplomacyModal, OffersModal } from './components/Diplomacy';
 import { CommandBar, EventLog, MiniMap, MissionPanel, RulerCard, SideMenu, TopBar, TurnButton, type BarKey, type MenuKey } from './components/Hud';
 import { SimStatsModal, BattleReportView, BattlesModal, ArmyModal, TacticsModal, DevModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
@@ -140,11 +141,14 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
     if (result.ok && cmd.type === 'march') setSelected(next.generals[cmd.generalId].city);
   };
 
+  const [events, setEvents] = useState<EventCardItem[]>([]);
   const nextTurn = useCallback(() => {
     const next = endTurn(state);
     setState(next);
     indexedDbRepo.save('auto', next).catch(() => {});
-  }, [state, setState]);
+    // v3.4 그림 사건 안내 (자동 진행 중에는 띄우지 않음)
+    if (!auto && localStorage.getItem('hanbando.eventCards') !== '0') setEvents(pickEvents(state, next));
+  }, [state, setState, auto]);
 
   // 관전 모드 자동 진행
   useEffect(() => {
@@ -237,6 +241,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
 
       {toast && <div className={`toast ${toast.ok ? 'ok' : 'err'}`}>{toast.text}</div>}
 
+      {events.length > 0 && <EventCards key={state.turn} items={events} onClose={() => setEvents([])} />}
       {report !== null && state.lastBattles[report] && (
         <Modal title="전투 결과" onClose={() => setReport(null)}>
           <BattleReportView state={state} report={state.lastBattles[report]} />

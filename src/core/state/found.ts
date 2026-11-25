@@ -19,20 +19,23 @@ export function canFound(s: GameState, cityId: string, generalId: string): strin
   return null;
 }
 
-export function foundFaction(s: GameState, cityId: string, generalId: string): FoundResult {
+export interface FoundOptions { idPrefix?: string; color?: string; gold?: number; food?: number; wood?: number; iron?: number; minTroops?: number; verb?: string }
+
+export function foundFaction(s: GameState, cityId: string, generalId: string, o: FoundOptions = {}): FoundResult {
   const err = canFound(s, cityId, generalId);
   if (err) return { ok: false, error: err };
   const c = s.cities[cityId];
   const g = s.generals[generalId];
-  let id = 'neo';
-  for (let i = 2; s.factions[id]; i++) id = `neo${i}`;
+  const prefix = o.idPrefix ?? 'neo';
+  let id = prefix;
+  for (let i = 2; s.factions[id]; i++) id = `${prefix}${i}`;
   const two = TWO_CHAR_SURNAMES.find((x) => g.name.startsWith(x));
   let name = two ?? g.name[0];
   const hanja = g.hanja.slice(0, two ? 2 : 1);
   if (Object.values(s.factions).some((f) => f.name === name)) name = g.name;
   s.factions[id] = {
-    id, name, hanja, color: BALANCE.newRulerColor, rulerId: g.id, traits: [],
-    gold: BALANCE.newRulerGold, food: BALANCE.newRulerFood, wood: BALANCE.newRulerWood, iron: BALANCE.newRulerIron, alive: true,
+    id, name, hanja, color: o.color ?? BALANCE.newRulerColor, rulerId: g.id, traits: [],
+    gold: o.gold ?? BALANCE.newRulerGold, food: o.food ?? BALANCE.newRulerFood, wood: o.wood ?? BALANCE.newRulerWood, iron: o.iron ?? BALANCE.newRulerIron, alive: true,
   };
   s.recruits[id] = 0;
   s.heirs[id] = [];
@@ -49,10 +52,10 @@ export function foundFaction(s: GameState, cityId: string, generalId: string): F
   g.loyalty = 100;
   c.owner = id;
   c.governor = undefined;
-  c.troops = Math.max(c.troops, BALANCE.newRulerTroops);
+  c.troops = Math.max(c.troops, o.minTroops ?? BALANCE.newRulerTroops);
   c.morale = 80;
   c.training = Math.max(c.training, 45);
   checkFactionDestroyed(s, prev);
-  log(s, `${g.name}이(가) ${c.name}에서 거병해 ${name}(${hanja}) 세력을 세웠습니다.`, 'warn', id);
+  log(s, `${g.name}이(가) ${c.name}에서 ${o.verb ?? '거병해'} ${name}(${hanja}) 세력을 세웠습니다.`, 'warn', id);
   return { ok: true, factionId: id, rival: prev && s.factions[prev]?.alive ? prev : null };
 }

@@ -106,6 +106,9 @@ export function MissionPanel({ state }: { state: GameState }) {
   );
 }
 
+/** v3.4 사건 종류별 아이콘 (글만 읽지 않아도 무슨 일인지 보이게) */
+const EVENT_ICON: Record<string, string> = { capture: '⚔️', destroyed: '💀', rebel: '🔥', debut: '🌱', death: '🕯️', uprising: '🚩', plague: '🦠', fire: '🌲', harvest: '🌾', surrender: '🏳️', treaty: '🤝' };
+
 export function EventLog({ state, onOpen }: { state: GameState; onOpen: () => void }) {
   const pf = state.playerFactionId;
   // 다른 세력의 일상 소식(수확 등)은 빼고, 우리 세력 소식과 전투·사건만 보여준다
@@ -114,7 +117,7 @@ export function EventLog({ state, onOpen }: { state: GameState; onOpen: () => vo
     <div className="event-log panel" onClick={onOpen} title="연표 열기">
       {recent.map((l, i) => (
         <div key={i} className={`log-line ${l.kind}`}>
-          <span className="mark">!</span> {l.text}
+          <span className="mark">{l.event ? EVENT_ICON[l.event] : '!'}</span> {l.text}
         </div>
       ))}
     </div>

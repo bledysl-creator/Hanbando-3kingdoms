@@ -277,6 +277,7 @@ export function SettingsModal({ state, onClose, onLoad, onNewGame }: { state: Ga
       </div>
       <h4>개발자 모드</h4>
       <label><input type="checkbox" defaultChecked={localStorage.getItem('hanbando.dev') === '1'} onChange={(e) => { localStorage.setItem('hanbando.dev', e.target.checked ? '1' : '0'); window.dispatchEvent(new Event('hanbando-dev')); }} /> AI 판단 근거 보기 버튼 표시 (화면 왼쪽 아래)</label>
+      <label><input type="checkbox" defaultChecked={localStorage.getItem('hanbando.eventCards') !== '0'} onChange={(e) => localStorage.setItem('hanbando.eventCards', e.target.checked ? '1' : '0')} /> 턴마다 중요한 사건을 그림 카드로 안내</label>
       {msg && <p className="hint">{msg}</p>}
     </Modal>
   );

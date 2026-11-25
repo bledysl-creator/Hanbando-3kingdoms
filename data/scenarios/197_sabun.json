@@ -791,6 +791,231 @@
       "faction": null,
       "city": "anju",
       "loyalty": 0
+    },
+    "yi_yin": {
+      "faction": null,
+      "city": "hyesan",
+      "loyalty": 0
+    },
+    "liu_gui": {
+      "faction": null,
+      "city": "jeonju",
+      "loyalty": 0
+    },
+    "cai_zhong": {
+      "faction": null,
+      "city": "hyesan",
+      "loyalty": 0
+    },
+    "yang_huai": {
+      "faction": null,
+      "city": "chuncheon",
+      "loyalty": 0
+    },
+    "lu_kuang": {
+      "faction": "wei",
+      "city": "kaesong",
+      "loyalty": 60
+    },
+    "cai_yang": {
+      "faction": "wei",
+      "city": "kaesong",
+      "loyalty": 63
+    },
+    "han_xian": {
+      "faction": null,
+      "city": "chuncheon",
+      "loyalty": 0
+    },
+    "zhou_shan": {
+      "faction": "wu",
+      "city": "gyeongju",
+      "loyalty": 70
+    },
+    "han_fu": {
+      "faction": "wei",
+      "city": "kaesong",
+      "loyalty": 68
+    },
+    "lu_qian": {
+      "faction": "wei",
+      "city": "ganggye",
+      "loyalty": 75
+    },
+    "li_le": {
+      "faction": null,
+      "city": "gangneung",
+      "loyalty": 0
+    },
+    "yuan_xi": {
+      "faction": null,
+      "city": "pyongyang",
+      "loyalty": 0
+    },
+    "yang_xiu": {
+      "faction": "wei",
+      "city": "anju",
+      "loyalty": 80
+    },
+    "mao_jie": {
+      "faction": "wei",
+      "city": "pyongyang",
+      "loyalty": 70
+    },
+    "gong_dou": {
+      "faction": null,
+      "city": "chongjin",
+      "loyalty": 0
+    },
+    "liu_yao": {
+      "faction": null,
+      "city": "hamhung",
+      "loyalty": 0
+    },
+    "fu_wan": {
+      "faction": null,
+      "city": "gongju",
+      "loyalty": 0
+    },
+    "gao_pei": {
+      "faction": null,
+      "city": "pyongyang",
+      "loyalty": 0
+    },
+    "chen_gui": {
+      "faction": null,
+      "city": "gwangju",
+      "loyalty": 0
+    },
+    "zhao_fan": {
+      "faction": "shu",
+      "city": "jeonju",
+      "loyalty": 78
+    },
+    "yang_biao": {
+      "faction": "wei",
+      "city": "kaesong",
+      "loyalty": 60
+    },
+    "yang_feng": {
+      "faction": null,
+      "city": "chuncheon",
+      "loyalty": 0
+    },
+    "han_yin": {
+      "faction": null,
+      "city": "uiju",
+      "loyalty": 0
+    },
+    "gao_gan": {
+      "faction": null,
+      "city": "ganggye",
+      "loyalty": 0
+    },
+    "chen_zhen": {
+      "faction": "shu",
+      "city": "naju",
+      "loyalty": 61
+    },
+    "dong_cheng": {
+      "faction": null,
+      "city": "gwangju",
+      "loyalty": 0
+    },
+    "shen_dan": {
+      "faction": "wei",
+      "city": "anju",
+      "loyalty": 60
+    },
+    "cai_he": {
+      "faction": "wei",
+      "city": "pyongyang",
+      "loyalty": 65
+    },
+    "xi_zheng": {
+      "faction": "wei",
+      "city": "haeju",
+      "loyalty": 68
+    },
+    "yang_qiu": {
+      "faction": "wei",
+      "city": "anju",
+      "loyalty": 74
+    },
+    "che_zhou": {
+      "faction": "wei",
+      "city": "anju",
+      "loyalty": 70
+    },
+    "yang_ren": {
+      "faction": null,
+      "city": "haeju",
+      "loyalty": 0
+    },
+    "han_hao": {
+      "faction": "wei",
+      "city": "anju",
+      "loyalty": 67
+    },
+    "li_meng": {
+      "faction": null,
+      "city": "cheongju",
+      "loyalty": 0
+    },
+    "yang_fu": {
+      "faction": "wei",
+      "city": "kaesong",
+      "loyalty": 69
+    },
+    "han_xuan": {
+      "faction": "shu",
+      "city": "jeonju",
+      "loyalty": 71
+    },
+    "jiao_chu": {
+      "faction": "wei",
+      "city": "pyongyang",
+      "loyalty": 67
+    },
+    "yi_ji": {
+      "faction": "shu",
+      "city": "suwon",
+      "loyalty": 62
+    },
+    "liu_pi": {
+      "faction": null,
+      "city": "chuncheon",
+      "loyalty": 0
+    },
+    "chunyu_qiong": {
+      "faction": null,
+      "city": "chongjin",
+      "loyalty": 0
+    },
+    "jiang_gan": {
+      "faction": null,
+      "city": "hanyang",
+      "loyalty": 0
+    },
+    "wang_zifu": {
+      "faction": null,
+      "city": "jinju",
+      "loyalty": 0
+    },
+    "lu_xiang": {
+      "faction": "wei",
+      "city": "haeju",
+      "loyalty": 67
+    },
+    "niu_jin": {
+      "faction": "wei",
+      "city": "pyongyang",
+      "loyalty": 78
+    },
+    "zhang_yang": {
+      "faction": null,
+      "city": "naju",
+      "loyalty": 0
     }
   },
   "relations": [
@@ -1127,6 +1352,291 @@
       "year": 203,
       "city": "gongju",
       "faction": null
+    },
+    "wu_tugu": {
+      "year": 211,
+      "city": "ganggye",
+      "faction": null
+    },
+    "zhuge_zhan": {
+      "year": 243,
+      "city": "gongju",
+      "faction": "shu"
+    },
+    "wei_huang": {
+      "year": 199,
+      "city": "gangneung",
+      "faction": null
+    },
+    "wen_qin": {
+      "year": 239,
+      "city": "gyeongju",
+      "faction": "wu"
+    },
+    "ma_zun": {
+      "year": 212,
+      "city": "kaesong",
+      "faction": "wei"
+    },
+    "sun_jun": {
+      "year": 235,
+      "city": "busan",
+      "faction": "wu"
+    },
+    "sun_huan": {
+      "year": 214,
+      "city": "chuncheon",
+      "faction": "wu"
+    },
+    "sun_chen": {
+      "year": 247,
+      "city": "gangneung",
+      "faction": "wu"
+    },
+    "wang_guan": {
+      "year": 251,
+      "city": "pyongyang",
+      "faction": "wei"
+    },
+    "wang_bi": {
+      "year": 203,
+      "city": "haeju",
+      "faction": "wei"
+    },
+    "sima_wang": {
+      "year": 221,
+      "city": "haeju",
+      "faction": "wei"
+    },
+    "yue_ji": {
+      "year": 213,
+      "city": "chuncheon",
+      "faction": null
+    },
+    "deng_zhong": {
+      "year": 245,
+      "city": "uiju",
+      "faction": "wei"
+    },
+    "sun_li": {
+      "year": 219,
+      "city": "uiju",
+      "faction": "wei"
+    },
+    "zheng_wen": {
+      "year": 221,
+      "city": "haeju",
+      "faction": "wei"
+    },
+    "dai_ling": {
+      "year": 216,
+      "city": "haeju",
+      "faction": "wei"
+    },
+    "meng_you": {
+      "year": 210,
+      "city": "gongju",
+      "faction": "shu"
+    },
+    "dong_tuna": {
+      "year": 209,
+      "city": "gwangju",
+      "faction": null
+    },
+    "shi_ren": {
+      "year": 204,
+      "city": "jinju",
+      "faction": "wu"
+    },
+    "yang_ling": {
+      "year": 212,
+      "city": "anju",
+      "faction": "wei"
+    },
+    "wang_jing": {
+      "year": 241,
+      "city": "pyongyang",
+      "faction": "wei"
+    },
+    "a_huinan": {
+      "year": 209,
+      "city": "uiju",
+      "faction": null
+    },
+    "huang_hao": {
+      "year": 246,
+      "city": "cheongju",
+      "faction": "shu"
+    },
+    "gao_ding": {
+      "year": 206,
+      "city": "naju",
+      "faction": "shu"
+    },
+    "zhu_bao": {
+      "year": 209,
+      "city": "cheongju",
+      "faction": "shu"
+    },
+    "hu_zun": {
+      "year": 236,
+      "city": "pyongyang",
+      "faction": "wei"
+    },
+    "jiang_xu": {
+      "year": 199,
+      "city": "pyongyang",
+      "faction": null
+    },
+    "fu_qian": {
+      "year": 244,
+      "city": "hanyang",
+      "faction": "shu"
+    },
+    "yang_ang": {
+      "year": 201,
+      "city": "jeonju",
+      "faction": null
+    },
+    "qin_lang": {
+      "year": 214,
+      "city": "kaesong",
+      "faction": "wei"
+    },
+    "wu_ban": {
+      "year": 200,
+      "city": "gongju",
+      "faction": "shu"
+    },
+    "shen_yi": {
+      "year": 205,
+      "city": "pyongyang",
+      "faction": "wei"
+    },
+    "wei_guan": {
+      "year": 236,
+      "city": "anju",
+      "faction": "wei"
+    },
+    "du_yu": {
+      "year": 238,
+      "city": "haeju",
+      "faction": "wei"
+    },
+    "zhou_fang": {
+      "year": 214,
+      "city": "busan",
+      "faction": "wu"
+    },
+    "geng_ji": {
+      "year": 199,
+      "city": "jeonju",
+      "faction": null
+    },
+    "sun_xiu": {
+      "year": 251,
+      "city": "chuncheon",
+      "faction": "wu"
+    },
+    "shi_zuan": {
+      "year": 244,
+      "city": "ganggye",
+      "faction": "wei"
+    },
+    "gongsun_yuan": {
+      "year": 219,
+      "city": "haeju",
+      "faction": null
+    },
+    "wu_lan": {
+      "year": 199,
+      "city": "hanyang",
+      "faction": "shu"
+    },
+    "yong_kai": {
+      "year": 206,
+      "city": "daegu",
+      "faction": "wu"
+    },
+    "qiao_zhou": {
+      "year": 217,
+      "city": "kaesong",
+      "faction": "wei"
+    },
+    "ya_dan": {
+      "year": 213,
+      "city": "wonsan",
+      "faction": null
+    },
+    "le_chen": {
+      "year": 220,
+      "city": "haeju",
+      "faction": "wei"
+    },
+    "feng_xi": {
+      "year": 203,
+      "city": "hanyang",
+      "faction": "shu"
+    },
+    "yang_hu": {
+      "year": 237,
+      "city": "ganggye",
+      "faction": "wei"
+    },
+    "sima_yan": {
+      "year": 252,
+      "city": "pyongyang",
+      "faction": "wei"
+    },
+    "yang_song": {
+      "year": 199,
+      "city": "jinju",
+      "faction": null
+    },
+    "xiahou_mao": {
+      "year": 211,
+      "city": "anju",
+      "faction": "wei"
+    },
+    "lei_tong": {
+      "year": 199,
+      "city": "gongju",
+      "faction": "shu"
+    },
+    "yang_yi": {
+      "year": 216,
+      "city": "hanyang",
+      "faction": "shu"
+    },
+    "jia_chong": {
+      "year": 233,
+      "city": "kaesong",
+      "faction": "wei"
+    },
+    "wang_ji": {
+      "year": 206,
+      "city": "uiju",
+      "faction": "wei"
+    },
+    "gao_xiang": {
+      "year": 211,
+      "city": "gongju",
+      "faction": "shu"
+    },
+    "wang_jun": {
+      "year": 222,
+      "city": "haeju",
+      "faction": "wei"
+    },
+    "cao_zhang": {
+      "year": 204,
+      "city": "ganggye",
+      "faction": "wei"
+    },
+    "chen_shi": {
+      "year": 204,
+      "city": "naju",
+      "faction": "shu"
     }
   },
   "heirs": {

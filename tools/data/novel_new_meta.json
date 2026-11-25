@@ -1,0 +1,567 @@
+{
+ "lu_zhi": {
+  "fac": null,
+  "death": 192,
+  "first": 1
+ },
+ "wu_tugu": {
+  "fac": null,
+  "death": null,
+  "first": 90
+ },
+ "zhuge_zhan": {
+  "fac": "shu",
+  "death": 263,
+  "first": 16
+ },
+ "yi_yin": {
+  "fac": null,
+  "death": null,
+  "first": 3
+ },
+ "wei_huang": {
+  "fac": null,
+  "death": 218,
+  "first": 69
+ },
+ "wen_qin": {
+  "fac": "wu",
+  "death": 258,
+  "first": 109
+ },
+ "ma_zun": {
+  "fac": "wei",
+  "death": null,
+  "first": 92
+ },
+ "sun_jun": {
+  "fac": "wu",
+  "death": 256,
+  "first": 107
+ },
+ "liu_gui": {
+  "fac": null,
+  "death": null,
+  "first": 60
+ },
+ "cai_zhong": {
+  "fac": null,
+  "death": null,
+  "first": 34
+ },
+ "sun_huan": {
+  "fac": "wu",
+  "death": null,
+  "first": 82
+ },
+ "yang_huai": {
+  "fac": null,
+  "death": null,
+  "first": 61
+ },
+ "sun_chen": {
+  "fac": "wu",
+  "death": 258,
+  "first": 111
+ },
+ "wang_guan": {
+  "fac": "wei",
+  "death": null,
+  "first": 114
+ },
+ "lu_kuang": {
+  "fac": "wei",
+  "death": null,
+  "first": 32
+ },
+ "cai_yang": {
+  "fac": "wei",
+  "death": 201,
+  "first": 26
+ },
+ "wang_bi": {
+  "fac": "wei",
+  "death": null,
+  "first": 69
+ },
+ "sima_wang": {
+  "fac": "wei",
+  "death": 271,
+  "first": 62
+ },
+ "han_xian": {
+  "fac": null,
+  "death": 197,
+  "first": 13
+ },
+ "yue_ji": {
+  "fac": null,
+  "death": null,
+  "first": 94
+ },
+ "zhou_shan": {
+  "fac": "wu",
+  "death": null,
+  "first": 61
+ },
+ "deng_zhong": {
+  "fac": "wei",
+  "death": 264,
+  "first": 111
+ },
+ "sun_li": {
+  "fac": "wei",
+  "death": 250,
+  "first": 95
+ },
+ "han_fu": {
+  "fac": "wei",
+  "death": null,
+  "first": 27
+ },
+ "zheng_wen": {
+  "fac": "wei",
+  "death": null,
+  "first": 102
+ },
+ "lu_qian": {
+  "fac": "wei",
+  "death": null,
+  "first": 10
+ },
+ "li_le": {
+  "fac": null,
+  "death": 197,
+  "first": 13
+ },
+ "dai_ling": {
+  "fac": "wei",
+  "death": null,
+  "first": 99
+ },
+ "meng_you": {
+  "fac": "shu",
+  "death": null,
+  "first": 88
+ },
+ "dong_tuna": {
+  "fac": null,
+  "death": null,
+  "first": 87
+ },
+ "shi_ren": {
+  "fac": "wu",
+  "death": null,
+  "first": 73
+ },
+ "yuan_xi": {
+  "fac": null,
+  "death": 207,
+  "first": 31
+ },
+ "yang_ling": {
+  "fac": "wei",
+  "death": null,
+  "first": 92
+ },
+ "wang_jing": {
+  "fac": "wei",
+  "death": 260,
+  "first": 110
+ },
+ "a_huinan": {
+  "fac": null,
+  "death": null,
+  "first": 87
+ },
+ "huang_hao": {
+  "fac": "shu",
+  "death": null,
+  "first": 112
+ },
+ "zhang_ji": {
+  "fac": null,
+  "death": 196,
+  "first": 3
+ },
+ "yang_xiu": {
+  "fac": "wei",
+  "death": 219,
+  "first": 1
+ },
+ "mao_jie": {
+  "fac": "wei",
+  "death": null,
+  "first": 10
+ },
+ "gong_dou": {
+  "fac": null,
+  "death": null,
+  "first": 26
+ },
+ "liu_yao": {
+  "fac": null,
+  "death": null,
+  "first": 11
+ },
+ "fu_wan": {
+  "fac": null,
+  "death": 209,
+  "first": 20
+ },
+ "gao_ding": {
+  "fac": "shu",
+  "death": 225,
+  "first": 87
+ },
+ "gao_pei": {
+  "fac": null,
+  "death": null,
+  "first": 61
+ },
+ "chen_gui": {
+  "fac": null,
+  "death": null,
+  "first": 16
+ },
+ "zhao_fan": {
+  "fac": "shu",
+  "death": null,
+  "first": 52
+ },
+ "yang_biao": {
+  "fac": "wei",
+  "death": 225,
+  "first": 3
+ },
+ "zhu_bao": {
+  "fac": "shu",
+  "death": null,
+  "first": 87
+ },
+ "hu_zun": {
+  "fac": "wei",
+  "death": 256,
+  "first": 106
+ },
+ "jiang_xu": {
+  "fac": null,
+  "death": null,
+  "first": 64
+ },
+ "yang_feng": {
+  "fac": null,
+  "death": 197,
+  "first": 12
+ },
+ "zhu_jun": {
+  "fac": null,
+  "death": 195,
+  "first": 1
+ },
+ "fu_qian": {
+  "fac": "shu",
+  "death": 263,
+  "first": 112
+ },
+ "cai_yong": {
+  "fac": null,
+  "death": 192,
+  "first": 1
+ },
+ "yang_ang": {
+  "fac": null,
+  "death": null,
+  "first": 67
+ },
+ "fan_chou": {
+  "fac": null,
+  "death": 195,
+  "first": 3
+ },
+ "qin_lang": {
+  "fac": "wei",
+  "death": null,
+  "first": 102
+ },
+ "han_yin": {
+  "fac": null,
+  "death": null,
+  "first": 16
+ },
+ "gao_gan": {
+  "fac": null,
+  "death": 206,
+  "first": 31
+ },
+ "wu_ban": {
+  "fac": "shu",
+  "death": null,
+  "first": 65
+ },
+ "shen_yi": {
+  "fac": "wei",
+  "death": null,
+  "first": 79
+ },
+ "wei_guan": {
+  "fac": "wei",
+  "death": 291,
+  "first": 116
+ },
+ "du_yu": {
+  "fac": "wei",
+  "death": 284,
+  "first": 119
+ },
+ "zhou_fang": {
+  "fac": "wu",
+  "death": null,
+  "first": 95
+ },
+ "geng_ji": {
+  "fac": null,
+  "death": 218,
+  "first": 69
+ },
+ "sun_xiu": {
+  "fac": "wu",
+  "death": 264,
+  "first": 113
+ },
+ "chen_zhen": {
+  "fac": "shu",
+  "death": 235,
+  "first": 26
+ },
+ "dong_cheng": {
+  "fac": null,
+  "death": 200,
+  "first": 12
+ },
+ "shi_zuan": {
+  "fac": "wei",
+  "death": 263,
+  "first": 111
+ },
+ "gongsun_yuan": {
+  "fac": null,
+  "death": 238,
+  "first": 105
+ },
+ "shen_dan": {
+  "fac": "wei",
+  "death": null,
+  "first": 29
+ },
+ "wu_lan": {
+  "fac": "shu",
+  "death": 218,
+  "first": 62
+ },
+ "cai_he": {
+  "fac": "wei",
+  "death": null,
+  "first": 34
+ },
+ "xi_zheng": {
+  "fac": "wei",
+  "death": 278,
+  "first": 19
+ },
+ "yong_kai": {
+  "fac": "wu",
+  "death": 225,
+  "first": 86
+ },
+ "yang_qiu": {
+  "fac": "wei",
+  "death": null,
+  "first": 58
+ },
+ "qiao_zhou": {
+  "fac": "wei",
+  "death": 270,
+  "first": 65
+ },
+ "ya_dan": {
+  "fac": null,
+  "death": null,
+  "first": 94
+ },
+ "cao_song": {
+  "fac": null,
+  "death": 193,
+  "first": 1
+ },
+ "le_chen": {
+  "fac": "wei",
+  "death": 257,
+  "first": 98
+ },
+ "che_zhou": {
+  "fac": "wei",
+  "death": 199,
+  "first": 20
+ },
+ "yang_ren": {
+  "fac": null,
+  "death": 215,
+  "first": 67
+ },
+ "wang_yun": {
+  "fac": null,
+  "death": 192,
+  "first": 3
+ },
+ "feng_xi": {
+  "fac": "shu",
+  "death": 222,
+  "first": 81
+ },
+ "han_hao": {
+  "fac": "wei",
+  "death": null,
+  "first": 39
+ },
+ "yang_hu": {
+  "fac": "wei",
+  "death": 278,
+  "first": 120
+ },
+ "sima_yan": {
+  "fac": "wei",
+  "death": 290,
+  "first": 23
+ },
+ "yang_song": {
+  "fac": null,
+  "death": null,
+  "first": 64
+ },
+ "li_meng": {
+  "fac": null,
+  "death": null,
+  "first": 9
+ },
+ "xiahou_mao": {
+  "fac": "wei",
+  "death": null,
+  "first": 91
+ },
+ "lei_tong": {
+  "fac": "shu",
+  "death": 218,
+  "first": 62
+ },
+ "yang_fu": {
+  "fac": "wei",
+  "death": null,
+  "first": 59
+ },
+ "tao_qian": {
+  "fac": null,
+  "death": 194,
+  "first": 5
+ },
+ "yang_yi": {
+  "fac": "shu",
+  "death": 235,
+  "first": 91
+ },
+ "cao_bao": {
+  "fac": null,
+  "death": 196,
+  "first": 10
+ },
+ "han_xuan": {
+  "fac": "shu",
+  "death": null,
+  "first": 41
+ },
+ "jia_chong": {
+  "fac": "wei",
+  "death": 282,
+  "first": 111
+ },
+ "wang_ji": {
+  "fac": "wei",
+  "death": 261,
+  "first": 69
+ },
+ "gao_xiang": {
+  "fac": "shu",
+  "death": null,
+  "first": 91
+ },
+ "wang_jun": {
+  "fac": "wei",
+  "death": 286,
+  "first": 120
+ },
+ "jiao_chu": {
+  "fac": "wei",
+  "death": null,
+  "first": 33
+ },
+ "yi_ji": {
+  "fac": "shu",
+  "death": null,
+  "first": 34
+ },
+ "liu_pi": {
+  "fac": null,
+  "death": null,
+  "first": 26
+ },
+ "chunyu_qiong": {
+  "fac": null,
+  "death": 200,
+  "first": 3
+ },
+ "jiang_gan": {
+  "fac": null,
+  "death": null,
+  "first": 44
+ },
+ "cao_zhang": {
+  "fac": "wei",
+  "death": 223,
+  "first": 72
+ },
+ "chen_shi": {
+  "fac": "shu",
+  "death": null,
+  "first": 71
+ },
+ "wang_zifu": {
+  "fac": null,
+  "death": 200,
+  "first": 20
+ },
+ "lu_xiang": {
+  "fac": "wei",
+  "death": null,
+  "first": 32
+ },
+ "niu_jin": {
+  "fac": "wei",
+  "death": null,
+  "first": 51
+ },
+ "zhang_yang": {
+  "fac": null,
+  "death": 198,
+  "first": 5
+ },
+ "huangfu_song": {
+  "fac": null,
+  "death": 195,
+  "first": 1
+ },
+ "liu_yan": {
+  "fac": null,
+  "death": 194,
+  "first": 1
+ }
+}

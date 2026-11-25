@@ -6,6 +6,7 @@ import { rollWeather } from '../systems/weather';
 import { recordAnnal } from '../systems/chronicle';
 import { regionize } from './regionize';
 import { foundFaction } from './found';
+import { spreadGenerals } from './spread';
 
 export const SAVE_VERSION = 9;
 
@@ -100,6 +101,8 @@ export function createGame(data: GameData, scenario: ScenarioDef, opts: CreateOp
     };
   }
 
+  // v3.4 장수 편제: 한 도시에 장수가 몰리지 않게 (한 장수 = 한 지역의 태수)
+  spreadGenerals(s);
   // v3.2 신군주: 고른 도시에서 고른 장수가 새 세력을 세운다
   let rival: string | undefined;
   if (opts.newRuler) {

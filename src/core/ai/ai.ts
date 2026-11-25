@@ -2,6 +2,7 @@ import { TACTICS, tacticChance, type TacticKind } from '../battle/tactics';
 // 규칙 기반 + Utility AI (Game.md 5-5). 플레이어와 같은 명령만 사용한다.
 import { BALANCE } from '../config';
 import { executeCommand, foodPrice, type Command } from '../commands/commands';
+import { generalCap } from '../state/spread';
 import { allGenerals, expectedHarvest, freeGeneralsIn, generalsIn, minGarrison, minMarch, neighbors } from '../query';
 import type { City, GameState, General, Road } from '../state/types';
 import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/diplomacy';
@@ -130,6 +131,17 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
       if (next) opts.push({ score: 16, cmd: { type: 'transfer', generalId: g.id, toCityId: next.city.id, troops: Math.max(0, city.troops - minGarrison(s) * 2) }, why: '장수 전선 이동' });
     }
   }
+  // v3.4 태수 파견: 장수가 몰린 도시에서 장수가 없는 이웃 아군 도시로 한 명을 보낸다 (병력은 데려가지 않음)
+  const here = generalsIn(s, city.id, fid);
+  if (here.length > generalCap(s, fid) && g.id !== f.rulerId) {
+    const empty = ns.find((n) => n.city.owner === fid && generalsIn(s, n.city.id, fid).length === 0);
+    if (empty) opts.push({ score: BALANCE.aiDispatchScore, cmd: { type: 'transfer', generalId: g.id, toCityId: empty.city.id, troops: 0 }, why: '태수 파견' });
+    // 이웃에 빈 도시가 없어도 너무 몰렸으면 장수가 가장 적은 이웃 아군 도시로 나눈다
+    else if (here.length > generalCap(s, fid) + BALANCE.aiCrowdSlack) {
+      const lean = ns.filter((n) => n.city.owner === fid).map((n) => ({ id: n.city.id, k: generalsIn(s, n.city.id, fid).length })).sort((a, b) => a.k - b.k)[0];
+      if (lean && lean.k < here.length - 2) opts.push({ score: BALANCE.aiDispatchScore - 3, cmd: { type: 'transfer', generalId: g.id, toCityId: lean.id, troops: 0 }, why: '장수 분산' });
+    }
+  }
   // v2.4 태수: 태수가 없으면 이 도시에서 정치가 가장 높은 장수(군주 제외)를 임명
   if (!governorOf(s, city.id)) {
     const cand = generalsIn(s, city.id, fid).filter((x) => x.id !== f.rulerId).sort((a, b) => b.stats.politics - a.stats.politics)[0];
@@ -237,7 +249,7 @@ function runFactionDiplomacy(s: GameState, fid: string) {
   envoy.acted = true;
   f.gold -= gold;
   const r = tryProposal(s, fid, target, 'truce', envoy.id, gold);
-  if (r.accepted) { s.factions[target].gold += gold; log(s, `${f.name}과(와) ${s.factions[target].name}이(가) 휴전을 맺었습니다.`, 'info'); }
+  if (r.accepted) { s.factions[target].gold += gold; log(s, `${f.name}과(와) ${s.factions[target].name}이(가) 휴전을 맺었습니다.`, 'info', fid, { event: 'treaty', other: target }); }
 }
 
 /** AI도 플레이어와 같은 계책을 고른다: 성공률이 가장 높은 것, 기준 미만이면 정공법 */

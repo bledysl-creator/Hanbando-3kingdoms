@@ -721,3 +721,55 @@ describe('밸런스 장치 (v3.3)', () => {
     expect(expectedHarvest(s, 'lu')).toBeGreaterThan(0);
   });
 });
+
+import { generalCap } from '../src/core/state/spread';
+import { rebellionChance, processRebellions } from '../src/core';
+describe('v3.4 장수 편제·연의 장수·반란', () => {
+  it('연의 원문 분석으로 장수가 300명 이상이고, 새 장수도 한국어 이름·능력치 범위를 지킨다', () => {
+    expect(DATA.generals.length).toBeGreaterThanOrEqual(300);
+    for (const id of ['cao_zhang', 'yang_xiu', 'wang_yun', 'du_yu', 'yang_hu']) {
+      const g = DATA.generals.find((x) => x.id === id)!;
+      expect(g).toBeTruthy();
+      expect(/^[가-힣]+$/.test(g.name)).toBe(true);
+      for (const v of Object.values(g.stats)) { expect(v).toBeGreaterThanOrEqual(1); expect(v).toBeLessThanOrEqual(100); }
+    }
+    expect(DATA.generals.find((x) => x.id === 'cao_zhang')!.stats.war).toBeGreaterThanOrEqual(85); // 황수아
+  });
+  it('시작할 때 한 도시에 장수가 몰리지 않는다 (상한 = 올림(장수 ÷ 도시), 군주 도시 +1)', () => {
+    for (const scale of ['city', 'region'] as const) {
+      const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1, scale });
+      for (const f of Object.values(s.factions)) {
+        const cap = generalCap(s, f.id);
+        const per: Record<string, number> = {};
+        for (const g of Object.values(s.generals)) if (g.alive && g.faction === f.id) per[g.city] = (per[g.city] ?? 0) + 1;
+        for (const [cid, n] of Object.entries(per)) expect(n, `${f.id} ${cid}`).toBeLessThanOrEqual(cap + 1);
+      }
+    }
+  });
+  it('충성 낮고 야심 큰 장수는 군주와 떨어진 도시에서 독립할 수 있다 (의형제·군주 곁은 불가)', () => {
+    const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 1, playerFactionId: null });
+    const g = Object.values(s.generals).find((x) => x.alive && x.faction === 'wei' && x.city !== s.generals.cao_cao.city && x.id !== 'cao_cao')!;
+    g.loyalty = 10; g.persona.ambition = 95;
+    expect(rebellionChance(s, g)).toBeGreaterThan(0);
+    g.city = s.generals.cao_cao.city;
+    expect(rebellionChance(s, g)).toBe(0);
+    expect(rebellionChance(s, s.generals.guan_yu)).toBe(0);
+    // 확률을 1로 만들어 실제로 독립시킨다
+    const h = Object.values(s.generals).find((x) => x.alive && x.faction === 'wei' && x.city !== s.generals.cao_cao.city && x.id !== 'cao_cao')!;
+    h.loyalty = 0; h.persona.ambition = 100;
+    for (const x of Object.values(s.generals)) if (x.faction === 'wei' && x.id !== h.id) x.loyalty = 100;
+    s.season = 0;
+    let n = 0;
+    for (let i = 0; i < 30 && h.faction === 'wei'; i++) { processRebellions(s); n++; }
+    expect(h.faction?.startsWith('reb')).toBe(true);
+    expect(s.cities[h.city].owner).toBe(h.faction);
+    expect(s.log.some((l) => l.event === 'rebel')).toBe(true);
+  });
+  it('성을 함락하면 그림 안내용 사건(capture)이 상대 세력과 함께 기록된다', () => {
+    let s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 3, playerFactionId: null });
+    for (let i = 0; i < 20 && !s.log.some((l) => l.event === 'capture'); i++) s = endTurn(s);
+    const e = s.log.find((l) => l.event === 'capture')!;
+    expect(e).toBeTruthy();
+    expect(e.factionId).not.toBe(e.other);
+  });
+});

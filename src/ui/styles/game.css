@@ -287,3 +287,22 @@ button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 .new-ruler { margin: 10px 0; padding: 8px 10px; border: 1px dashed #a88d4f; border-radius: 6px; background: #10151c99; }
 .warn-text { color: #ff9b7a; margin: 4px 0 0; }
 .faction-pick.many { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); max-height: 46vh; overflow-y: auto; }
+/* v3.4 그림 사건 카드 */
+.event-backdrop { position: fixed; inset: 0; background: #05080cb0; display: flex; align-items: center; justify-content: center; z-index: 60; animation: ev-fade 0.25s ease-out; }
+.event-card { width: min(560px, 94vw); padding: 14px 18px 12px; text-align: center; animation: ev-pop 0.3s ease-out; }
+.event-card .event-art { width: 100%; height: auto; display: block; border-radius: 6px; }
+.event-card h3 { margin: 12px 0 6px; font-size: 22px; color: var(--gold-hi); letter-spacing: 2px; }
+.event-card p { margin: 4px 0; font-size: 15px; line-height: 1.5; }
+.event-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 10px; }
+.event-actions .muted { margin-right: auto; }
+@keyframes ev-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ev-pop { from { transform: translateY(12px) scale(0.97); opacity: 0; } to { transform: none; opacity: 1; } }
+.art-wave { animation: art-wave 2.2s ease-in-out infinite; transform-box: fill-box; transform-origin: left center; }
+@keyframes art-wave { 0%,100% { transform: skewY(0deg); } 50% { transform: skewY(-6deg); } }
+.art-flicker { animation: wx-flicker 0.6s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center bottom; }
+.art-smoke { animation: art-smoke 3s ease-in-out infinite; }
+@keyframes art-smoke { 0%,100% { opacity: 0.25; transform: translateY(0); } 50% { opacity: 0.55; transform: translateY(-8px); } }
+.art-flash { animation: wx-flash 2.4s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .art-wave, .art-flicker, .art-smoke, .art-flash, .event-card, .event-backdrop { animation: none; } }
+.event-actions button { background: #1b222c; color: #f3e7cc; border: 1px solid #a88d4f; padding: 7px 16px; border-radius: 5px; font-size: 14px; cursor: pointer; }
+.event-actions button.primary { background: linear-gradient(#e2c06a, #b88f36); color: #1a1208; font-weight: 700; }

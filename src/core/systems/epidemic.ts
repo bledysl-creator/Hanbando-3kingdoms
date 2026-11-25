@@ -25,7 +25,7 @@ export function processEpidemics(s: GameState) {
       if (c.epidemic === 0) log(s, `${c.name}의 역병이 가라앉았습니다.`, 'info', c.owner);
     } else if (chance(s, Math.max(0, outbreakChance(s, c.id)) * (s.mapScale === 'region' ? BALANCE.regionEventScale : 1))) {
       c.epidemic = BALANCE.epidemicTurns;
-      log(s, `${c.name}에 역병이 돌기 시작했습니다! 구휼로 막을 수 있습니다.`, 'danger', c.owner);
+      log(s, `${c.name}에 역병이 돌기 시작했습니다! 구휼로 막을 수 있습니다.`, 'danger', c.owner, { event: 'plague' });
     }
   }
   for (const id of spreading) {

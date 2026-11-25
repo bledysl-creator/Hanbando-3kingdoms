@@ -173,6 +173,12 @@ export const BALANCE = {
   diplomacyGoldPerPercent: 50, // 금 50당 수락률 +1%
   breakTreatyLoyaltyLoss: 6, // 맹약 파기 시 의리 높은 장수 충성 하락
   aiProposalChance: 0.35,
+  /** v3.4 태수 파견 AI 점수 (등용 45·공세 집결 44보다 낮고 내정보다 높음) */
+  aiDispatchScore: 39,
+  /** v3.4 반란·독립: 충성 이 값 미만 + 야망 이상인 장수가 군주와 떨어진 도시에 있을 때, 해마다 확률 */
+  rebelLoyaltyBelow: 40, rebelAmbitionMin: 65, rebelBase: 0.04, rebelMax: 0.35, rebelBigShare: 0.33, rebelBigMul: 1.6,
+  /** v3.4 도시 장수 상한을 이만큼 넘으면 이웃으로 분산 */
+  aiCrowdSlack: 2,
   /** v3.3 배수진: 도시 비율이 이 값 이하인 세력의 수비 보너스 */
   lastStandCityShare: 0.13, lastStandDefense: 0.4,
   /** v3.3 합종: 도시 비율이 이 값 이상이면 패자, 나머지 세력 사이 휴전 수락 + */

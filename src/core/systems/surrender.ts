@@ -46,6 +46,6 @@ export function processSurrenders(s: GameState) {
     }
     to.gold += f.gold; to.food += f.food; to.wood += f.wood; to.iron += f.iron;
     f.alive = false;
-    log(s, `${f.name}의 ${s.generals[f.rulerId]?.name ?? '군주'}이(가) 천하 대세를 받아들여 ${to.name}에 나라를 바치고 귀순했습니다.`, 'danger', f.id);
+    log(s, `${f.name}의 ${s.generals[f.rulerId]?.name ?? '군주'}이(가) 천하 대세를 받아들여 ${to.name}에 나라를 바치고 귀순했습니다.`, 'danger', f.id, { event: 'surrender', other: to.id });
   }
 }

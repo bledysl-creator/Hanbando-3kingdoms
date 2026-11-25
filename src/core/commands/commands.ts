@@ -10,7 +10,7 @@ import { estimateRatio } from '../battle/estimate';
 import { killGeneral } from '../systems/lifecycle';
 import { discord, rumor, scout, withinTwo } from '../systems/intrigue';
 import { generalsIn, isConnectedToCapital, lastStandBonus, minGarrison, minMarch, neighbors, roadBetween, supplyRatio } from '../query';
-import type { GameState, LogKind } from '../state/types';
+import type { EventKind, GameState, LogKind } from '../state/types';
 import { refuseChance, remember } from '../systems/persona';
 import { canAttack, pairKey, statusOf, tryProposal, type Proposal } from '../diplomacy/diplomacy';
 
@@ -38,9 +38,9 @@ export type Command =
 
 export type CommandResult = { ok: true; message: string } | { ok: false; error: string };
 
-export function log(s: GameState, rawText: string, kind: LogKind = 'info', factionId: string | null = null) {
+export function log(s: GameState, rawText: string, kind: LogKind = 'info', factionId: string | null = null, ev?: { event: EventKind; other?: string | null }) {
   const text = fixJosa(rawText);
-  s.log.push({ turn: s.turn, year: s.year, season: s.season, text, kind, factionId });
+  s.log.push({ turn: s.turn, year: s.year, season: s.season, text, kind, factionId, ...(ev ? { event: ev.event, other: ev.other ?? null } : {}) });
   if (s.log.length > 400) s.log.splice(0, s.log.length - 400);
   // 큰 사건은 역사서에 남긴다
   if ((kind === 'danger' || kind === 'good') && s.chronicle) {
@@ -190,7 +190,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
           else if (d.faction && s.factions[d.faction]?.rulerId !== d.id) d.faction = null;
           else if (d.faction) d.faction = null; // 군주도 도망칠 곳이 없으면 재야로
         }
-        log(s, `${s.factions[factionId].name}군 ${g.name}이(가) ${defName}의 ${to.name}을(를) 함락했습니다!`, 'danger', factionId);
+        log(s, `${s.factions[factionId].name}군 ${g.name}이(가) ${defName}의 ${to.name}을(를) 함락했습니다!`, 'danger', factionId, { event: 'capture', other: defenderFaction });
         if (to.seat && defenderFaction) submitCounties(s, to.id, factionId, defenderFaction);
         checkFactionDestroyed(s, defenderFaction);
         return { ok: true, message: `${to.name} 함락! (아군 손실 ${out.attackerLoss.toLocaleString()})` };
@@ -388,7 +388,7 @@ export function checkFactionDestroyed(s: GameState, factionId: string | null) {
   if (Object.values(s.cities).some((c) => c.owner === factionId)) return;
   f.alive = false;
   for (const g of Object.values(s.generals)) if (g.faction === factionId) g.faction = null;
-  log(s, `${f.name}(${f.hanja}) 세력이 멸망했습니다.`, 'danger', factionId);
+  log(s, `${f.name}(${f.hanja}) 세력이 멸망했습니다.`, 'danger', factionId, { event: 'destroyed' });
 }
 
 /** 불변 버전: 상태를 복사해 명령을 적용한다. */

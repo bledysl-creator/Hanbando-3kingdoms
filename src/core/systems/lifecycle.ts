@@ -18,7 +18,7 @@ export function processLifecycle(s: GameState) {
       g.faction = f && city.owner === f ? f : null;
       g.loyalty = g.faction ? 85 : 0;
       delete g.debut;
-      log(s, `${g.name}이(가) 세상에 이름을 드러냈습니다${g.faction ? ` (${s.factions[g.faction].name})` : ` — ${city.name}의 재야`}.`, 'info', g.faction);
+      log(s, `${g.name}이(가) 세상에 이름을 드러냈습니다${g.faction ? ` (${s.factions[g.faction].name})` : ` — ${city.name}의 재야`}.`, 'info', g.faction, { event: 'debut' });
     }
   }
   for (const g of Object.values(s.generals)) {
@@ -33,7 +33,7 @@ export function processLifecycle(s: GameState) {
 export function killGeneral(s: GameState, g: General, text: string) {
   g.alive = false;
   const fid = g.faction;
-  log(s, text, 'danger', fid);
+  log(s, text, 'danger', fid, { event: 'death' });
   if (fid && s.factions[fid]?.rulerId === g.id) succeed(s, fid, g);
 }
 
@@ -44,7 +44,7 @@ function succeed(s: GameState, fid: string, dead: General) {
   if (members.length === 0) {
     for (const c of Object.values(s.cities)) if (c.owner === fid) c.owner = null;
     f.alive = false;
-    log(s, `${f.name}(${f.hanja})는 뒤를 이을 사람이 없어 흩어졌습니다.`, 'danger', fid);
+    log(s, `${f.name}(${f.hanja})는 뒤를 이을 사람이 없어 흩어졌습니다.`, 'danger', fid, { event: 'destroyed' });
     return;
   }
   const order = s.heirs[fid] ?? [];
@@ -111,7 +111,7 @@ export function attemptUprising(s: GameState, fid: string): { ok: boolean; messa
       g.loyalty = 90;
     }
   }
-  log(s, `${r.name}이(가) ${c.name}에서 의병을 일으켜 ${f.name}(${f.hanja})을(를) 다시 세웠습니다!${prev ? ` (${s.factions[prev].name}에게서 탈환)` : ''}`, 'good', fid);
+  log(s, `${r.name}이(가) ${c.name}에서 의병을 일으켜 ${f.name}(${f.hanja})을(를) 다시 세웠습니다!${prev ? ` (${s.factions[prev].name}에게서 탈환)` : ''}`, 'good', fid, { event: 'uprising' });
   return { ok: true, message: `${c.name}에서 재기 성공!` };
 }
 

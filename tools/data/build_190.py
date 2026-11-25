@@ -51,16 +51,16 @@ RULER = {'wei': 'cao_cao', 'shu': 'liu_bei', 'wu': 'sun_jian', 'yuan': 'yuan_sha
          'jing': 'liu_biao', 'ma': 'ma_teng', 'zhanglu': 'zhang_lu', 'yuanshu': 'yuan_shu', 'lu': 'lu_bu', 'yan': 'yan_baihu'}
 # 190년 소속 (없으면 재야)
 MEM = {
-    'wei': 'cao_cao xiahou_dun xiahou_yuan cao_ren cao_hong cao_chun yue_jin li_dian yu_jin dian_wei chen_gong cao_xiu',
+    'wei': 'cao_cao xiahou_dun xiahou_yuan cao_ren cao_hong cao_chun yue_jin li_dian yu_jin dian_wei chen_gong cao_xiu han_hao',
     'shu': 'liu_bei guan_yu zhang_fei jian_yong',
     'wu': 'sun_jian cheng_pu huang_gai han_dang zhu_huan',
-    'yuan': 'yuan_shao yan_liang wen_chou zhang_he gao_lan tian_feng ju_shou shen_pei feng_ji xu_you guo_tu qu_yi xun_yu xin_pi xin_ping guo_jia',
-    'dong': 'dong_zhuo hua_xiong li_ru li_jue guo_si xu_rong jia_xu zhang_xiu',
+    'yuan': 'yuan_shao yan_liang wen_chou zhang_he gao_lan tian_feng ju_shou shen_pei feng_ji xu_you guo_tu qu_yi xun_yu xin_pi xin_ping guo_jia chunyu_qiong gao_gan yuan_xi',
+    'dong': 'dong_zhuo hua_xiong li_ru li_jue guo_si xu_rong jia_xu zhang_xiu zhang_ji fan_chou li_meng',
     'gongsun': 'gongsun_zan zhao_yun',
-    'jing': 'liu_biao cai_mao kuai_yue kuai_liang huang_zu wen_pin zhang_yun huang_zhong',
-    'ma': 'ma_teng han_sui pang_de',
-    'zhanglu': 'zhang_lu yan_pu zhang_wei',
-    'yuanshu': 'yuan_shu ji_ling zhang_xun lei_bo yang_hong',
+    'jing': 'liu_biao cai_mao kuai_yue kuai_liang huang_zu wen_pin zhang_yun huang_zhong cai_zhong cai_he yi_ji',
+    'ma': 'ma_teng han_sui pang_de yang_qiu',
+    'zhanglu': 'zhang_lu yan_pu zhang_wei yang_song yang_ang yang_ren',
+    'yuanshu': 'yuan_shu ji_ling zhang_xun lei_bo yang_hong han_yin',
     'lu': 'lu_bu zhang_liao gao_shun cao_xing hao_meng song_xian wei_xu hou_cheng cheng_lian',
     'yan': 'yan_baihu',
 }
