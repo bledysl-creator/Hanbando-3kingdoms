@@ -103,6 +103,11 @@ export const BALANCE = {
   disbandOrderPer1000: 1,
   /** v3.6 포위 대응: AI가 플레이어 도시를 치면 한 계절 포위 → 플레이어가 대응을 고른다 */
   siegeChoice: true,
+  /** v3.7 약소 세력 AI: 가장 강한 세력 국력의 이 비율 미만이면 출진할 때 접경 위협의 이 몫만큼 성에 남긴다 (보통 0.25) */
+  aiWeakShare: 0.7,
+  aiWeakThreatKeep: 1,
+  /** 약소 세력은 이 배만큼 더 큰 승산이 있어야 출진 */
+  aiWeakAttackMul: 1.3,
   /** 농성: 수비 배율, 성 밖 농경지 손실 */
   siegeHoldDefense: 1.15,
   siegeHoldAgriLoss: 2,

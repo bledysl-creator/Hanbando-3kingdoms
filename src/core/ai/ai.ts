@@ -2,8 +2,7 @@ import { TACTICS, tacticChance, type TacticKind } from '../battle/tactics';
 // 규칙 기반 + Utility AI (Game.md 5-5). 플레이어와 같은 명령만 사용한다.
 import { BALANCE } from '../config';
 import { executeCommand, foodPrice, type Command } from '../commands/commands';
-import { generalCap } from '../state/spread';
-import { allGenerals, expectedHarvest, freeGeneralsIn, generalsIn, minGarrison, minMarch, neighbors } from '../query';
+import { allGenerals, freeGeneralsIn, generalsIn, minGarrison, minMarch, neighbors } from '../query';
 import type { City, GameState, General, Road } from '../state/types';
 import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/diplomacy';
 import { chance } from '../rng/rng';
@@ -47,6 +46,58 @@ export function frontDistance(s: GameState, fid: string): Record<string, number>
   return dist;
 }
 
+/** 살아 있는 다른 세력 중 가장 강한 세력의 aiWeakShare 배보다 국력이 작으면 약소 세력 */
+// v3.7 성능: 세력 단위 집계는 명령이 실제로 실행되기 전까지 바뀌지 않으므로 한 번만 계산한다
+// (runFactionAI가 명령 실행마다 비움 → 결과는 캐시 없을 때와 같다)
+const memo = new Map<string, unknown>();
+let memoState: GameState | null = null;
+function cached<T>(s: GameState, key: string, fn: () => T): T {
+  if (memoState !== s) { memo.clear(); memoState = s; }
+  if (!memo.has(key)) memo.set(key, fn());
+  return memo.get(key) as T;
+}
+const clearMemo = () => memo.clear();
+
+/** 세력별 집계를 도시·장수 한 바퀴로 구한다 (factionPower·expectedHarvest·generalCap·lastStandBonus와 같은 식, 같은 합산 순서) */
+interface OwnerStat { cities: number; troops: number; econ: number; harvest: number; talent: number; gens: number }
+function ownerStats(s: GameState): Record<string, OwnerStat> {
+  return cached(s, 'stats', () => {
+    const out: Record<string, OwnerStat> = {};
+    const get = (id: string) => (out[id] ??= { cities: 0, troops: 0, econ: 0, harvest: 0, talent: 0, gens: 0 });
+    for (const c of Object.values(s.cities)) {
+      if (!c.owner) continue;
+      const o = get(c.owner);
+      o.cities++;
+      o.troops += c.troops;
+      o.econ += (c.agriculture + c.commerce) * (c.population / 10000);
+      o.harvest += c.agriculture * (c.population / 1000) * BALANCE.harvestPerAgriculture * (0.5 + c.order / 200);
+      if (c.port) o.harvest += (c.population / 1000) * BALANCE.fishPerPort1000 * 3.5 * (0.5 + c.order / 200);
+    }
+    for (const g of allGenerals(s)) {
+      if (!g.alive || !g.faction) continue;
+      const o = get(g.faction);
+      o.gens++;
+      o.talent += (g.stats.leadership + g.stats.war + g.stats.intellect) / 3;
+    }
+    return out;
+  });
+}
+const EMPTY: OwnerStat = { cities: 0, troops: 0, econ: 0, harvest: 0, talent: 0, gens: 0 };
+const statOf = (s: GameState, fid: string) => ownerStats(s)[fid] ?? EMPTY;
+const powerOf = (s: GameState, fid: string) => { const o = statOf(s, fid); return Math.round(o.troops / 10 + o.econ + o.talent * 5); };
+const capOf = (s: GameState, fid: string) => { const o = statOf(s, fid); return Math.max(1, Math.ceil(o.gens / Math.max(1, o.cities))); };
+const lastStandOf = (s: GameState, fid: string | null) => {
+  if (!fid) return 1;
+  const mine = statOf(s, fid).cities;
+  return mine > 0 && mine / Object.keys(s.cities).length <= BALANCE.lastStandCityShare ? 1 + BALANCE.lastStandDefense : 1;
+};
+
+function isWeak(s: GameState, fid: string) {
+  const mine = powerOf(s, fid);
+  const top = Math.max(0, ...Object.values(s.factions).filter((f) => f.alive && f.id !== fid).map((f) => powerOf(s, f.id)));
+  return mine < top * BALANCE.aiWeakShare;
+}
+
 function optionsFor(s: GameState, fid: string, g: General): Option[] {
   const f = s.factions[fid];
   const city = s.cities[g.city];
@@ -60,24 +111,28 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
 
   // 공격
   if (isFrontier && s.season !== 3) {
-    const troops = city.troops - Math.max(minGarrison(s), Math.round(threat * 0.25));
+    // v3.7 약소 세력은 성을 비우지 않는다: 가장 강한 세력의 일정 비율보다 약하면 접경 위협의 더 큰 몫을 남긴다
+    const weak = isWeak(s, fid);
+    const keepShare = weak ? BALANCE.aiWeakThreatKeep : 0.25;
+    const needRatio = BALANCE.aiAttackRatio * (weak ? BALANCE.aiWeakAttackMul : 1);
+    const troops = city.troops - Math.max(minGarrison(s), Math.round(threat * keepShare));
     for (const n of enemyNs) {
       if (troops < minMarch(s)) break;
       if (!canAttack(s, fid, n.city.owner)) continue;
-      let ratio = estimateRatio(s, g, city, n.city, troops);
+      let ratio = estimateRatio(s, g, city, n.city, troops, lastStandOf(s, n.city.owner));
       // v3.6.1 플레이어 성은 한 계절 포위 뒤 농성·협공 등으로 맞서므로 더 넉넉한 승산을 요구한다
       if (BALANCE.siegeChoice && n.city.owner !== null && n.city.owner === s.playerFactionId) ratio /= BALANCE.siegeAiCaution;
-      if (ratio > BALANCE.aiAttackRatio) {
+      if (ratio > needRatio) {
         const value = (n.city.population / 10000 + n.city.agriculture / 20 + n.city.commerce / 20) * (n.city.owner === null ? 0.8 : 1);
         opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops, tactic: bestTactic(s, g, n.city, n.road) }, why: `승산 ${ratio.toFixed(2)}` });
       }
     }
   }
   // 징병: 위협 대비 병력이 부족할 때
-  const totalT = Object.values(s.cities).filter((c) => c.owner === fid).reduce((a, c) => a + c.troops, 0);
+  const totalT = statOf(s, fid).troops;
   // v1.7: 늘어난 병력을 3계절 먹일 곡식이 없으면 징병하지 않는다 (여포 군량 붕괴 방지)
   // v3.3: 한 해(4계절) 군량 = 지금 곡식 + 올해 예상 수확. 이것으로 못 먹이면 징병하지 않는다 (여포 군량 붕괴 원인)
-  const yearFood = f.food + expectedHarvest(s, fid) * BALANCE.aiHarvestTrust;
+  const yearFood = f.food + statOf(s, fid).harvest * BALANCE.aiHarvestTrust;
   const canFeed = (amount: number) =>
     f.food > (totalT + amount) * BALANCE.foodPerTroop * BALANCE.aiConscriptFoodSeasons && yearFood > (totalT + amount) * BALANCE.foodPerTroop * 4;
   if (isFrontier && city.troops < threat * 0.9 && f.gold > 800 && f.iron > 3000) {
@@ -135,11 +190,12 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
   }
   // v3.4 태수 파견: 장수가 몰린 도시에서 장수가 없는 이웃 아군 도시로 한 명을 보낸다 (병력은 데려가지 않음)
   const here = generalsIn(s, city.id, fid);
-  if (here.length > generalCap(s, fid) && g.id !== f.rulerId) {
+  const cap = capOf(s, fid);
+  if (here.length > cap && g.id !== f.rulerId) {
     const empty = ns.find((n) => n.city.owner === fid && generalsIn(s, n.city.id, fid).length === 0);
     if (empty) opts.push({ score: BALANCE.aiDispatchScore, cmd: { type: 'transfer', generalId: g.id, toCityId: empty.city.id, troops: 0 }, why: '태수 파견' });
     // 이웃에 빈 도시가 없어도 너무 몰렸으면 장수가 가장 적은 이웃 아군 도시로 나눈다
-    else if (here.length > generalCap(s, fid) + BALANCE.aiCrowdSlack) {
+    else if (here.length > cap + BALANCE.aiCrowdSlack) {
       const lean = ns.filter((n) => n.city.owner === fid).map((n) => ({ id: n.city.id, k: generalsIn(s, n.city.id, fid).length })).sort((a, b) => a.k - b.k)[0];
       if (lean && lean.k < here.length - 2) opts.push({ score: BALANCE.aiDispatchScore - 3, cmd: { type: 'transfer', generalId: g.id, toCityId: lean.id, troops: 0 }, why: '장수 분산' });
     }
@@ -209,6 +265,7 @@ export function runFactionAI(s: GameState, fid: string) {
   if (!f?.alive) return;
   runFactionDiplomacy(s, fid);
   // 무력·통솔 높은 장수부터 (공격 기회를 먼저 잡도록)
+  clearMemo();
   const gens = Object.values(s.generals)
     .filter((g) => g.alive && g.faction === fid && !g.acted)
     .sort((a, b) => b.stats.leadership + b.stats.war - (a.stats.leadership + a.stats.war));
@@ -218,6 +275,7 @@ export function runFactionAI(s: GameState, fid: string) {
     let chosen = -1, result = '할 일 없음';
     for (let i = 0; i < opts.length; i++) {
       const r = executeCommand(s, fid, opts[i].cmd);
+      clearMemo(); // 명령(거부 포함)이 상태를 바꿀 수 있으므로 집계를 다시 한다
       if (r.ok) { chosen = i; result = r.message; break; }
       result = r.error;
     }

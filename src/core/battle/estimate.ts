@@ -6,7 +6,8 @@ import { weatherAttackModifier } from '../systems/weather';
 import { qualityFactor } from './battle';
 import { landmarksOfCity, landmarksOnRoad } from '../data';
 
-export function estimateRatio(s: GameState, g: General, from: City, to: City, troops: number): number {
+/** lastStand: 수비 세력 배수진 배율을 미리 구해 두었으면 넘긴다 (AI 성능, v3.7) */
+export function estimateRatio(s: GameState, g: General, from: City, to: City, troops: number, lastStand?: number): number {
   const road = neighbors(s, from.id).find((n) => n.city.id === to.id)?.road;
   const roadMod = road ? BALANCE.roadAttackModifier[road.type] ?? 1 : 1;
   const wm = weatherAttackModifier(s.weather[to.id], road?.type ?? 'land').mul;
@@ -28,5 +29,5 @@ export function estimateRatio(s: GameState, g: General, from: City, to: City, tr
   const def = to.troops * (0.5 + best / 100) * qualityFactor(to.morale, to.training) * wallMul * (to.terrain === 'mountain' ? BALANCE.mountainDefenseBonus : 1);
   const forts = 1 + BALANCE.landmarkFortressBonus * landmarksOfCity(to.id, 'fortress').length;
   const elev = 1 + Math.min(BALANCE.elevDefenseCap, ((to.elev ?? 0) / 1000) * BALANCE.elevDefensePer1000m);
-  return atk / Math.max(1, def * forts * elev * lastStandBonus(s, to.owner));
+  return atk / Math.max(1, def * forts * elev * (lastStand ?? lastStandBonus(s, to.owner)));
 }
