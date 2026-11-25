@@ -1,3 +1,4 @@
+import { reliefFood } from '../systems/epidemic';
 import type { TacticKind } from '../battle/tactics';
 // 명령: 플레이어와 AI가 똑같이 사용한다 (CLAUDE.md 규칙 6).
 import { BALANCE } from '../config';
@@ -28,7 +29,8 @@ export type Command =
   | { type: 'discord'; generalId: string; targetId: string }
   | { type: 'trade'; generalId: string; action: 'buyFood' | 'sellFood'; amount: number }
   | { type: 'disband'; generalId: string; amount: number }
-  | { type: 'buildShips'; generalId: string };
+  | { type: 'buildShips'; generalId: string }
+  | { type: 'relief'; generalId: string };
 
 export type CommandResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -216,6 +218,18 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         return { ok: true, message: `${t.name} 등용 성공!` };
       }
       return { ok: true, message: `${t.name}이(가) 등용을 거절했습니다. (성공률 ${Math.round(p * 100)}%)` };
+    }
+    case 'relief': {
+      const food = reliefFood(s, city.id);
+      if (f.food < food) return { ok: false, error: `곡식 ${food.toLocaleString()}석이 필요합니다.` };
+      if (!city.epidemic && city.order >= 95) return { ok: false, error: '구휼할 필요가 없습니다.' };
+      f.food -= food;
+      const cured = (city.epidemic ?? 0) > 0;
+      city.epidemic = 0;
+      city.order = Math.min(100, city.order + BALANCE.reliefOrder);
+      g.acted = true;
+      if (cured) log(s, `${g.name}이(가) ${city.name}을(를) 구휼해 역병을 잡았습니다.`, 'good', factionId);
+      return { ok: true, message: `${city.name} 백성에게 곡식 ${food.toLocaleString()}석을 풀었습니다. (민심 +${BALANCE.reliefOrder}${cured ? ', 역병 진정' : ''})` };
     }
     case 'buildShips': {
       if (!city.port) return { ok: false, error: '항구가 있는 도시에서만 전선을 만들 수 있습니다.' };

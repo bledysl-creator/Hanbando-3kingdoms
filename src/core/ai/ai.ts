@@ -7,6 +7,7 @@ import type { City, GameState, General, Road } from '../state/types';
 import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/diplomacy';
 import { chance } from '../rng/rng';
 import { estimateRatio } from '../battle/estimate';
+import { reliefFood } from '../systems/epidemic';
 import { log } from '../commands/commands';
 
 interface Option { score: number; cmd: Command; why: string }
@@ -106,6 +107,10 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
       const next = ns.filter((n) => n.city.owner === fid && dist[n.city.id] !== undefined && dist[n.city.id] < here).sort((a, b) => a.city.troops - b.city.troops)[0];
       if (next) opts.push({ score: 41, cmd: { type: 'transfer', generalId: g.id, toCityId: next.city.id, troops: spare }, why: '후방 병력 전진' });
     }
+  }
+  // v2.3 구휼: 역병이 돌거나 민심이 바닥이면 곡식을 푼다
+  if (((city.epidemic ?? 0) > 0 || city.order < 35) && f.food > reliefFood(s, city.id) + totalT * BALANCE.foodPerTroop * 2) {
+    opts.push({ score: (city.epidemic ?? 0) > 0 ? 52 : 33, cmd: { type: 'relief', generalId: g.id }, why: '구휼' });
   }
   // v2.0 수군: 바닷길로 적과 닿은 항구는 전선을 만든다
   if (city.port && (city.ships ?? 0) < BALANCE.aiShipTarget && f.wood > 8000 && f.gold > 1500 && ns.some((n) => n.road.type === 'sea' && n.city.owner !== fid)) {

@@ -27,6 +27,11 @@ export const BALANCE = {
   summerRainPenalty: 1, // v0.7부터 날씨 시스템으로 대체
   roadAttackModifier: { land: 1, river: 0.8, pass: 0.85, sea: 0.75 } as Record<string, number>,
   mountainDefenseBonus: 1.2,
+  /** 역병 (v2.3): 발생 확률 = 계절 기본 + 인구 10만당 + 큰비 − 민심 보호 */
+  epidemicSummer: 0.025, epidemicOther: 0.004, epidemicDensity: 0.015, epidemicFlood: 0.03, epidemicOrderGuard: 0.02,
+  epidemicTurns: 3, epidemicPopLoss: 0.03, epidemicTroopLoss: 0.03, epidemicOrderLoss: 4, epidemicSpread: 0.15,
+  /** 구휼: 인구 1000명당 곡식, 민심 상승 */
+  reliefFoodPer1000: 100, reliefOrder: 8,
   /** 귀순 (v2.1): 도시 이 수 이하, 이웃 강국이 전체 도시의 이 비율 이상, 병력이 강국의 이 비율 이하일 때 해마다 확률 */
   surrenderMaxCities: 3, surrenderDominance: 0.4, surrenderTroopRatio: 0.3, surrenderChance: 0.35,
   /** 수군 (v2.0) */

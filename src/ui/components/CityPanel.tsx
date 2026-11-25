@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Command, GameState, General, TacticKind } from '../../core';
-import { BALANCE, foodPrice, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
+import { BALANCE, foodPrice, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -48,7 +48,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
       </h2>
       <div className="stat-grid">
         <span>세력</span><b>{owner ? `${owner.name}(${owner.hanja})` : '중립'}</b>
-        <span>병력</span><b>{(() => { const v = visibleTroops(state, pf, c.id); return v.value === null ? '알 수 없음 (첩보 필요)' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)} (${v.age}턴 전 첩보)`; })()}</b>{c.port && <><span>전선</span><b>⛵ {c.ships ?? 0}척</b></>}
+        <span>병력</span><b>{(() => { const v = visibleTroops(state, pf, c.id); return v.value === null ? '알 수 없음 (첩보 필요)' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)} (${v.age}턴 전 첩보)`; })()}</b>{(c.epidemic ?? 0) > 0 && <><span>역병</span><b className="bad">🦠 {c.epidemic}턴 남음 — 인구·병력 감소 중</b></>}{c.port && <><span>전선</span><b>⛵ {c.ships ?? 0}척</b></>}
         <span>인구</span><b>{fmt(c.population)}</b>
         <span>민심</span><b>{Math.round(c.order)}</b>
         <Bar label="농업" v={c.agriculture} />
@@ -127,6 +127,9 @@ function DomesticTab({ state, cityId, actor, onCommand }: { state: GameState; ci
   const city = state.cities[cityId];
   return (
     <div className="actions">
+      <button className={(city.epidemic ?? 0) > 0 ? 'urgent' : ''} onClick={() => onCommand({ type: 'relief', generalId: actor.id })}>
+        🍚 구휼 <small>곡 {reliefFood(state, cityId).toLocaleString()} · 민심 +{BALANCE.reliefOrder}{(city.epidemic ?? 0) > 0 ? ' · 역병 진정' : ''}</small>
+      </button>
       <div className="sub">
         <b>시장</b> <small>곡식 1,000석 — 사기 금 {buy} · 팔기 금 {sell} (계절·상업·항구에 따라 변동)</small>
         <input type="range" min={1000} max={BALANCE.tradeMax} step={1000} value={amt} onChange={(e) => setAmt(+e.target.value)} />

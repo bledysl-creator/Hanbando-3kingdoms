@@ -60,6 +60,8 @@ export interface City {
   iron: number; // 철 생산 등급
   /** 전선(戰船) 척수 — 항구 도시만 (v2.0) */
   ships?: number;
+  /** 역병이 남은 턴 수 (v2.3) */
+  epidemic?: number;
   droughtTurns?: number; // 이번 해 가뭄을 겪은 계절 수 (가을 수확 감소)
 }
 

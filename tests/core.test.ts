@@ -140,7 +140,7 @@ describe('세력 선택 (v0.3)', () => {
 });
 
 import { respondOffer } from '../src/core';
-import { setTreaty, statusOf, acceptanceChance } from '../src/core/diplomacy/diplomacy';
+import { setTreaty, statusOf, acceptanceChance, expireTreaties } from '../src/core/diplomacy/diplomacy';
 
 describe('외교 (v0.4)', () => {
   it('휴전 중인 세력은 공격할 수 없다', () => {
@@ -176,7 +176,8 @@ describe('외교 (v0.4)', () => {
   it('휴전은 기한이 지나면 끝난다', () => {
     const s = newGame(1, null);
     setTreaty(s, 'wei', 'lu', 'truce', 2);
-    endTurnMut(s); endTurnMut(s); endTurnMut(s);
+    s.turn += 3;
+    expireTreaties(s, () => {});
     expect(statusOf(s, 'wei', 'lu')).toBe('war');
   });
 });
@@ -480,5 +481,26 @@ describe('귀순 (v2.1)', () => {
     expect(s.factions.lu.alive).toBe(false);
     expect(s.cities.hyesan.owner).toBe('wei');
     expect(s.generals.lu_bu.faction).toBe('wei');
+  });
+});
+
+import { outbreakChance, processEpidemics } from '../src/core';
+describe('역병·구휼 (v2.3)', () => {
+  it('여름 인구 많은 도시가 겨울 작은 도시보다 역병 확률이 높다', () => {
+    const s = newGame();
+    s.season = 1; const summer = outbreakChance(s, 'hanyang');
+    s.season = 3; const winter = outbreakChance(s, 'hyesan');
+    expect(summer).toBeGreaterThan(winter);
+  });
+  it('역병은 인구를 줄이고, 구휼하면 멈춘다', () => {
+    const s = newGame(2, 'shu');
+    s.cities.hanyang.epidemic = 3;
+    const pop = s.cities.hanyang.population;
+    processEpidemics(s);
+    expect(s.cities.hanyang.population).toBeLessThan(pop);
+    const gid = Object.values(s.generals).find((g) => g.faction === 'shu' && g.city === 'hanyang')!.id;
+    const r = applyCommand(s, 'shu', { type: 'relief', generalId: gid });
+    expect(r.result.ok).toBe(true);
+    expect(r.state.cities.hanyang.epidemic).toBe(0);
   });
 });

@@ -233,6 +233,7 @@ export function KoreaMap({ layers = DEFAULT_LAYERS, mode = 'political', state, s
                   {state.weather[c.id] && state.weather[c.id] !== 'clear' && (
                     <text x={10} y={-6} fontSize={11} pointerEvents="none"><title>{WEATHER_LABEL[state.weather[c.id]]}</title>{WEATHER_ICON[state.weather[c.id]]}</text>
                   )}
+                  {(c.epidemic ?? 0) > 0 && <text x={-20} y={14} fontSize={10} pointerEvents="none"><title>역병</title>🦠</text>}
                   {view.k >= 1.2 && (c.ships ?? 0) > 0 && (
                     <text x={-22} y={-4} fontSize={8} fill="#bfe3ff" stroke="#0d1420" strokeWidth={1.5} paintOrder="stroke" pointerEvents="none">⛵{c.ships}</text>
                   )}
