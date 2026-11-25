@@ -76,7 +76,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       const max = Math.floor(city.population * BALANCE.conscriptMaxPopRatio);
       const amount = Math.min(Math.floor(cmd.amount), max);
       if (amount < 100) return { ok: false, error: '징병 가능한 인구가 부족합니다.' };
-      const gold = Math.ceil(amount * BALANCE.conscriptGoldPerTroop);
+      const gold = Math.ceil(amount * BALANCE.conscriptGoldPerTroop * (1 - traitSum(f.traits, 'conscriptCost')));
       const iron = Math.ceil(amount * BALANCE.conscriptIronPerTroop);
       if (f.gold < gold) return { ok: false, error: '금이 부족합니다.' };
       if (f.iron < iron) return { ok: false, error: '철이 부족합니다.' };
@@ -143,7 +143,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       const defenderFaction = to.owner;
       const defenders = generalsIn(s, to.id).filter((x) => x.faction === defenderFaction);
       const out = resolveBattle(s, {
-        attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: cmd.tactic, attackerShips: city.ships ?? 0, navalTrait: f.traits.includes('수군'),
+        attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: cmd.tactic, traitAttack: traitSum(f.traits, 'attack'), attackerShips: city.ships ?? 0, navalTrait: f.traits.includes('수군'),
         attackerMorale: city.morale, attackerTraining: city.training, supply: supplyRatio(s, factionId) < BALANCE.lowSupplyThreshold ? supplyRatio(s, factionId) : undefined,
         isolated: !isConnectedToCapital(s, factionId, city.id),
       });
@@ -210,7 +210,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       // 이 세력 장수에게 패한 기억이 있으면 마음을 열지 않는다
       const grudge = (t.memories ?? []).some((m) => m.kind === 'defeatedBy' && s.generals[m.with]?.faction === factionId) ? BALANCE.grudgeRecruitPenalty : 0;
       const p = Math.min(0.9, Math.max(0.1,
-        (g.stats.charm - 30 + ((ruler?.stats.charm ?? 50) - 50) / 2 - (t.persona.pride - 50) / 3) / 100 - grudge));
+        (g.stats.charm - 30 + ((ruler?.stats.charm ?? 50) - 50) / 2 - (t.persona.pride - 50) / 3) / 100 - grudge + traitSum(f.traits, 'recruit')));
       g.acted = true;
       if (chance(s, p)) {
         t.faction = factionId;
@@ -260,7 +260,8 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
     case 'trade': {
       const amount = Math.min(BALANCE.tradeMax, Math.max(0, Math.floor(cmd.amount / 1000) * 1000));
       if (amount < 1000) return { ok: false, error: '1,000석 단위로 거래합니다.' };
-      const price = foodPrice(s, city.id, cmd.action);
+      const tm = traitSum(f.traits, 'market');
+      const price = Math.round(foodPrice(s, city.id, cmd.action) * (cmd.action === 'buyFood' ? 1 - tm : 1 + tm));
       const gold = Math.round((amount / 1000) * price);
       if (cmd.action === 'buyFood') {
         if (f.gold < gold) return { ok: false, error: '금이 부족합니다.' };
@@ -286,7 +287,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (!t || t.faction !== factionId) return { ok: false, error: '우리 장수가 아닙니다.' };
       if (f.gold < BALANCE.rewardGold) return { ok: false, error: '금이 부족합니다.' };
       f.gold -= BALANCE.rewardGold;
-      t.loyalty = Math.min(100, t.loyalty + BALANCE.rewardLoyalty);
+      t.loyalty = Math.min(100, t.loyalty + BALANCE.rewardLoyalty + traitSum(f.traits, 'rewardLoyalty'));
       remember(t, s.turn, 'rewarded', f.rulerId);
       g.acted = true;
       return { ok: true, message: `${t.name}에게 포상했습니다. (충성 ${t.loyalty})` };
@@ -396,4 +397,9 @@ export function foodPrice(s: GameState, cityId: string, action: 'buyFood' | 'sel
   const season = BALANCE.seasonFoodPrice[s.season] ?? 1;
   const market = (c.commerce / 100) * BALANCE.marketCommerceDiscount + (c.port ? 0.05 : 0);
   return Math.round(action === 'buyFood' ? base * season * (1 - market) : base * season * (1 + market));
+}
+
+/** 세력 특성 효과 합계 (v2.7) */
+export function traitSum(traits: string[], key: 'attack' | 'recruit' | 'conscriptCost' | 'rewardLoyalty' | 'harvest' | 'market'): number {
+  return traits.reduce((a, t) => a + (BALANCE.traitEffects[t]?.[key] ?? 0), 0);
 }

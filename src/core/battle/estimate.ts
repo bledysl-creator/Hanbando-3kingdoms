@@ -19,6 +19,8 @@ export function estimateRatio(s: GameState, g: General, from: City, to: City, tr
       terrainMod /= 1 + Math.min(BALANCE.shipDefenseCap, (to.ships ?? 0) * BALANCE.shipDefensePer);
     }
   }
+  const ownTraits = from.owner ? s.factions[from.owner]?.traits ?? [] : [];
+  terrainMod *= 1 + ownTraits.reduce((a, t) => a + (BALANCE.traitEffects[t]?.attack ?? 0), 0);
   const atk = terrainMod * troops * (0.5 + g.stats.leadership / 100) * (0.7 + g.stats.war / 333) * roadMod * wm * qualityFactor(from.morale, from.training);
   const defs = generalsIn(s, to.id).filter((x) => x.faction === to.owner);
   const best = defs.reduce<number>((a, x) => Math.max(a, x.stats.leadership), BALANCE.neutralLeadership);

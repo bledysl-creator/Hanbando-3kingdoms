@@ -12,6 +12,7 @@ import { recordAnnal } from './chronicle';
 import { processSurrenders } from './surrender';
 import { processEpidemics } from './epidemic';
 import { processGovernors } from './office';
+import { traitSum } from '../commands/commands';
 import { landmarksOfCity } from '../data';
 
 export function processEconomy(s: GameState) {
@@ -25,7 +26,7 @@ export function processEconomy(s: GameState) {
       gold += c.commerce * k * BALANCE.goldPerCommerce * orderMul * (1 + BALANCE.portLandmarkCommerce * landmarksOfCity(c.id, 'port').length);
       if (s.season === 2) {
         const dry = Math.max(0, 1 - (c.droughtTurns ?? 0) * BALANCE.droughtHarvestLoss);
-        harvest += c.agriculture * k * BALANCE.harvestPerAgriculture * orderMul * dry;
+        harvest += c.agriculture * k * BALANCE.harvestPerAgriculture * orderMul * dry * (1 + traitSum(f.traits, 'harvest'));
       }
       wood += c.wood * BALANCE.woodPerLevel;
       iron += c.iron * BALANCE.ironPerLevel;

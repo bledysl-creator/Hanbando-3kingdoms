@@ -23,6 +23,8 @@ export interface BattleInput {
   /** 출진 도시의 전선 수와 공격 세력의 수군 특성 (v2.0) */
   attackerShips?: number;
   navalTrait?: boolean;
+  /** 세력 특성 공격 보너스 (v2.7) */
+  traitAttack?: number;
 }
 
 export interface BattleOutcome {
@@ -60,6 +62,7 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
     reasons.push(`${label}으로 공격력 ${Math.round((1 - roadMod) * 100)}% 감소`);
   }
   atk *= roadMod;
+  if (b.traitAttack) { atk *= 1 + b.traitAttack; reasons.push(`세력 특성(무용) 공격 +${Math.round(b.traitAttack * 100)}%`); }
   if (b.road.type === 'sea') {
     const sb = Math.min(BALANCE.shipAttackCap, (b.attackerShips ?? 0) * BALANCE.shipAttackPer) + (b.navalTrait ? BALANCE.navalTraitBonus : 0);
     if (sb > 0) { atk *= 1 + sb; reasons.push(`전선 ${b.attackerShips ?? 0}척${b.navalTrait ? '과 수군의 솜씨' : ''}로 상륙 지원 +${Math.round(sb * 100)}%`); }

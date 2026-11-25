@@ -530,3 +530,19 @@ describe('조사 교정 (v2.6)', () => {
     expect(fixJosa('魏이(가)')).toBe('魏이(가)');
   });
 });
+
+describe('세력 특성 (v2.7)', () => {
+  it('위(대군)는 같은 병력 징병에 금이 덜 든다', () => {
+    const s = newGame(2, null);
+    const wei = Object.values(s.generals).find((g) => g.faction === 'wei' && g.city === 'pyongyang')!;
+    const shu = Object.values(s.generals).find((g) => g.faction === 'shu' && g.city === 'hanyang')!;
+    const a = applyCommand(s, 'wei', { type: 'conscript', generalId: wei.id, amount: 3000 });
+    const b = applyCommand(s, 'shu', { type: 'conscript', generalId: shu.id, amount: 3000 });
+    expect(s.factions.wei.gold - a.state.factions.wei.gold).toBeLessThan(s.factions.shu.gold - b.state.factions.shu.gold);
+  });
+  it('여포(최강무력)의 공격은 원인에 특성 보너스가 나온다', () => {
+    const s = newGame();
+    const r = resolveBattle({ rng: 1 }, { attackerTroops: 20000, attackerGeneral: s.generals.lu_bu, defenderCity: s.cities.kaesong, defenderGenerals: [], road: { from: 'hanyang', to: 'kaesong', type: 'land' }, season: 0, weather: 'clear', traitAttack: 0.1 });
+    expect(r.reasons.join()).toContain('세력 특성');
+  });
+});

@@ -27,6 +27,11 @@ export const BALANCE = {
   summerRainPenalty: 1, // v0.7부터 날씨 시스템으로 대체
   roadAttackModifier: { land: 1, river: 0.8, pass: 0.85, sea: 0.75 } as Record<string, number>,
   mountainDefenseBonus: 1.2,
+  /** 세력 특성 효과 (v2.7) */
+  traitEffects: {
+    '최강무력': { attack: 0.1 }, '인재': { recruit: 0.1 }, '대군': { conscriptCost: 0.2 },
+    '인덕': { rewardLoyalty: 5 }, '곡창': { harvest: 0.05 }, '교역': { market: 0.1 }, '수군': {}, '불안정': {},
+  } as Record<string, { attack?: number; recruit?: number; conscriptCost?: number; rewardLoyalty?: number; harvest?: number; market?: number }>,
   /** 관직 (v2.4): 태수 정치/이 값 = 계절마다 농업·상업 +1 확률, 정치 70+ 또는 매력 80+ 이면 민심 + */
   governorDevDivisor: 250, governorOrder: 1, governorLoyalty: 5,
   /** 역병 (v2.3): 발생 확률 = 계절 기본 + 인구 10만당 + 큰비 − 민심 보호 */
