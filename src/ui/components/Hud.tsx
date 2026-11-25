@@ -125,7 +125,7 @@ export type BarKey = '장수' | '도시' | '부대' | '계책' | '외교' | '연
 const BAR: { key: BarKey; icon: string; ready: boolean }[] = [
   { key: '장수', icon: '🧑‍✈️', ready: true },
   { key: '도시', icon: '🏯', ready: true },
-  { key: '부대', icon: '🚩', ready: false },
+  { key: '부대', icon: '🚩', ready: true },
   { key: '계책', icon: '🖌️', ready: false },
   { key: '외교', icon: '🤝', ready: true },
   { key: '연표', icon: '📜', ready: true },

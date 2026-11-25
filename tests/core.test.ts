@@ -361,3 +361,16 @@ describe('지형 거점 (v1.3)', () => {
     expect(r.reasons.join()).toContain('임진나루');
   });
 });
+
+import { armyReport } from '../src/core';
+describe('부대 현황 (v1.5)', () => {
+  it('아군 도시만 나오고 전선 도시가 먼저, 접경 적이 있으면 전선이다', () => {
+    const s = newGame(3, 'shu');
+    const rows = armyReport(s, 'shu');
+    expect(rows.length).toBe(citiesOf(s, 'shu').length);
+    expect(rows.every((r) => s.cities[r.cityId].owner === 'shu')).toBe(true);
+    const firstRear = rows.findIndex((r) => r.role === 'rear');
+    if (firstRear >= 0) expect(rows.slice(firstRear).every((r) => r.role === 'rear')).toBe(true);
+    expect(rows.some((r) => r.role === 'front')).toBe(true);
+  });
+});

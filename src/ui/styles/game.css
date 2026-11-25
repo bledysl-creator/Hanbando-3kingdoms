@@ -244,3 +244,4 @@ select, input { font: inherit; }
 .modal select { background: #0f141b; color: var(--hanji); border: 1px solid #6e5a33; padding: 6px; border-radius: 4px; }
 .landmarks-line { font-size: 12px; color: #e8cf8a; margin-top: 2px; }
 .landmark text { pointer-events: none; }
+.danger-row td { color: #ffb3a8; }

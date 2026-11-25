@@ -1,7 +1,7 @@
 // 목록·보고서 창: 장수, 도시, 연표, 세력 정보, 전투 보고, 설정/저장, 도움말
 import { useEffect, useState, type ReactNode } from 'react';
 import type { BattleReport, GameState } from '../../core';
-import { MEMORY_LABEL, SEASONS, visibleTroops, writeChronicle, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
+import { MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
 import { exportJson, indexedDbRepo, migrate, type SaveMeta } from '../../save/saveRepository';
 import { Portrait } from './Portrait';
 
@@ -110,6 +110,33 @@ export function CitiesModal({ state, onClose, onPickCity }: { state: GameState; 
               <td>{c.owner ? state.factions[c.owner].name : '중립'}</td>
               <td>{(() => { const v = visibleTroops(state, state.playerFactionId, c.id); return v.value === null ? '?' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)}`; })()}</td><td>{fmt(c.population)}</td><td>{c.agriculture}</td><td>{c.commerce}</td><td>{c.wall}</td><td>{Math.round(c.order)}</td>
               <td>{Object.values(state.generals).filter((g) => g.alive && g.city === c.id && g.faction === c.owner).length}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Modal>
+  );
+}
+
+export function ArmyModal({ state, onClose, onPickCity }: { state: GameState; onClose: () => void; onPickCity: (id: string) => void }) {
+  const fid = state.playerFactionId;
+  const rows = fid ? armyReport(state, fid) : [];
+  const total = rows.reduce((a, r) => a + r.troops, 0);
+  const front = rows.filter((r) => r.role === 'front');
+  return (
+    <Modal title="부대 — 아군 병력 배치와 접경 위협" onClose={onClose} wide>
+      <p className="muted">총병력 {fmt(total)} · 전선 도시 {front.length}곳 · 후방 {rows.length - front.length}곳. 위협 = 접한 적 병력 ÷ 아군 병력 (첩보가 없으면 추정치).</p>
+      <table className="table">
+        <thead><tr><th>도시</th><th>구분</th><th>병력</th><th>사기</th><th>훈련</th><th>장수</th><th>접경 적</th><th>위협</th></tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.cityId} onClick={() => { onPickCity(r.cityId); onClose(); }} className={r.threatRatio > 1 ? 'danger-row' : ''}>
+              <td>{r.name}{r.isolated ? ' ⛓고립' : ''}</td>
+              <td>{r.role === 'front' ? '전선' : '후방'}</td>
+              <td>{fmt(r.troops)}</td><td>{r.morale}</td><td>{r.training}</td>
+              <td>{r.generals.join(', ') || '—'}</td>
+              <td>{r.threats.filter((t) => t.owner).map((t) => `${t.name}(${t.troops === null ? '?' : (t.exact ? '' : '약 ') + fmt(t.troops)})`).join(', ') || '—'}</td>
+              <td>{r.role === 'front' ? `${r.threatRatio > 1 ? '⚠ ' : ''}${r.threatRatio.toFixed(2)}` : '—'}</td>
             </tr>
           ))}
         </tbody>
