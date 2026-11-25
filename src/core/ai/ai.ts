@@ -185,13 +185,14 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
     const here = dist[city.id];
     if (here !== undefined && here > 0) {
       const next = ns.filter((n) => n.city.owner === fid && dist[n.city.id] !== undefined && dist[n.city.id] < here).sort((a, b) => b.city.troops - a.city.troops)[0];
-      if (next) opts.push({ score: 16, cmd: { type: 'transfer', generalId: g.id, toCityId: next.city.id, troops: Math.max(0, city.troops - minGarrison(s) * 2) }, why: '장수 전선 이동' });
+      // v3.8 태수는 맡은 고을을 떠나 떠돌지 않는다
+      if (next && city.governor !== g.id) opts.push({ score: 16, cmd: { type: 'transfer', generalId: g.id, toCityId: next.city.id, troops: Math.max(0, city.troops - minGarrison(s) * 2) }, why: '장수 전선 이동' });
     }
   }
   // v3.4 태수 파견: 장수가 몰린 도시에서 장수가 없는 이웃 아군 도시로 한 명을 보낸다 (병력은 데려가지 않음)
   const here = generalsIn(s, city.id, fid);
   const cap = capOf(s, fid);
-  if (here.length > cap && g.id !== f.rulerId) {
+  if (here.length > cap && g.id !== f.rulerId && city.governor !== g.id) {
     const empty = ns.find((n) => n.city.owner === fid && generalsIn(s, n.city.id, fid).length === 0);
     if (empty) opts.push({ score: BALANCE.aiDispatchScore, cmd: { type: 'transfer', generalId: g.id, toCityId: empty.city.id, troops: 0 }, why: '태수 파견' });
     // 이웃에 빈 도시가 없어도 너무 몰렸으면 장수가 가장 적은 이웃 아군 도시로 나눈다

@@ -1,4 +1,5 @@
 import { igniteCity } from '../systems/wildfire';
+import { governorOf } from '../systems/office';
 import { fixJosa } from '../josa';
 import { reliefFood } from '../systems/epidemic';
 import type { TacticKind } from '../battle/tactics';
@@ -116,9 +117,13 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         to.morale = Math.round((to.morale * to.troops + city.morale * troops) / (to.troops + troops));
       }
       to.troops += troops;
+      if (city.governor === g.id) city.governor = undefined;
       g.city = to.id;
       g.acted = true;
-      return { ok: true, message: `${g.name}이(가) 병력 ${troops.toLocaleString()}명과 함께 ${to.name}(으)로 이동했습니다.` };
+      // v3.8 태수가 없는 고을에 들어가면 그 장수가 태수를 맡는다 (군주 제외, 따로 임명 명령이 필요 없음)
+      const autoGov = !governorOf(s, to.id) && f.rulerId !== g.id;
+      if (autoGov) to.governor = g.id;
+      return { ok: true, message: `${g.name}이(가) 병력 ${troops.toLocaleString()}명과 함께 ${to.name}(으)로 이동했습니다.${autoGov ? ` (${to.name} 태수를 맡음)` : ''}` };
     }
     case 'march': {
       const to = s.cities[cmd.toCityId];

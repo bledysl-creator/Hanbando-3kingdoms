@@ -46,6 +46,9 @@ export const BALANCE = {
   /** 군현 지도에서 산불·역병 발생 확률 배율 (도시 수가 많아 전국 빈도를 맞춤) */
   regionEventScale: 0.1,
   /** 군현 지도: AI 병력 기준 배율, 목재·철 산출 배율 (24/345 ≈ 0.07) */
+  /** v3.8 군현 지도: 장수 없는 후방 현의 남는 병력(후방 수비 3,000×0.15 초과분)의 이 비율이 계절마다 전선 쪽 이웃으로 이동 */
+  regionMuster: true,
+  regionMusterShare: 0.8,
   regionAiTroopScale: 0.15, regionResourceScale: 0.09,
   /** 군현 지도: 치소 함락 시 속현 귀부 (병력 이하·장수 없음일 때 확률, 귀부 병력 유지 비율) */
   regionSubmitMaxTroops: 3000, regionSubmitChance: 0.6, regionSubmitTroopKeep: 0.5,

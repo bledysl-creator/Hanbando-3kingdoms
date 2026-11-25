@@ -12,6 +12,7 @@ import { recordAnnal } from './chronicle';
 import { processSurrenders } from './surrender';
 import { processRebellions } from './rebellion';
 import { resolveSieges } from './siege';
+import { processRegionMuster } from './muster';
 import { processEpidemics } from './epidemic';
 import { processWildfires } from './wildfire';
 import { processGovernors } from './office';
@@ -120,6 +121,7 @@ export function endTurnMut(s: GameState) {
   }
   applyWeatherEffects(s, (t, fid) => { if (fid === s.playerFactionId) log(s, t, 'warn', fid); });
   processEconomy(s);
+  processRegionMuster(s);
   processEpidemics(s);
   processWildfires(s);
   processGovernors(s);

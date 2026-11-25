@@ -3,6 +3,7 @@ import { applyCommand, createGame, DATA, endTurn, SCENARIOS, missionProgress, ci
 import { rand } from '../src/core/rng/rng';
 import { endTurnMut } from '../src/core/systems/turn';
 import { resolveSieges } from '../src/core/systems/siege';
+import { processRegionMuster } from '../src/core/systems/muster';
 
 const sc = SCENARIOS['197_sabun'];
 const neighborsOf = (s: ReturnType<typeof createGame>, id: string) => neighbors(s, id).map((n) => n.city.id);
@@ -907,5 +908,33 @@ describe('포위와 대응 (v3.6)', () => {
     expect(s.lastBattles.length).toBe(n + 1);
     expect(s.lastBattles[n].reasons.some((r) => r.includes('농성'))).toBe(true);
     expect(s.sieges).toHaveLength(0);
+  });
+});
+
+describe('군현 지도 진행·태수 (v3.8)', () => {
+  it('태수가 없는 고을로 옮긴 장수는 자동으로 태수가 된다 (군주 제외)', () => {
+    const s = newGame(11);
+    const g = Object.values(s.generals).find((x) => x.alive && x.faction === 'shu' && x.id !== s.factions.shu.rulerId
+      && neighbors(s, x.city).some((n) => n.city.owner === 'shu'))!;
+    const to = neighbors(s, g.city).find((n) => n.city.owner === 'shu')!.city.id;
+    s.cities[to].governor = undefined;
+    const r = applyCommand(s, 'shu', { type: 'transfer', generalId: g.id, toCityId: to, troops: 0 });
+    expect(r.result.ok).toBe(true);
+    expect(r.state.cities[to].governor).toBe(g.id);
+  });
+  it('장수 없는 후방 현의 남는 병력은 계절마다 전선 쪽으로 모인다', () => {
+    const s = createGame(DATA, sc, { seed: 3, playerFactionId: null, scale: 'region' } as never);
+    const front = frontDistance(s, 'shu');
+    const rear = Object.values(s.cities).find((c) => c.owner === 'shu' && (front[c.id] ?? 0) >= 2 && !Object.values(s.generals).some((g) => g.alive && g.city === c.id && g.faction === 'shu'))!;
+    rear.troops = 5000;
+    processRegionMuster(s);
+    expect(s.cities[rear.id].troops).toBeLessThan(5000);
+    expect(s.cities[rear.id].troops).toBeGreaterThanOrEqual(450);
+  });
+  it('군현 지도 시·군 경제 총량은 관할 도시와 같은 비율이다', () => {
+    const g = REGION_GRAPH.cities as unknown as { parent: string; population: number; commerce: number }[];
+    const byP: Record<string, { pop: number; com: number }> = {};
+    for (const r of g) { const o = (byP[r.parent] ??= { pop: 0, com: 0 }); o.pop += r.population; o.com += r.commerce * r.population; }
+    for (const c of DATA.cities) expect(Math.abs(byP[c.id].com / byP[c.id].pop - c.commerce)).toBeLessThan(1.5);
   });
 });

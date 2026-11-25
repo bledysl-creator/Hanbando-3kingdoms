@@ -17,8 +17,10 @@ export function surrenderCandidate(s: GameState, fid: string): { to: string; p: 
   const f = s.factions[fid];
   if (!f?.alive || fid === s.playerFactionId) return null;
   const me = strength(s, fid);
-  if (me.cities > BALANCE.surrenderMaxCities) return null;
   const total = Object.values(s.cities).length;
+  // v3.8 군현 지도(345곳)는 도시 수 기준을 24곳 지도 비율로 늘린다 (3곳 → 약 43곳)
+  const maxCities = s.mapScale === 'region' ? Math.round(BALANCE.surrenderMaxCities * total / 24) : BALANCE.surrenderMaxCities;
+  if (me.cities > maxCities) return null;
   // 이웃 세력 중 가장 강한 곳
   const ns = new Set<string>();
   for (const c of Object.values(s.cities)) if (c.owner === fid) for (const n of neighbors(s, c.id)) if (n.city.owner && n.city.owner !== fid) ns.add(n.city.owner);
