@@ -22,7 +22,7 @@
   { "id": "hoejin", "name": "회진", "type": "port", "lon": 126.55, "lat": 34.9, "city": "naju", "note": "영산강 어귀의 항구" },
   { "id": "ulsan_port", "name": "울산 포구", "type": "port", "lon": 129.37, "lat": 35.52, "city": "gyeongju", "note": "동해 남부의 무역항" },
   { "id": "jepo", "name": "제포", "type": "port", "lon": 128.7, "lat": 35.13, "city": "busan", "note": "남해 바닷길의 포구" },
-  { "id": "bukhansanseong", "name": "북한산성", "type": "fortress", "lon": 126.98, "lat": 37.66, "city": "hanyang", "note": "한양 북쪽의 산성" },
+  { "id": "bukhansanseong", "name": "북한산성", "type": "fortress", "lon": 126.98, "lat": 37.66, "city": "hanyang", "note": "서울 북쪽의 산성" },
   { "id": "daeseongsan", "name": "대성산성", "type": "fortress", "lon": 125.82, "lat": 39.08, "city": "pyongyang", "note": "평양 동북쪽 산성" },
   { "id": "sangdang", "name": "상당산성", "type": "fortress", "lon": 127.55, "lat": 36.66, "city": "cheongju", "note": "청주의 산성" },
   { "id": "gongsanseong", "name": "공산성", "type": "fortress", "lon": 127.13, "lat": 36.46, "city": "gongju", "note": "금강을 낀 산성" },

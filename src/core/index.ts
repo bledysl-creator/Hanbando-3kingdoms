@@ -3,7 +3,7 @@ export * from './state/types';
 export { createGame, SAVE_VERSION, type CreateOptions } from './state/init';
 export { canFound, foundFaction } from './state/found';
 export { regionize } from './state/regionize';
-export { applyCommand, respondOffer, foodPrice, type Command, type CommandResult, type DevelopField } from './commands/commands';
+export { applyCommand, respondOffer, foodPrice, disbandPreview, type Command, type CommandResult, type DevelopField } from './commands/commands';
 export { acceptanceChance, statusOf, treatyOf, canAttack } from './diplomacy/diplomacy';
 export { endTurn, endTurnMut } from './systems/turn';
 export { missionProgress } from './systems/missions';

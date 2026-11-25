@@ -40,6 +40,11 @@ export function migrate(raw: unknown): GameState {
     for (const c of Object.values(s.cities)) if (c.ships === undefined) c.ships = c.port ? BALANCE.startShipsPort : 0;
     s.saveVersion = 9;
   }
+  // v9 → v10: 한양 → 서울 개명 (v3.5, 도시 수치는 진행 중인 판을 그대로 둠)
+  if (s.saveVersion < 10) {
+    if (s.cities.hanyang?.name === '한양') s.cities.hanyang.name = '서울';
+    s.saveVersion = 10;
+  }
   return s;
 }
 

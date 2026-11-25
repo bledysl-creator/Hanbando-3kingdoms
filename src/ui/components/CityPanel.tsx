@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Command, GameState, General, TacticKind } from '../../core';
-import { BALANCE, DATA, foodPrice, governorOf, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, minGarrison, minMarch, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
+import { BALANCE, DATA, foodPrice, governorOf, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, minGarrison, minMarch, disbandPreview, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -147,8 +147,24 @@ function DomesticTab({ state, cityId, actor, onCommand }: { state: GameState; ci
       </div>
       <div className="sub">
         <b>귀농</b> <small>병사를 고향으로 돌려보내 인구·민심을 회복</small>
-        <input type="range" min={0} max={Math.max(0, city.troops - 500)} step={500} value={Math.min(disband, Math.max(0, city.troops - 500))} onChange={(e) => setDisband(+e.target.value)} />
-        <button disabled={disband < 500} onClick={() => onCommand({ type: 'disband', generalId: actor.id, amount: disband })}>🏡 {Math.min(disband, Math.max(0, city.troops - 500)).toLocaleString()}명 귀농</button>
+        {(() => {
+          const keep = minGarrison(state);
+          const max = Math.max(0, city.troops - keep);
+          const pv = disbandPreview(state, cityId, Math.min(disband, max));
+          return (
+            <>
+              <TroopSlider value={pv.amount} max={max} step={state.mapScale === 'region' ? 100 : 500} total={city.troops} keep={keep} onChange={setDisband} />
+              <div className="disband-preview">
+                <span>😊 민심 <b>{city.order}</b> → <b className="good">{pv.orderAfter}</b> <small>(+{pv.orderGain})</small></span>
+                <span>👪 인구 <b className="good">+{pv.amount.toLocaleString()}</b></span>
+                <span>🍚 계절마다 군량 <b className="good">+{pv.foodSaved.toLocaleString()}</b></span>
+                <span>🌾 가을 수확 <b className="good">+{pv.harvestGain.toLocaleString()}</b></span>
+                <span className="wide">1년 동안 곡식 약 <b className="good">+{pv.yearFood.toLocaleString()}</b> (절약 4계절 + 수확)</span>
+              </div>
+              <button disabled={pv.amount < 100} onClick={() => onCommand({ type: 'disband', generalId: actor.id, amount: pv.amount })}>🏡 {pv.amount.toLocaleString()}명 귀농</button>
+            </>
+          );
+        })()}
       </div>
       <button onClick={() => onCommand({ type: 'develop', generalId: actor.id, field: 'agriculture' })}>🌾 농업 개발 <small>금 {BALANCE.developGold} · +{gain}</small></button>
       <button onClick={() => onCommand({ type: 'develop', generalId: actor.id, field: 'commerce' })}>🪙 상업 개발 <small>금 {BALANCE.developGold} · +{gain}</small></button>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, createGame, DATA, endTurn, SCENARIOS, missionProgress, citiesOf, minGarrison, neighbors } from '../src/core';
+import { applyCommand, createGame, DATA, endTurn, SCENARIOS, missionProgress, citiesOf, minGarrison, neighbors, disbandPreview } from '../src/core';
 import { rand } from '../src/core/rng/rng';
 import { endTurnMut } from '../src/core/systems/turn';
 
@@ -446,7 +446,7 @@ describe('실측 고도 (v1.9)', () => {
     s.saveVersion = 7;
     for (const c of Object.values(s.cities) as { elev?: number }[]) delete c.elev;
     const m = migrate(s);
-    expect(m.saveVersion).toBe(9);
+    expect(m.saveVersion).toBe(10);
     expect(m.cities.hyesan.elev).toBeGreaterThan(900);
   });
 });
@@ -791,5 +791,33 @@ describe('병력 이동 양', () => {
     const g2 = Object.values(r.state.generals).find((x) => x.alive && x.faction === 'shu' && x.city === from && !x.acted && x.id !== g.id)!;
     const r2 = applyCommand(r.state, 'shu', { type: 'transfer', generalId: g2.id, toCityId: to, troops: 999999 });
     expect(r2.state.cities[from].troops).toBe(minGarrison(r2.state));
+  });
+});
+
+describe('귀농 미리보기·지역 특성 (v3.5)', () => {
+  it('미리보기 값과 실제 귀농 결과가 같다', () => {
+    const s = newGame(5);
+    const g = Object.values(s.generals).find((x) => x.alive && x.faction === 'shu')!;
+    const c = s.cities[g.city];
+    c.troops = 20000; c.order = 60;
+    const pv = disbandPreview(s, c.id, 5000);
+    expect(pv.amount).toBe(5000);
+    expect(pv.orderGain).toBeGreaterThan(0);
+    expect(pv.foodSaved).toBe(Math.round(5000 * 0.25));
+    expect(pv.harvestGain).toBeGreaterThan(0);
+    const r = applyCommand(s, 'shu', { type: 'disband', generalId: g.id, amount: 5000 });
+    expect(r.result.ok).toBe(true);
+    expect(r.state.cities[c.id].order).toBe(pv.orderAfter);
+    expect(r.state.cities[c.id].troops).toBe(15000);
+    expect(disbandPreview(s, c.id, 999999).amount).toBe(20000 - minGarrison(s));
+  });
+  it('서울 개명·호남 농업·경상 상업·수원 성벽·북방 성벽', () => {
+    const C = Object.fromEntries(DATA.cities.map((c) => [c.id, c]));
+    expect(C.hanyang.name).toBe('서울');
+    expect(Math.max(...DATA.cities.map((c) => c.wall))).toBe(C.suwon.wall);
+    for (const id of ['jeonju', 'gwangju', 'naju']) expect(C[id].agriculture).toBeGreaterThan(C[id].commerce);
+    for (const id of ['daegu', 'gyeongju', 'busan']) expect(C[id].commerce).toBeGreaterThan(C[id].agriculture);
+    for (const id of ['uiju', 'ganggye', 'hyesan']) expect(C[id].wall).toBeGreaterThanOrEqual(80);
+    expect(C.hanyang.population).toBe(Math.max(...DATA.cities.map((c) => c.population)));
   });
 });

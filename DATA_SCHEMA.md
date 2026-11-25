@@ -16,7 +16,7 @@
 ### cities.json — `CityDef[]`
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| id, name | string | `hanyang`, 한양 |
+| id, name | string | `hanyang`, 서울 |
 | lon, lat | number | 경위도 |
 | elev | number | 도성 시·군 실측 평균 고도(m) |
 | terrain | `plain`·`mountain`·`coast`·`river` | 지형 |

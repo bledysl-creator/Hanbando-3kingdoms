@@ -314,3 +314,8 @@ button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 .troop-slider-row small { color: var(--muted); }
 .troop-quick { display: flex; gap: 3px; }
 .actions .troop-quick button { width: auto; padding: 2px 7px; font-size: 12px; text-align: center; }
+
+/* 귀농 미리보기 (v3.5) */
+.disband-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-size: 13px; padding: 6px 8px; margin-bottom: 6px; border: 1px dashed #6e5a33; border-radius: 4px; background: rgba(0, 0, 0, 0.18); }
+.disband-preview .wide { grid-column: 1 / -1; color: var(--muted); }
+.disband-preview small { color: var(--muted); }

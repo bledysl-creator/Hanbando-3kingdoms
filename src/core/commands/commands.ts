@@ -289,13 +289,13 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       return { ok: true, message: `${city.name} 시장에서 곡식 ${amount.toLocaleString()}석을 ${cmd.action === 'buyFood' ? '사들였' : '팔았'}습니다. (금 ${gold.toLocaleString()})` };
     }
     case 'disband': {
-      const amount = Math.min(Math.floor(cmd.amount), city.troops - 500);
-      if (amount < 500) return { ok: false, error: '돌려보낼 병사가 없습니다 (500명은 남겨야 함).' };
-      city.troops -= amount;
-      city.population += amount;
-      city.order = Math.min(100, city.order + Math.round((amount / 1000) * BALANCE.disbandOrderPer1000));
+      const pv = disbandPreview(s, city.id, cmd.amount);
+      if (pv.amount < 100) return { ok: false, error: `돌려보낼 병사가 없습니다 (${minGarrison(s).toLocaleString()}명은 남겨야 함).` };
+      city.troops -= pv.amount;
+      city.population += pv.amount;
+      city.order = pv.orderAfter;
       g.acted = true;
-      return { ok: true, message: `병사 ${amount.toLocaleString()}명이 고향으로 돌아가 농사를 짓습니다. (인구 +${amount.toLocaleString()})` };
+      return { ok: true, message: `병사 ${pv.amount.toLocaleString()}명이 고향으로 돌아가 농사를 짓습니다. (인구 +${pv.amount.toLocaleString()}, 민심 +${pv.orderGain}, 군량 계절마다 ${pv.foodSaved.toLocaleString()} 절약, 가을 수확 +${pv.harvestGain.toLocaleString()})` };
     }
     case 'reward': {
       const t = s.generals[cmd.targetId];
@@ -432,6 +432,22 @@ export function foodPrice(s: GameState, cityId: string, action: 'buyFood' | 'sel
 }
 
 /** 세력 특성 효과 합계 (v2.7) */
+/** 귀농 미리보기 (v3.5): 몇 명을 돌려보내면 민심·곡식이 얼마나 느는지. 명령과 화면이 같은 계산을 쓴다. */
+export function disbandPreview(s: GameState, cityId: string, want: number) {
+  const city = s.cities[cityId];
+  const amount = Math.max(0, Math.min(Math.floor(want), city.troops - minGarrison(s)));
+  const orderAfter = Math.min(100, city.order + Math.round((amount / 1000) * BALANCE.disbandOrderPer1000));
+  const orderGain = orderAfter - city.order;
+  /** 병사였을 때 먹던 군량: 계절마다 */
+  const foodSaved = Math.round(amount * BALANCE.foodPerTroop);
+  // 가을 수확: 농업 × 인구(천명) × 계수 × 민심 배율 — 늘어난 인구와 오른 민심을 반영한 차이
+  const f = city.owner ? s.factions[city.owner] : null;
+  const mul = BALANCE.harvestPerAgriculture * Math.max(0, 1 - (city.droughtTurns ?? 0) * BALANCE.droughtHarvestLoss) * (1 + (f ? traitSum(f.traits, 'harvest') : 0));
+  const harvest = (pop: number, order: number) => city.agriculture * (pop / 1000) * (0.5 + order / 200) * mul;
+  const harvestGain = Math.round(harvest(city.population + amount, orderAfter) - harvest(city.population, city.order));
+  return { amount, orderAfter, orderGain, foodSaved, harvestGain, yearFood: foodSaved * 4 + harvestGain };
+}
+
 export function traitSum(traits: string[], key: 'attack' | 'recruit' | 'conscriptCost' | 'rewardLoyalty' | 'harvest' | 'market'): number {
   return traits.reduce((a, t) => a + (BALANCE.traitEffects[t]?.[key] ?? 0), 0);
 }

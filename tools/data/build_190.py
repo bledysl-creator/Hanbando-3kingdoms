@@ -130,7 +130,7 @@ sc = {
     'rivals': {'wei': 'dong', 'shu': 'yuanshu', 'wu': 'jing', 'yuan': 'gongsun', 'dong': 'yuan', 'gongsun': 'yuan', 'jing': 'wu', 'ma': 'dong',
                'zhanglu': 'ma', 'yuanshu': 'yuan', 'lu': 'dong', 'yan': 'wu'},
     'factionIntro': {
-        'wei': '한양·수원에서 거병한 조조. 땅은 좁지만 하후씨·조씨 일족과 진궁이 곁에 있다.',
+        'wei': '서울·수원에서 거병한 조조. 땅은 좁지만 하후씨·조씨 일족과 진궁이 곁에 있다.',
         'shu': '충청에 자리 잡은 유비 삼형제. 가진 것은 적지만 인덕으로 사람을 모은다.',
         'wu': '경상 남부의 강동의 호랑이 손견. 아들 손책과 주유가 곧 어른이 된다.',
         'yuan': '평안도를 쥔 명문 원소. 반동탁 연합의 맹주로 인재와 군량이 넘친다.',
