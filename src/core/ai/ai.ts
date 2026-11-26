@@ -1,4 +1,5 @@
 import { TACTICS, tacticChance, type TacticKind } from '../battle/tactics';
+import { bestFormation, hasHorses } from '../battle/formation';
 // 규칙 기반 + Utility AI (Game.md 5-5). 플레이어와 같은 명령만 사용한다.
 import { BALANCE } from '../config';
 import { executeCommand, foodPrice, type Command } from '../commands/commands';
@@ -124,7 +125,7 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
       if (BALANCE.siegeChoice && n.city.owner !== null && n.city.owner === s.playerFactionId) ratio /= BALANCE.siegeAiCaution;
       if (ratio > needRatio) {
         const value = (n.city.population / 10000 + n.city.agriculture / 20 + n.city.commerce / 20) * (n.city.owner === null ? 0.8 : 1);
-        opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops, tactic: bestTactic(s, g, n.city, n.road) }, why: `승산 ${ratio.toFixed(2)}` });
+        opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops, tactic: bestTactic(s, g, n.city, n.road), formation: bestFormation(s, fid, n.road, n.city, cached(s, `horses:${fid}`, () => hasHorses(s, fid))) }, why: `승산 ${ratio.toFixed(2)}` });
       }
     }
   }

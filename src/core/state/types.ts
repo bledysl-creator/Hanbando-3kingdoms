@@ -148,6 +148,12 @@ export interface BattleReport {
   defenderLoss: number;
   won: boolean;
   reasons: string[];
+  /** v3.9 전투 세부 (선택) */
+  tactic?: { kind: import('../battle/tactics').TacticKind; success: boolean; chance: number };
+  formation?: import('../battle/formation').FormationKind;
+  duel?: import('../battle/battle').DuelResult;
+  phases?: { clashAttacker: number; clashDefender: number; pursuit: number; pursuer: 'attacker' | 'defender' };
+  defenderSurvivors?: number;
 }
 
 export interface AiTraceEntry {
@@ -230,6 +236,8 @@ export interface Siege {
   toCity: CityId;
   troops: number;
   tactic?: import('../battle/tactics').TacticKind;
+  /** v3.9 병종 편성 */
+  formation?: import('../battle/formation').FormationKind;
   morale: number;
   training: number;
   ships: number;

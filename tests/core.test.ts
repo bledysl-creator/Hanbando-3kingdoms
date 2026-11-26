@@ -938,3 +938,65 @@ describe('군현 지도 진행·태수 (v3.8)', () => {
     for (const c of DATA.cities) expect(Math.abs(byP[c.id].com / byP[c.id].pop - c.commerce)).toBeLessThan(1.5);
   });
 });
+
+import { formationEffect, hasHorses, bestFormation, duelPreview } from '../src/core/battle/formation';
+describe('냉병기 전투 (v3.9)', () => {
+  const land = { from: 'hanyang', to: 'kaesong', type: 'land' as const };
+  const base = (s: ReturnType<typeof newGame>) => ({ attackerTroops: 30000, attackerGeneral: s.generals.guan_yu, defenderCity: s.cities.kaesong, defenderGenerals: [], road: land, season: 0, weather: 'clear' as const, noDuel: true });
+  it('기병은 평지에 강하고 산길·큰 성에 약하다, 보병은 큰 성에 강하다', () => {
+    const s = newGame();
+    expect(formationEffect('cavalry', land, s.cities.kaesong, 'clear').attack).toBeGreaterThan(1);
+    expect(formationEffect('cavalry', { ...land, type: 'pass' }, s.cities.chuncheon, 'clear').attack).toBeLessThan(1);
+    expect(formationEffect('infantry', land, s.cities.suwon, 'clear').attack).toBeGreaterThan(1);
+    expect(formationEffect('archer', { ...land, type: 'river' }, s.cities.kaesong, 'rain').reasons.join()).toContain('활시위');
+  });
+  it('기병은 말 산지가 있어야 꾸릴 수 있다 (여포는 관북, 촉은 없음)', () => {
+    const s = newGame();
+    expect(hasHorses(s, 'lu')).toBe(true);
+    expect(hasHorses(s, 'shu')).toBe(false);
+    s.cities.hanyang.troops = 40000;
+    const r = applyCommand(s, 'shu', { type: 'march', generalId: 'guan_yu', toCityId: 'kaesong', troops: 20000, formation: 'cavalry' });
+    expect(r.result.ok).toBe(false);
+    expect(bestFormation(s, 'shu', land, s.cities.kaesong)).not.toBe('cavalry');
+  });
+  it('이긴 쪽은 적게, 진 쪽은 추격으로 크게 잃고 기병은 추격이 매섭다', () => {
+    const s = newGame();
+    const a = resolveBattle({ rng: 3 }, base(s));
+    expect(a.won).toBe(true);
+    expect(a.attackerLoss / 30000).toBeLessThan(0.15);
+    expect(a.defenderLoss).toBeLessThan(s.cities.kaesong.troops);
+    expect(a.phases!.pursuit).toBeGreaterThan(0);
+    const c = resolveBattle({ rng: 3 }, { ...base(s), formation: 'cavalry' });
+    expect(c.phases!.pursuit).toBeGreaterThan(a.phases!.pursuit);
+  });
+  it('함락된 성의 패잔병은 이웃 아군 성으로 달아나거나 투항한다', () => {
+    const s = newGame(5, null);
+    s.diplomacy = {};
+    s.cities.hanyang.troops = 90000;
+    s.factions.shu.food = 999999;
+    s.generals.guan_yu.loyalty = 100;
+    const before = Object.values(s.cities).filter((c) => c.owner === 'wei' && c.id !== 'kaesong').reduce((a, c) => a + c.troops, 0);
+    const { state } = applyCommand(s, 'shu', { type: 'march', generalId: 'guan_yu', toCityId: 'kaesong', troops: 85000 });
+    expect(state.cities.kaesong.owner).toBe('shu');
+    const after = Object.values(state.cities).filter((c) => c.owner === 'wei').reduce((a, c) => a + c.troops, 0);
+    expect(after).toBeGreaterThan(before);
+    expect(state.lastBattles.at(-1)!.reasons.join()).toContain('패잔병');
+  });
+  it('맹장끼리 만나면 일기토가 벌어지고 무력이 높은 쪽이 자주 이긴다', () => {
+    const s = newGame();
+    let duels = 0, luWins = 0;
+    for (let i = 1; i <= 300; i++) {
+      const o = resolveBattle({ rng: i }, { ...base(s), noDuel: false, attackerGeneral: s.generals.lu_bu, defenderGenerals: [s.generals.zhang_fei] });
+      if (o.duel) { duels++; if (o.duel.winnerId === 'lu_bu') luWins++; }
+    }
+    expect(duels).toBeGreaterThan(30);
+    expect(luWins / duels).toBeGreaterThan(0.5);
+    s.generals.zhang_fei.city = 'kaesong'; s.generals.zhang_fei.faction = 'wei';
+    expect(duelPreview(s, s.generals.lu_bu, 'kaesong')?.champ.id).toBeDefined();
+  });
+  it('같은 시드면 같은 전투 결과 (결정론)', () => {
+    const s = newGame();
+    const x = { ...base(s), noDuel: false, attackerGeneral: s.generals.lu_bu, defenderGenerals: [s.generals.zhang_fei], formation: 'infantry' as const };
+    expect(resolveBattle({ rng: 42 }, x)).toEqual(resolveBattle({ rng: 42 }, x));
+  });
+});

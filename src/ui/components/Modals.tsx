@@ -1,7 +1,7 @@
 // 목록·보고서 창: 장수, 도시, 연표, 세력 정보, 전투 보고, 설정/저장, 도움말
 import { useEffect, useState, type ReactNode } from 'react';
 import type { BattleReport, GameState } from '../../core';
-import { BALANCE, TACTICS, MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
+import { BALANCE, FORMATIONS, TACTICS, MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
 import { exportJson, indexedDbRepo, migrate, type SaveMeta } from '../../save/saveRepository';
 import { Portrait } from './Portrait';
 
@@ -229,6 +229,19 @@ export function BattleReportView({ state, report }: { state: GameState; report: 
         <div className="x">VS</div>
         <div><b style={{ color: def?.color }}>{def?.name ?? '중립'}</b><br />병력 {fmt(report.defenderTroops)} · 손실 {fmt(report.defenderLoss)}</div>
       </div>
+      {report.formation && report.formation !== 'balanced' && (() => { const f = FORMATIONS.find((x) => x.id === report.formation)!; return <div className="battle-badge">{f.icon} {f.name} 편성</div>; })()}
+      {report.duel && (
+        <div className="duel-banner">
+          ⚔️ 일기토 — <b>{state.generals[report.duel.attackerId]?.name}</b> 대 <b>{state.generals[report.duel.defenderId]?.name}</b> : <b className="good">{state.generals[report.duel.winnerId]?.name}</b> 승리{report.duel.slain ? ' · 상대 장수 전사' : ''}
+        </div>
+      )}
+      {report.phases && (
+        <ol className="battle-phases">
+          <li><b>① 접전</b> 공격 −{fmt(report.phases.clashAttacker)} · 수비 −{fmt(report.phases.clashDefender)}</li>
+          <li><b>② {report.won ? '수비군 붕괴' : '공격군 퇴각'}</b> {report.phases.pursuer === 'attacker' ? '공격군' : '수비군'}의 추격으로 −{fmt(report.phases.pursuit)}</li>
+          {report.won && report.defenderSurvivors !== undefined && <li><b>③ 패잔병</b> 살아남은 수비병 {fmt(report.defenderSurvivors)}명 (일부는 이웃 성으로 달아나고 일부는 투항)</li>}
+        </ol>
+      )}
       <h4>원인 분석</h4>
       <ul>{report.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
     </div>

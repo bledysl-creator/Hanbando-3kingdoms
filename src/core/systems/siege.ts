@@ -9,6 +9,7 @@ import { generalsIn, isConnectedToCapital, lastStandBonus, minGarrison, neighbor
 import { chance } from '../rng/rng';
 import type { City, GameState, General, Siege, SiegeResponse } from '../state/types';
 import type { TacticKind } from '../battle/tactics';
+import type { FormationKind } from '../battle/formation';
 
 export type SiegeKind = SiegeResponse['kind'];
 
@@ -23,11 +24,11 @@ export const SIEGE_LABEL: Record<SiegeKind, { icon: string; name: string; desc: 
 export const siegesOf = (s: GameState, factionId: string) => (s.sieges ?? []).filter((x) => s.cities[x.toCity]?.owner === factionId);
 
 /** AI의 출진이 플레이어 도시를 노릴 때: 병력을 성 밖에 세우고 포위만 한다 */
-export function beginSiege(s: GameState, factionId: string, g: General, from: City, to: City, troops: number, tactic?: TacticKind) {
+export function beginSiege(s: GameState, factionId: string, g: General, from: City, to: City, troops: number, tactic?: TacticKind, formation?: FormationKind) {
   s.sieges ??= [];
   const sp = supplyRatio(s, factionId);
   const siege: Siege = {
-    id: `sg${s.turn}_${s.sieges.length}_${g.id}`, turn: s.turn, attackerFaction: factionId, generalId: g.id, fromCity: from.id, toCity: to.id, troops, tactic,
+    id: `sg${s.turn}_${s.sieges.length}_${g.id}`, turn: s.turn, attackerFaction: factionId, generalId: g.id, fromCity: from.id, toCity: to.id, troops, tactic, formation,
     morale: from.morale, training: from.training, ships: from.ships ?? 0,
     supply: sp < BALANCE.lowSupplyThreshold ? sp : undefined, isolated: !isConnectedToCapital(s, factionId, from.id),
   };
@@ -118,7 +119,7 @@ function siegeBattle(s: GameState, sg: Siege, r: SiegeResponse, parleyFailed = f
     extra.defenseReason = `출성 요격: ${best?.name ?? '수비군'}(무력 ${war})의 기세 ${m >= 1 ? '+' : '−'}${Math.round(Math.abs(m - 1) * 100)}%`;
   }
   const input: BattleInput = {
-    attackerTroops: sg.troops, attackerGeneral: g, defenderCity: city, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: sg.tactic,
+    attackerTroops: sg.troops, attackerGeneral: g, defenderCity: city, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: sg.tactic, formation: sg.formation, cavalryTrait: af.traits.includes('최강무력'),
     traitAttack: traitSum(af.traits, 'attack'), attackerShips: sg.ships, navalTrait: af.traits.includes('수군'),
     attackerMorale: sg.morale, attackerTraining: sg.training, supply: sg.supply, isolated: sg.isolated, lastStand: lastStandBonus(s, to.owner), ...extra,
   };

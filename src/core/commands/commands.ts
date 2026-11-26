@@ -6,6 +6,7 @@ import type { TacticKind } from '../battle/tactics';
 // 명령: 플레이어와 AI가 똑같이 사용한다 (CLAUDE.md 규칙 6).
 import { BALANCE } from '../config';
 import { resolveBattle, type BattleInput, type BattleOutcome } from '../battle/battle';
+import { hasHorses, type FormationKind } from '../battle/formation';
 import { beginSiege } from '../systems/siege';
 import { chance, pick } from '../rng/rng';
 import { estimateRatio } from '../battle/estimate';
@@ -22,7 +23,7 @@ export type Command =
   | { type: 'develop'; generalId: string; field: DevelopField }
   | { type: 'conscript'; generalId: string; amount: number }
   | { type: 'train'; generalId: string }
-  | { type: 'march'; generalId: string; toCityId: string; troops: number; tactic?: TacticKind }
+  | { type: 'march'; generalId: string; toCityId: string; troops: number; tactic?: TacticKind; formation?: FormationKind }
   | { type: 'transfer'; generalId: string; toCityId: string; troops: number }
   | { type: 'recruit'; generalId: string; targetId: string }
   | { type: 'reward'; generalId: string; targetId: string }
@@ -135,6 +136,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (troops < minMarch(s)) return { ok: false, error: `출진 병력은 ${minMarch(s).toLocaleString()}명 이상이어야 합니다 (도시에 ${minGarrison(s)}명은 남겨야 함).` };
       const foodNeed = Math.ceil(troops * BALANCE.foodPerTroop);
       if (f.food < foodNeed) return { ok: false, error: '군량이 부족합니다.' };
+      if (cmd.formation === 'cavalry' && !hasHorses(s, factionId)) return { ok: false, error: '말 산지(의주·함흥·청진·혜산·제주)가 없어 기병을 꾸릴 수 없습니다.' };
       // 장수가 명령을 거부할 수도 있다 (복종도·성향·승산)
       const pRefuse = refuseChance(s, g, estimateRatio(s, g, city, to, troops));
       if (pRefuse > 0 && chance(s, pRefuse)) {
@@ -150,10 +152,10 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
 
       // v3.6 플레이어 도시를 노리면 바로 싸우지 않고 한 계절 포위한다 → 플레이어가 대응을 고른다
       if (s.playerFactionId && to.owner === s.playerFactionId && factionId !== s.playerFactionId && BALANCE.siegeChoice) {
-        beginSiege(s, factionId, g, city, to, troops, cmd.tactic);
+        beginSiege(s, factionId, g, city, to, troops, cmd.tactic, cmd.formation);
         return { ok: true, message: `${to.name}을(를) 포위했습니다.` };
       }
-      return finishAttack(s, factionId, g, city, to, troops, road, cmd.tactic);
+      return finishAttack(s, factionId, g, city, to, troops, road, cmd.tactic, { battle: { formation: cmd.formation } });
     }
     case 'recruit': {
       const t = s.generals[cmd.targetId];
@@ -402,6 +404,7 @@ export function finishAttack(s: GameState, factionId: string, g: General, city: 
     attackerMorale: city.morale, attackerTraining: city.training, supply: supplyRatio(s, factionId) < BALANCE.lowSupplyThreshold ? supplyRatio(s, factionId) : undefined,
     isolated: !isConnectedToCapital(s, factionId, city.id),
     lastStand: lastStandBonus(s, defenderFaction),
+    cavalryTrait: f.traits.includes('최강무력'),
     ...opt.battle,
   });
   opt.after?.(out);
@@ -412,10 +415,25 @@ export function finishAttack(s: GameState, factionId: string, g: General, city: 
   if (s.lastBattles.length > 30) s.lastBattles.splice(0, s.lastBattles.length - 30);
 
   const survivors = troops - out.attackerLoss;
+  const defTroopsBefore = to.troops;
+  // v3.9 일기토에서 베인 장수
+  if (out.duel?.slain) {
+    const loser = s.generals[out.duel.winnerId === out.duel.attackerId ? out.duel.defenderId : out.duel.attackerId];
+    if (loser?.alive) killGeneral(s, loser, `⚔️ ${s.generals[out.duel.winnerId].name}이(가) ${to.name} 앞 일기토에서 ${loser.name}을(를) 베었습니다!`);
+  } else if (out.duel) {
+    log(s, `⚔️ ${to.name} 앞 일기토: ${s.generals[out.duel.winnerId].name}이(가) ${s.generals[out.duel.winnerId === out.duel.attackerId ? out.duel.defenderId : out.duel.attackerId].name}을(를) 꺾었습니다.`, 'info', factionId);
+  }
   const defName = defenderFaction ? s.factions[defenderFaction].name : '중립';
   if (out.tactic?.kind === 'fire' && out.tactic.success) { igniteCity(s, to.id, 1); out.reasons.push(`화공의 불길이 ${to.name} 일대로 번졌습니다`); }
   if (out.won) {
-    to.troops = survivors;
+    // v3.9 패잔병: 살아남은 수비병 일부는 이웃 아군 성으로 빠져나가고, 흩어진 병사 일부는 투항한다
+    const left = Math.max(0, defTroopsBefore - out.defenderLoss);
+    const haven = defenderFaction ? neighbors(s, to.id).filter((n) => n.city.owner === defenderFaction).map((n) => n.city).sort((a, b) => b.troops - a.troops)[0] : undefined;
+    const fled = haven ? Math.floor(left * BALANCE.routRetreatShare) : 0;
+    const joined = Math.floor((left - fled) * BALANCE.routSurrenderShare);
+    if (haven && fled > 0) { haven.troops += fled; out.reasons.push(`패잔병 ${fled.toLocaleString()}명이 ${haven.name}(으)로 달아남`); }
+    if (joined >= 100) out.reasons.push(`흩어진 수비병 ${joined.toLocaleString()}명이 투항해 편입됨`);
+    to.troops = survivors + joined;
     to.morale = Math.min(100, city.morale + BALANCE.victoryMorale);
     to.training = city.training;
     if (to.port) {

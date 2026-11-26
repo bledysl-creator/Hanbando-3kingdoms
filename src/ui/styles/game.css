@@ -339,3 +339,11 @@ button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 @keyframes siegePulse { 50% { box-shadow: 0 0 10px #ff5a3c; } }
 .siege-ctl .troop-quick button { color: inherit; background: #232b36; border: 1px solid #6e5a33; border-radius: 3px; cursor: pointer; }
 .siege-ctl .troop-slider-row { font-size: 12px; }
+
+/* v3.9 냉병기 전투: 편성·일기토·전투 단계 */
+.formation-pick button { min-width: 0; }
+.duel-hint { color: #f0c060; margin: 4px 0 0; }
+.battle-badge { display: inline-block; margin: 4px 0; padding: 1px 8px; border-radius: 10px; background: rgba(255,255,255,.08); font-size: 12px; }
+.duel-banner { margin: 6px 0; padding: 6px 10px; border-left: 3px solid #e0a030; background: rgba(224,160,48,.12); font-size: 13px; }
+.battle-phases { margin: 6px 0; padding-left: 4px; list-style: none; font-size: 13px; }
+.battle-phases li { margin: 2px 0; }

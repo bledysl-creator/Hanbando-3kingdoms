@@ -19,6 +19,7 @@ export { discordChance, rumorChance, scoutChance, visibleTroops, withinTwo } fro
 export { writeChronicle } from './systems/chronicle';
 export * from './systems/army';
 export * from './battle/tactics';
+export * from './battle/formation';
 export * from './systems/surrender';
 export * from './systems/epidemic';
 export * from './systems/office';

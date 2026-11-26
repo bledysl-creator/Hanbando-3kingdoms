@@ -221,6 +221,33 @@ export const BALANCE = {
   /** v3.3 합종: 도시 비율이 이 값 이상이면 패자, 나머지 세력 사이 휴전 수락 + */
   hegemonShare: 0.33, coalitionAccept: 0.25,
 
+  // v3.9 냉병기 전투: 병종 편성·붕괴와 추격·일기토·패잔병 (docs/balance/battle-v3.9.md)
+  /** 말 산지 (추정): 관서 의주, 관북 함흥·청진·혜산, 제주 — 이 도시(또는 관할 시·군)를 가진 세력만 기병 편성 */
+  horseCities: ['uiju', 'hamhung', 'chongjin', 'hyesan', 'jeju'] as string[],
+  formation: {
+    infantryWall: 1.1, infantryRough: 1.1, infantryPursuit: 0.6,
+    archerRiver: 1.15, archerWet: 0.8, archerWall: 0.95, archerOwnLoss: 0.8, archerPursuit: 0.8,
+    cavalryOpen: 1.2, cavalryRough: 0.75, cavalryRiver: 0.85, cavalryWall: 0.85, cavalrySnow: 0.9, cavalryPursuit: 2,
+    /** 최강무력 특성 세력(여포·마등·공손찬)의 기병 돌격 추가 */
+    cavalryTraitBonus: 0.1,
+    /** 이 성벽 이상(또는 산성·요새)이면 '큰 성': 보병 +, 기병·궁노 − */
+    wallHigh: 70,
+  },
+  /** 맞붙는 단계(접전) 손실률: 이긴 쪽 = clash/전력비, 진 쪽 = clash×√전력비 (상한 clashLoserCap) */
+  clashLoss: 0.2, clashLoserCap: 0.4, clashWinnerMin: 0.02,
+  /** 성벽을 기어오르는 공성은 이겨도 피를 많이 흘린다: 공격 측 접전 손실 × (1 + 성벽/assaultWallDiv) */
+  assaultWallDiv: 100,
+  /** 진 쪽이 무너져 달아날 때 남은 병력에서 추격으로 잃는 비율 (기본). 산·고개는 추격이 어렵다 */
+  pursuitLoss: 0.18, pursuitRoughMul: 0.7, pursuitRatioCap: 1.6,
+  /** 성 안에서 싸운 수비군은 접전 손실이 줄어든다 (성벽 50 이상) */
+  wallClashShield: 0.8,
+  /** 함락된 성의 살아남은 수비병 중 이웃 아군 성으로 빠져나가는 비율 (나머지는 흩어짐·투항) */
+  routRetreatShare: 0.6,
+  /** 흩어진 패잔병 중 이긴 쪽에 투항해 편입되는 비율 */
+  routSurrenderShare: 0.15,
+  /** 일기토: 두 지휘관 무력이 모두 기준 이상이면 확률적으로 벌어진다 */
+  duelMinWar: 78, duelChance: 0.2, duelWinMul: 1.08, duelLoseMul: 0.85, duelSlainChance: 0.1, duelSpread: 7,
+
   // AI
   failedAttackAttrition: 0.45, // 공격 실패 시에도 수비 측이 입는 소모 비율
   aiAttackRatio: 0.95,
