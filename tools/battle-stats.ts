@@ -3,11 +3,22 @@
 import { writeFileSync } from 'node:fs';
 import { createGame, DATA, SCENARIOS, type BattleReport } from '../src/core';
 import { endTurnMut } from '../src/core/systems/turn';
-const N = +(process.argv[2] ?? 100), T = +(process.argv[3] ?? 160), OUT = process.argv[4];
+const N = +(process.argv[2] ?? 100), T = +(process.argv[3] ?? 160), OUT = process.argv[4] && process.argv[4] !== '-' ? process.argv[4] : undefined;
+// v4.0 'shuffle': 세력마다 핵심 장수(군주 제외 상위 4명)를 무작위로 다른 세력에 다시 나눠 준다
+const SHUFFLE = process.argv[5] === 'shuffle';
 const all: (BattleReport & { game: number })[] = [];
 const games: { winner: string | null; turn: number; lu: boolean }[] = [];
 for (let i = 0; i < N; i++) {
   const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 20000 + i, playerFactionId: null });
+  if (SHUFFLE) {
+    const fids = Object.keys(s.factions);
+    const keyGens = fids.flatMap((fid) => Object.values(s.generals).filter((g) => g.alive && g.faction === fid && s.factions[fid].rulerId !== g.id)
+      .sort((a, b) => (b.stats.war + b.stats.leadership + b.stats.intellect) - (a.stats.war + a.stats.leadership + a.stats.intellect)).slice(0, 4));
+    const slots = keyGens.map((g) => ({ faction: g.faction, city: g.city }));
+    let r = 12345 + i * 7919;
+    for (let k = slots.length - 1; k > 0; k--) { r = (r * 1103515245 + 12345) % 2147483648; const j = r % (k + 1); [slots[k], slots[j]] = [slots[j], slots[k]]; }
+    keyGens.forEach((g, k) => { g.faction = slots[k].faction; g.city = slots[k].city; });
+  }
   for (let t = 0; t < T && s.outcome === 'playing'; t++) {
     const before = new Set(s.lastBattles);
     endTurnMut(s);
@@ -53,4 +64,8 @@ const duels = all.filter((b) => b.duel);
 console.log(`일기토 ${duels.length}회 (판당 ${(duels.length / N).toFixed(1)}) · 장수 전사 ${duels.filter((b) => b.duel!.slain).length} · 일기토 이긴 쪽 전투 승 ${pct(duels.filter((b) => (b.duel!.winnerId === b.duel!.attackerId) === b.won).length, duels.length)}`);
 const dn: Record<string, number> = {}; for (const b of duels) dn[b.duel!.winnerId] = (dn[b.duel!.winnerId] ?? 0) + 1;
 console.log('일기토 승리 상위:', Object.entries(dn).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${DATA.generals.find((g) => g.id === k)?.name ?? k} ${v}`).join(', '));
+const fates: Record<string, number> = {}; for (const b of all) for (const x of b.fates ?? []) fates[x.fate] = (fates[x.fate] ?? 0) + 1;
+console.log('함락 때 장수 운명:', JSON.stringify(fates), `· 전장의 변수 ${pct(all.filter((b) => b.fortune).length, all.length)}`);
+const dfm: Record<string, number> = {}; for (const b of all) dfm[b.defForm ?? '-'] = (dfm[b.defForm ?? '-'] ?? 0) + 1;
+console.log('수비 편성:', JSON.stringify(dfm));
 if (OUT) writeFileSync(OUT, JSON.stringify({ games, battles: all.map(({ reasons, ...b }) => ({ ...b, reasons: reasons.length })) }));

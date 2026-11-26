@@ -8,7 +8,7 @@ import { regionize } from './regionize';
 import { foundFaction } from './found';
 import { spreadGenerals } from './spread';
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
 export interface CreateOptions {
@@ -124,6 +124,12 @@ export function createGame(data: GameData, scenario: ScenarioDef, opts: CreateOp
       return { ...m };
     });
 
+  // v4.0 시작 군마: 가진 말 산지 등급 × horsesStartPerLevel
+  for (const f of Object.values(s.factions)) {
+    let lv = 0;
+    for (const c of Object.values(s.cities)) if (c.owner === f.id) lv += c.horses ?? 0;
+    f.horses = f.horses ?? Math.round(lv * BALANCE.horsesStartPerLevel * (s.mapScale === 'region' ? 13 / 10 : 1));
+  }
   rollWeather(s);
   recordAnnal(s);
   s.log.push({ turn: 1, year: s.year, season: s.season, kind: 'info', text: `${scenario.name} — ${scenario.description}` });

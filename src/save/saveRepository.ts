@@ -1,6 +1,6 @@
 // 저장 계층. 게임 코드는 이 인터페이스만 사용한다 → 나중에 Supabase로 교체 가능.
 import { del, get, keys, set } from 'idb-keyval';
-import { BALANCE, DATA, SAVE_VERSION, type GameState } from '../core';
+import { BALANCE, DATA, REGION_GRAPH, SAVE_VERSION, type GameState } from '../core';
 
 export interface SaveMeta { slot: string; label: string; savedAt: string; turn: number; year: number; season: number }
 
@@ -44,6 +44,17 @@ export function migrate(raw: unknown): GameState {
   if (s.saveVersion < 10) {
     if (s.cities.hanyang?.name === '한양') s.cities.hanyang.name = '서울';
     s.saveVersion = 10;
+  }
+  // v10 → v11: 실측 지형(산악도·분지)·말 산지·군마·포로 (v4.0). 도시 지형·산물은 데이터에서 채운다
+  if (s.saveVersion < 11) {
+    const src = new Map([...DATA.cities, ...REGION_GRAPH.cities].map((c) => [c.id, c]));
+    for (const c of Object.values(s.cities)) {
+      const d = src.get(c.id);
+      if (d) { c.relief = d.relief; c.basin = d.basin; c.landform = d.landform; c.horses = d.horses ?? 0; }
+    }
+    for (const f of Object.values(s.factions)) f.horses ??= Object.values(s.cities).filter((c) => c.owner === f.id).reduce((a, c) => a + (c.horses ?? 0), 0) * BALANCE.horsesStartPerLevel;
+    s.captives ??= [];
+    s.saveVersion = 11;
   }
   return s;
 }

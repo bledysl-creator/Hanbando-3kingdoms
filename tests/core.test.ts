@@ -435,6 +435,7 @@ describe('AI 병력 운용 (v1.8)', () => {
 });
 
 import { migrate } from '../src/save/saveRepository';
+import { SAVE_VERSION } from '../src/core';
 describe('실측 고도 (v1.9)', () => {
   it('혜산은 해발 900m 이상, 한양은 200m 미만이며 고지대 수비 보너스가 원인에 나온다', () => {
     const s = newGame();
@@ -448,7 +449,7 @@ describe('실측 고도 (v1.9)', () => {
     s.saveVersion = 7;
     for (const c of Object.values(s.cities) as { elev?: number }[]) delete c.elev;
     const m = migrate(s);
-    expect(m.saveVersion).toBe(10);
+    expect(m.saveVersion).toBe(SAVE_VERSION);
     expect(m.cities.hyesan.elev).toBeGreaterThan(900);
   });
 });
@@ -998,5 +999,125 @@ describe('냉병기 전투 (v3.9)', () => {
     const s = newGame();
     const x = { ...base(s), noDuel: false, attackerGeneral: s.generals.lu_bu, defenderGenerals: [s.generals.zhang_fei], formation: 'infantry' as const };
     expect(resolveBattle({ rng: 42 }, x)).toEqual(resolveBattle({ rng: 42 }, x));
+  });
+});
+
+import { moraleFactor } from '../src/core/battle/battle';
+import { BALANCE } from '../src/core';
+import { council, adviceOf, planOdds, advisorsOf, cityTraits, counterMul, defFormOf } from '../src/core';
+import { decideFates } from '../src/core/systems/captives';
+describe('v4.0 전투 확률·지형·책사·수련·군마·포로', () => {
+  it('사기 가중치: 사기 99는 크게 강하고 사기 10은 오합지졸', () => {
+    expect(moraleFactor(99)).toBeGreaterThan(1.1);
+    expect(moraleFactor(10)).toBeLessThan(0.55);
+    expect(moraleFactor(70)).toBeCloseTo(1, 2);
+  });
+  it('사기 99 1만이 사기 10 3만을 들판에서 이길 때도, 질 때도 있다 (확률)', () => {
+    const s = newGame();
+    const city = { ...s.cities.naju, troops: 30000, morale: 10, training: 60, wall: 0, fortress: false };
+    let win = 0;
+    for (let i = 1; i <= 200; i++) if (resolveBattle({ rng: i }, { attackerTroops: 10000, attackerMorale: 99, attackerTraining: 60, attackerGeneral: s.generals.guan_yu, defenderCity: city, defenderGenerals: [s.generals.zhang_liao], road: { from: 'gwangju', to: 'naju', type: 'land' }, season: 1, weather: 'clear', noDuel: true }).won) win++;
+    expect(win).toBeGreaterThan(0);
+    expect(win).toBeLessThan(200);
+  });
+  it('실측 지형: 춘천·대구는 분지, 분지 수비 보너스, 산악에서 기병이 약하다', () => {
+    const s = newGame();
+    expect(s.cities.chuncheon.landform).toBe('basin');
+    expect(s.cities.daegu.landform).toBe('basin');
+    const o = resolveBattle({ rng: 2 }, { attackerTroops: 20000, attackerGeneral: s.generals.guan_yu, defenderCity: s.cities.chuncheon, defenderGenerals: [], road: { from: 'hanyang', to: 'chuncheon', type: 'river' }, season: 1, noDuel: true });
+    expect(o.reasons.join()).toContain('분지');
+    expect(formationEffect('cavalry', { from: 'a', to: 'b', type: 'land' }, s.cities.jeju, 'clear').attack).toBeLessThan(formationEffect('cavalry', { from: 'a', to: 'b', type: 'land' }, s.cities.naju, 'clear').attack);
+  });
+  it('성벽 위 궁노는 돌진하는 기병에게 특히 강하다', () => {
+    expect(counterMul('cavalry', 'archer', true).mul).toBeLessThan(counterMul('cavalry', 'archer', false).mul);
+    expect(counterMul('cavalry', 'archer', true).mul).toBeLessThan(counterMul('cavalry', 'balanced', true).mul);
+    const s = newGame();
+    expect(defFormOf(s, s.cities.suwon)).toBe('archer');
+  });
+  it('책사 회의: 지력 높은 책사가 더 정확하고, 계책을 따르면 충성이 오른다', () => {
+    const s = newGame();
+    s.diplomacy = {}; s.cities.hanyang.troops = 60000; s.factions.shu.food = 99999;
+    const adv = advisorsOf(s, 'shu');
+    expect(adv.length).toBeGreaterThan(0);
+    expect(adv.every((a) => a.stats.intellect >= 70)).toBe(true);
+    const c = council(s, 'shu', s.generals.guan_yu, 'kaesong', 30000);
+    expect(c.advice.length).toBe(adv.length);
+    // 지력 100에 가까운 책사는 실제 최고 승률과 거의 같게 본다
+    const best = Math.max(...c.odds.map((o) => o.win));
+    const top = c.advice[0];
+    expect(Math.abs(top.believed - best)).toBeLessThan(0.15);
+    const dumb = { ...s.generals.zhuge_liang, id: 'zhuge_liang', stats: { ...s.generals.zhuge_liang.stats, intellect: 70 } };
+    expect(adviceOf(s, dumb, planOdds(s, 'shu', s.generals.guan_yu, 'kaesong', 30000), 'kaesong', 30000).accuracy).toBeLessThan(top.accuracy);
+    const a = c.advice.find((x) => x.plan)!;
+    const before = s.generals[a.advisorId].loyalty;
+    s.generals[a.advisorId].loyalty = Math.min(before, 90);
+    const { state } = applyCommand(s, 'shu', { type: 'march', generalId: 'guan_yu', toCityId: 'kaesong', troops: 30000, formation: a.plan!.formation, tactic: a.plan!.tactic, advisorId: a.advisorId });
+    expect(state.generals[a.advisorId].loyalty).toBe(Math.min(100, Math.min(before, 90) + BALANCE.adviceLoyalty));
+  });
+  it('수련: 금을 내고 능력이 1~6 오른다', () => {
+    const s = newGame();
+    s.factions.shu.gold = 5000;
+    const w = s.generals.jian_yong.stats.war;
+    const { state, result } = applyCommand(s, 'shu', { type: 'study', generalId: 'jian_yong', stat: 'war' });
+    expect(result.ok).toBe(true);
+    const d = state.generals.jian_yong.stats.war - w;
+    expect(d).toBeGreaterThanOrEqual(1); expect(d).toBeLessThanOrEqual(6);
+    expect(state.factions.shu.gold).toBe(5000 - BALANCE.studyGold);
+  });
+  it('군마: 말 산지가 말을 낳고, 시장에서 사고, 기병은 말이 있어야 한다', () => {
+    const s = newGame();
+    expect(s.factions.lu.horses).toBeGreaterThan(0);
+    expect(s.factions.shu.horses).toBe(0);
+    const n = endTurn(s);
+    expect(n.factions.lu.horses!).toBeGreaterThan(s.factions.lu.horses!);
+    s.factions.shu.gold = 99999;
+    const r = applyCommand(s, 'shu', { type: 'trade', generalId: 'jian_yong', action: 'buyHorses', amount: 3000 });
+    expect(r.state.factions.shu.horses).toBe(3000);
+    expect(hasHorses(r.state, 'shu', 30000)).toBe(true);
+  });
+  it('함락 때 장수 운명: 탈출·포로·전사가 나오고, 플레이어 포로는 처분을 기다린다', () => {
+    const s = newGame();
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < 300; i++) {
+      const d = structuredClone(s);
+      d.rng = 1000 + i;
+      const defs = Object.values(d.generals).filter((g) => g.alive && g.faction === 'wei' && g.city === 'kaesong' && d.factions.wei.rulerId !== g.id);
+      for (const f of decideFates(d, defs, 'kaesong', 'shu', i % 2 ? 'pyongyang' : undefined, false)) counts[f.fate] = (counts[f.fate] ?? 0) + 1;
+      if (i === 1) expect((d.captives ?? []).every((c) => c.captor === 'shu')).toBe(true);
+    }
+    expect(counts.escaped).toBeGreaterThan(0);
+    expect(counts.captured).toBeGreaterThan(0);
+    expect(counts.slain).toBeGreaterThan(0);
+  });
+  it('포로 처분: 석방·처형', () => {
+    const s = newGame();
+    const t = Object.values(s.generals).find((g) => g.alive && g.faction === 'wei' && s.factions.wei.rulerId !== g.id)!;
+    t.faction = null; s.captives = [{ generalId: t.id, captor: 'shu', from: 'wei', turn: s.turn, cityId: 'hanyang' }];
+    const rel = applyCommand(s, 'shu', { type: 'captive', generalId: 'liu_bei', targetId: t.id, action: 'release' });
+    expect(rel.state.generals[t.id].faction).toBe('wei');
+    expect(rel.state.captives!.length).toBe(0);
+    const ex = applyCommand(s, 'shu', { type: 'captive', generalId: 'liu_bei', targetId: t.id, action: 'execute' });
+    expect(ex.state.generals[t.id].alive).toBe(false);
+  });
+  it('도시 특징: 제주 목장, 춘천 분지, 전주 곡창', () => {
+    const s = newGame();
+    expect(cityTraits(s, s.cities.jeju).map((x) => x.label)).toContain('큰 목장');
+    expect(cityTraits(s, s.cities.chuncheon).map((x) => x.label)).toContain('분지');
+    expect(cityTraits(s, s.cities.jeonju).map((x) => x.label)).toContain('곡창');
+  });
+});
+
+describe('v4.0 군주의 운명', () => {
+  it('갈 성이 있으면 군주는 사로잡히지 않고 탈출하거나 전사한다', () => {
+    const s = newGame();
+    for (let i = 0; i < 50; i++) {
+      const d = structuredClone(s);
+      d.rng = 500 + i;
+      const ruler = d.generals[d.factions.wei.rulerId];
+      ruler.city = 'kaesong';
+      const [f] = decideFates(d, [ruler], 'kaesong', 'shu', 'pyongyang', false);
+      expect(['escaped', 'slain']).toContain(f.fate);
+      expect(d.captives ?? []).toHaveLength(0);
+    }
   });
 });

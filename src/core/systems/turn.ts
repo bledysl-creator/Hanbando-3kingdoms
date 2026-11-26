@@ -12,6 +12,7 @@ import { recordAnnal } from './chronicle';
 import { processSurrenders } from './surrender';
 import { processRebellions } from './rebellion';
 import { resolveSieges } from './siege';
+import { expireCaptives } from './captives';
 import { processRegionMuster } from './muster';
 import { processEpidemics } from './epidemic';
 import { processWildfires } from './wildfire';
@@ -22,7 +23,7 @@ import { landmarksOfCity } from '../data';
 export function processEconomy(s: GameState) {
   for (const f of Object.values(s.factions)) {
     if (!f.alive) continue;
-    let gold = 0, harvest = 0, wood = 0, iron = 0, troops = 0, fish = 0;
+    let gold = 0, harvest = 0, wood = 0, iron = 0, troops = 0, fish = 0, horses = 0;
     for (const c of Object.values(s.cities)) {
       if (c.owner !== f.id) continue;
       const k = c.population / 1000;
@@ -38,6 +39,7 @@ export function processEconomy(s: GameState) {
       const rk = s.mapScale === 'region' ? BALANCE.regionResourceScale : 1;
       wood += c.wood * BALANCE.woodPerLevel * rk * ((c.fire ?? 0) > 0 ? BALANCE.fireWoodPenalty : 1);
       iron += c.iron * BALANCE.ironPerLevel * rk;
+      horses += (c.horses ?? 0) * BALANCE.horsesPerLevel * orderMul; // v4.0 군마
       troops += c.troops;
       // 인구·민심
       c.population = Math.round(c.population * (1 + BALANCE.popGrowth * (c.order / 100) - (s.season === 3 ? 0.004 : 0)));
@@ -49,6 +51,7 @@ export function processEconomy(s: GameState) {
     f.food += Math.round(harvest + fish);
     f.wood += wood;
     f.iron += iron;
+    f.horses = Math.round((f.horses ?? 0) + horses);
     const eat = Math.round(troops * BALANCE.foodPerTroop);
     f.food -= eat;
     if (f.food < 0) {
@@ -111,6 +114,7 @@ export function endTurnMut(s: GameState) {
   s.aiTrace = [];
   // v3.6 지난 계절 포위된 플레이어 도시: 고른 대응으로 결판
   resolveSieges(s);
+  expireCaptives(s);
   checkOutcome(s);
   if (s.outcome !== 'playing') return;
   for (const fid of Object.keys(s.factions)) {

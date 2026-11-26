@@ -248,6 +248,39 @@ export const BALANCE = {
   /** 일기토: 두 지휘관 무력이 모두 기준 이상이면 확률적으로 벌어진다 */
   duelMinWar: 78, duelChance: 0.2, duelWinMul: 1.08, duelLoseMul: 0.85, duelSlainChance: 0.1, duelSpread: 7,
 
+  // v4.0 전투 확률·지형·수비 편성·책사·수련·산물·포로 (docs/balance/v4.0.md)
+  /** 사기 배율 = 0.5 + 0.5 × (사기/moraleRef)^moraleExp (상한 moraleCap). 사기 routMorale 미만이면 오합지졸 ×routMoraleMul */
+  moraleRef: 70, moraleExp: 0.8, moraleCap: 1.25, routMorale: 30, routMoraleMul: 0.7,
+  /** 전장의 변수: 이 확률로 아무도 예상 못 한 일이 벌어진다 */
+  fortuneChance: 0.12,
+  /** 산악도: 기병은 산악도 reliefCavalryFrom 이상부터 1점당 −0.6%, 대군 정면 제약 (병력비)^(−산악도/frontageDiv) */
+  reliefCavalryFrom: 25, reliefCavalryPer: 0.006, frontageFrom: 30, frontageDiv: 500, reliefAmbushDiv: 300,
+  /** 분지(펀치볼): 능선이 둘러싸 수비 + basinDefense×분지도, 함락 때 빠져나가기 어려움 */
+  basinFrom: 0.66, basinDefense: 0.08, basinTrap: 0.5,
+  /** 공격 편성 × 수비 편성 상성 (공격 배율). 성벽 위 궁노는 돌진하는 기병에게 특히 매섭다 */
+  counter: {
+    infantry: { infantry: 1, archer: 0.95, cavalry: 1.1, balanced: 1 },
+    archer: { infantry: 1.1, archer: 1, cavalry: 0.9, balanced: 1 },
+    cavalry: { infantry: 0.85, archer: 0.9, cavalry: 1, balanced: 1 },
+    balanced: { infantry: 1, archer: 1, cavalry: 1, balanced: 1 },
+  } as Record<string, Record<string, number>>,
+  wallArcherVsCavalry: 0.85,
+  /** 군마: 기병 10명당 말 1필, 말 산지 등급당 계절마다 horsesPerLevel필, 시작 시 등급당 horsesStartPerLevel필 */
+  horsePerTroop: 0.1, horsesPerLevel: 60, horsesStartPerLevel: 600,
+  /** 말 1필 값 = 곡식 horseFoodRatio석 값 (시장 시세를 따른다), 예물로 줄 때 금 가치 */
+  horseFoodRatio: 40,
+  /** 책사: 지력 이상, 최대 인원, 판단 오차 = (100−지력)/100 × councilNoise, 따르면 충성 + */
+  councilMinInt: 70, councilMax: 4, councilNoise: 0.5, councilSims: 40, adviceLoyalty: 3,
+  /** 수련·학문: 금, 오르는 폭 1~5 (90 이상은 절반), 스승(같은 성에 그 능력 90+) +1 */
+  studyGold: 400, studyMin: 1, studyMax: 5, studyHighFrom: 90,
+  /** 함락 때 장수의 운명: 탈출 = 기본 + (통솔+지력−120)/escapeDiv, 전사 = 기본 + (70−무력)/slainDiv */
+  fateEscapeBase: 0.62, fateEscapeDiv: 300, fateNoHaven: 0.35, fateSlainBase: 0.03, fateSlainDiv: 1000, fateCavalrySlain: 0.03,
+  /** 탈출한 장수는 패잔병을 이끌고 간다: 퇴각 비율 × (0.6 + 통솔/250), 장수가 못 빠져나가면 ×fateLeaderless */
+  fateLeaderless: 0.6,
+  /** 포로: AI 등용 기본, 플레이어 등용 기본, 처형 시 의리 높은 우리 장수 충성 −, 처분 없이 지나면 석방 */
+  aiStudyGold: 4000, aiHorseGold: 6000, aiHorseKeep: 1500,
+  captiveRecruitBase: 0.25, captiveExecuteLoyalty: 3, captiveExpire: 8,
+
   // AI
   failedAttackAttrition: 0.45, // 공격 실패 시에도 수비 측이 입는 소모 비율
   aiAttackRatio: 0.95,

@@ -16,10 +16,40 @@ export const FORMATIONS: { id: FormationKind; name: string; icon: string; desc: 
 
 const WET: WeatherKind[] = ['rain', 'storm', 'typhoon', 'snow', 'blizzard'];
 
-/** 세력이 말을 댈 수 있는가: 말 산지(cities.json horses) 또는 그 관할 시·군을 가지고 있으면 */
-export function hasHorses(s: GameState, fid: string): boolean {
-  for (const c of Object.values(s.cities)) if (c.owner === fid && BALANCE.horseCities.includes(c.parent ?? c.id)) return true;
-  return false;
+/** v4.0 기병에 필요한 군마 (기병 10명당 1필) */
+export const horsesNeeded = (troops: number) => Math.ceil(troops * BALANCE.horsePerTroop);
+
+/** 세력이 이 병력을 기병으로 꾸릴 말이 있는가 (troops 없으면 최소 출진 병력 기준) */
+export function hasHorses(s: GameState, fid: string, troops = 1000): boolean {
+  return (s.factions[fid]?.horses ?? 0) >= horsesNeeded(troops);
+}
+
+/** 지형 산악도 (데이터가 없으면 옛 지형 구분으로 추정) */
+export const reliefOf = (c: City) => c.relief ?? (c.terrain === 'mountain' ? 60 : c.terrain === 'coast' ? 15 : 20);
+
+/** v4.0 수비 편성: 정해 두지 않으면 큰 성(성벽 70+)은 성벽 위 궁노, 험지는 보병, 말이 넉넉한 평지는 기병, 나머지는 균형 */
+export function defFormOf(s: GameState, c: City): FormationKind {
+  if (c.defForm) return c.defForm;
+  if (c.wall >= BALANCE.formation.wallHigh) return 'archer';
+  if (reliefOf(c) >= 45) return 'infantry';
+  if (c.owner && reliefOf(c) < BALANCE.reliefCavalryFrom && hasHorses(s, c.owner, c.troops)) return 'cavalry';
+  return 'balanced';
+}
+
+/** 공격 편성 × 수비 편성 상성 */
+export function counterMul(atk: FormationKind | undefined, def: FormationKind, walled: boolean): { mul: number; reason?: string } {
+  const a = atk ?? 'balanced';
+  let mul = BALANCE.counter[a]?.[def] ?? 1;
+  if (a === 'cavalry' && def === 'archer' && walled) mul *= BALANCE.wallArcherVsCavalry;
+  if (mul === 1) return { mul };
+  const dn = FORMATIONS.find((x) => x.id === def)!.name;
+  const why = a === 'cavalry' && def === 'archer' && walled ? '성벽 위 궁노가 돌진하는 기병을 쏘아 넘어뜨림'
+    : a === 'cavalry' && def === 'infantry' ? '창방패 보병의 창벽에 기병 돌격이 막힘'
+    : a === 'infantry' && def === 'cavalry' ? '창방패 보병이 수비 기병의 돌격을 받아냄'
+    : a === 'archer' && def === 'infantry' ? '느린 보병 대열에 쇠뇌가 쏟아짐'
+    : a === 'archer' && def === 'cavalry' ? '수비 기병이 궁노대를 덮침'
+    : `수비 ${dn}와(과)의 상성`;
+  return { mul, reason: `${why} ${mul >= 1 ? '+' : '−'}${Math.round(Math.abs(mul - 1) * 100)}%` };
 }
 
 export interface FormationEffect { attack: number; ownLoss: number; pursuit: number; reasons: string[] }
@@ -33,7 +63,7 @@ export function formationEffect(f: FormationKind | undefined, road: Road, target
   if (!f || f === 'balanced') return e;
   if (f === 'infantry') {
     if (walled) add(F.infantryWall, '창방패 보병이 사다리로 성벽에 붙음');
-    if (road.type === 'pass' || target.terrain === 'mountain') add(F.infantryRough, '보병은 험한 산길에도 대오를 유지');
+    if (road.type === 'pass' || reliefOf(target) >= 45) add(F.infantryRough, '보병은 험한 산길에도 대오를 유지');
     e.pursuit = F.infantryPursuit;
   } else if (f === 'archer') {
     if (road.type === 'river' || road.type === 'sea') add(F.archerRiver, '쇠뇌 사격이 도하를 엄호');
@@ -42,9 +72,11 @@ export function formationEffect(f: FormationKind | undefined, road: Road, target
     e.ownLoss = F.archerOwnLoss;
     e.pursuit = F.archerPursuit;
   } else if (f === 'cavalry') {
-    const open = (target.terrain === 'plain' || target.terrain === 'coast') && road.type === 'land';
+    const rel = reliefOf(target);
+    const open = rel < BALANCE.reliefCavalryFrom && road.type === 'land';
     if (open) add(F.cavalryOpen, '평지에서 기병 돌격');
-    if (road.type === 'pass' || target.terrain === 'mountain') add(F.cavalryRough, '기병이 산길에서 힘을 못 씀');
+    if (road.type === 'pass') add(F.cavalryRough, '기병이 고갯길에서 힘을 못 씀');
+    else if (rel > BALANCE.reliefCavalryFrom) add(Math.max(0.6, 1 - (rel - BALANCE.reliefCavalryFrom) * BALANCE.reliefCavalryPer), `산악도 ${rel}의 험한 땅이라 말이 달리지 못함`);
     if (road.type === 'river' || road.type === 'sea') add(F.cavalryRiver, '말을 끌고 물을 건너기 어려움');
     if (walled) add(F.cavalryWall, '기병은 성벽을 넘지 못함');
     if (weather === 'snow' || weather === 'blizzard') add(F.cavalrySnow, '눈길에 말이 미끄러짐');
@@ -54,13 +86,15 @@ export function formationEffect(f: FormationKind | undefined, road: Road, target
 }
 
 /** AI와 화면 추천: 이 길·이 성에서 공격 배율이 가장 높은 편성 (같으면 추격이 센 기병, 그다음 균형) */
-export function bestFormation(s: GameState, fid: string, road: Road, target: City, horses = hasHorses(s, fid)): FormationKind {
+export function bestFormation(s: GameState, fid: string, road: Road, target: City, horses = hasHorses(s, fid), troops?: number): FormationKind {
+  if (troops !== undefined) horses = horses && hasHorses(s, fid, troops);
   const weather = s.weather[target.id];
-  let best: FormationKind = 'balanced', bestScore = 1;
+  let best: FormationKind = 'balanced', bestScore = counterMul('balanced', defFormOf(s, target), target.wall >= 50).mul;
   for (const f of FORMATIONS) {
     if (f.id === 'balanced' || (f.id === 'cavalry' && !horses)) continue;
     const e = formationEffect(f.id, road, target, weather);
-    const score = e.attack * (1 + (e.pursuit - 1) * 0.03) / (1 + (e.ownLoss - 1) * 0.3);
+    const walled = target.wall >= 50;
+    const score = counterMul(f.id, defFormOf(s, target), walled).mul * e.attack * (1 + (e.pursuit - 1) * 0.03) / (1 + (e.ownLoss - 1) * 0.3);
     if (score > bestScore + 0.001) { best = f.id; bestScore = score; }
   }
   return best;

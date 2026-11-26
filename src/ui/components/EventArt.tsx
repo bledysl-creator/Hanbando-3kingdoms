@@ -120,6 +120,24 @@ export function EventArt({ kind, color = '#c9a24e', other = '#888' }: { kind: Ar
         </g>
       </>);
       break;
+    case 'duel':
+      body = (<>
+        <Sky top="#5a2a1a" bottom="#1a0f0a" id={id} /><Sun x={260} y={120} color="#ff9a4a" />
+        <Mountains color="#1f1410" y={130} />
+        <Rider x={190} y={190} s={1.25} flag={color} />
+        <Rider x={330} y={190} s={1.25} flag={other} flip />
+        <path d="M250,100 L270,130 M270,100 L250,130" stroke="#fff3c0" strokeWidth={4} className="art-flash" />
+      </>);
+      break;
+    case 'fate':
+      body = (<>
+        <Sky top="#1a1d2a" bottom="#3a2a22" id={id} /><Moon x={430} y={50} />
+        <Mountains color="#120f0c" y={125} />
+        <Castle x={120} y={160} color="#0b0907" flag={other} burning />
+        <Rider x={360} y={195} s={1.1} flag={color} />
+        {[400, 425, 450].map((x) => <Soldier key={x} x={x} y={198} />)}
+      </>);
+      break;
     case 'death':
       body = (<>
         <Sky top="#0e1320" bottom="#252a38" id={id} /><Moon x={400} y={55} />

@@ -1,7 +1,7 @@
 // 외교 창 (v0.4): 세력별 관계, 휴전·동맹 제안, 맹약 파기, 받은 제안 응답
 import { useMemo, useState } from 'react';
 import type { Command, GameState } from '../../core';
-import { acceptanceChance, citiesOf, statusOf, totalTroops, treatyOf } from '../../core';
+import { acceptanceChance, citiesOf, hasHorses, horsePrice, statusOf, totalTroops, treatyOf } from '../../core';
 import { Modal } from './Modals';
 
 const STATUS = { war: '대치', truce: '휴전', alliance: '동맹' } as const;
@@ -16,6 +16,9 @@ export function DiplomacyModal({ state, onClose, onCommand }: { state: GameState
   );
   const [envoyId, setEnvoyId] = useState(envoys[0]?.id ?? '');
   const [gold, setGold] = useState(0);
+  const [horses, setHorses] = useState(0);
+  const maxHorses = Math.min(state.factions[pf].horses ?? 0, 2000);
+  const hv = (to: string) => envoyId ? Math.round(Math.min(horses, maxHorses) * horsePrice(state, state.generals[envoyId].city, 'sellHorses') * (hasHorses(state, to, 5000) ? 1 : 1.5)) : 0;
   const others = Object.values(state.factions).filter((f) => f.alive && f.id !== pf);
   const maxGold = Math.min(state.factions[pf].gold, 3000);
 
@@ -31,6 +34,9 @@ export function DiplomacyModal({ state, onClose, onCommand }: { state: GameState
           <label className="field">예물 금 {gold.toLocaleString()}
             <input type="range" min={0} max={maxGold} step={100} value={Math.min(gold, maxGold)} onChange={(e) => setGold(+e.target.value)} />
           </label>
+          <label className="field">예물 군마 {Math.min(horses, maxHorses).toLocaleString()}필 <small className="muted">(말이 없는 나라일수록 반김)</small>
+            <input type="range" min={0} max={maxHorses} step={10} value={Math.min(horses, maxHorses)} disabled={maxHorses < 10} onChange={(e) => setHorses(+e.target.value)} />
+          </label>
         </div>
       )}
       <table className="table dip-table">
@@ -39,8 +45,8 @@ export function DiplomacyModal({ state, onClose, onCommand }: { state: GameState
           {others.map((f) => {
             const st = statusOf(state, pf, f.id);
             const t = treatyOf(state, pf, f.id);
-            const truce = envoyId ? acceptanceChance(state, pf, f.id, 'truce', envoyId, gold) : null;
-            const ally = envoyId ? acceptanceChance(state, pf, f.id, 'alliance', envoyId, gold) : null;
+            const truce = envoyId ? acceptanceChance(state, pf, f.id, 'truce', envoyId, gold + hv(f.id)) : null;
+            const ally = envoyId ? acceptanceChance(state, pf, f.id, 'alliance', envoyId, gold + hv(f.id)) : null;
             return (
               <tr key={f.id}>
                 <td><span className="badge" style={{ background: f.color }}>{f.hanja}</span> {state.generals[f.rulerId].name}</td>
@@ -48,12 +54,12 @@ export function DiplomacyModal({ state, onClose, onCommand }: { state: GameState
                 <td>{citiesOf(state, f.id).length}</td>
                 <td>{totalTroops(state, f.id).toLocaleString()}</td>
                 <td>{st === 'war' && truce && (
-                  <button title={truce.reasons.join('\n')} disabled={!envoyId} onClick={() => onCommand({ type: 'diplomacy', generalId: envoyId, targetFactionId: f.id, proposal: 'truce', gold })}>
+                  <button title={truce.reasons.join('\n')} disabled={!envoyId} onClick={() => onCommand({ type: 'diplomacy', generalId: envoyId, targetFactionId: f.id, proposal: 'truce', gold, horses: Math.min(horses, maxHorses) })}>
                     휴전 ({Math.round(truce.p * 100)}%)
                   </button>)}
                 </td>
                 <td>{st !== 'alliance' && ally && (
-                  <button title={ally.reasons.join('\n')} disabled={!envoyId} onClick={() => onCommand({ type: 'diplomacy', generalId: envoyId, targetFactionId: f.id, proposal: 'alliance', gold })}>
+                  <button title={ally.reasons.join('\n')} disabled={!envoyId} onClick={() => onCommand({ type: 'diplomacy', generalId: envoyId, targetFactionId: f.id, proposal: 'alliance', gold, horses: Math.min(horses, maxHorses) })}>
                     동맹 ({Math.round(ally.p * 100)}%)
                   </button>)}
                 </td>

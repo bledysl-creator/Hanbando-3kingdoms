@@ -9,7 +9,7 @@ import { generalsIn, isConnectedToCapital, lastStandBonus, minGarrison, neighbor
 import { chance } from '../rng/rng';
 import type { City, GameState, General, Siege, SiegeResponse } from '../state/types';
 import type { TacticKind } from '../battle/tactics';
-import type { FormationKind } from '../battle/formation';
+import { defFormOf, type FormationKind } from '../battle/formation';
 
 export type SiegeKind = SiegeResponse['kind'];
 
@@ -119,7 +119,7 @@ function siegeBattle(s: GameState, sg: Siege, r: SiegeResponse, parleyFailed = f
     extra.defenseReason = `출성 요격: ${best?.name ?? '수비군'}(무력 ${war})의 기세 ${m >= 1 ? '+' : '−'}${Math.round(Math.abs(m - 1) * 100)}%`;
   }
   const input: BattleInput = {
-    attackerTroops: sg.troops, attackerGeneral: g, defenderCity: city, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: sg.tactic, formation: sg.formation, cavalryTrait: af.traits.includes('최강무력'),
+    attackerTroops: sg.troops, attackerGeneral: g, defenderCity: city, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: sg.tactic, formation: sg.formation, cavalryTrait: af.traits.includes('최강무력'), defForm: defFormOf(s, city),
     traitAttack: traitSum(af.traits, 'attack'), attackerShips: sg.ships, navalTrait: af.traits.includes('수군'),
     attackerMorale: sg.morale, attackerTraining: sg.training, supply: sg.supply, isolated: sg.isolated, lastStand: lastStandBonus(s, to.owner), ...extra,
   };

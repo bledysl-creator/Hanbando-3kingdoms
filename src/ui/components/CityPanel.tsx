@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
-import type { Command, FormationKind, GameState, General, TacticKind } from '../../core';
-import { BALANCE, DATA, FORMATIONS, bestFormation, formationEffect, hasHorses, duelPreview, foodPrice, governorOf, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, minGarrison, minMarch, disbandPreview, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
+import type { Advice, Command, FormationKind, GameState, General, StudyStat, TacticKind } from '../../core';
+import { BALANCE, DATA, FORMATIONS, STUDY_LABEL, bestFormation, council, defFormOf, formationEffect, hasHorses, horsePrice, horsesNeeded, duelPreview, foodPrice, governorOf, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, minGarrison, minMarch, disbandPreview, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -145,6 +145,19 @@ function DomesticTab({ state, cityId, actor, onCommand }: { state: GameState; ci
           <button onClick={() => onCommand({ type: 'trade', generalId: actor.id, action: 'sellFood', amount: amt })}>💰 팔기 <small>금 +{Math.round((amt / 1000) * sell).toLocaleString()}</small></button>
         </div>
       </div>
+      {(() => {
+        const hb = horsePrice(state, cityId, 'buyHorses'), hs = horsePrice(state, cityId, 'sellHorses');
+        const have = state.factions[state.playerFactionId!].horses ?? 0;
+        return (
+          <div className="sub">
+            <b>군마 시장</b> <small>말 1필 — 사기 금 {hb.toFixed(1)} · 팔기 금 {hs.toFixed(1)} (곡식 {BALANCE.horseFoodRatio}석 값) · 보유 {have.toLocaleString()}필 · 기병 10명당 1필</small>
+            <div className="row2">
+              <button onClick={() => onCommand({ type: 'trade', generalId: actor.id, action: 'buyHorses', amount: 100 })}>🐎 100필 사기 <small>금 {Math.round(hb * 100).toLocaleString()}</small></button>
+              <button disabled={have < 100} onClick={() => onCommand({ type: 'trade', generalId: actor.id, action: 'sellHorses', amount: 100 })}>💰 100필 팔기 <small>금 +{Math.round(hs * 100).toLocaleString()}</small></button>
+            </div>
+          </div>
+        );
+      })()}
       <div className="sub">
         <b>귀농</b> <small>병사를 고향으로 돌려보내 인구·민심을 회복</small>
         {(() => {
@@ -186,6 +199,9 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
   const maxOut = Math.max(0, cityTroops - keep);
   const [tactic, setTactic] = useState<TacticKind | ''>('');
   const [formPick, setForm] = useState<FormationKind | null>(null);
+  const [advisorId, setAdvisor] = useState<string | undefined>(undefined);
+  const [councilOpen, setCouncil] = useState<{ key: string; advice: Advice[] } | null>(null);
+  const [studyStat, setStudy] = useState<StudyStat>('war');
   const [troopsRaw, setTroops] = useState(Math.floor((maxOut * 0.7) / step) * step);
   const troops = Math.min(troopsRaw, maxOut);
   const [moveRaw, setMove] = useState(0);
@@ -224,6 +240,24 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
         <p className="hint">병사도 결국 백성입니다. 징병하면 생산 인구와 민심이 줄고, 신병이 섞여 훈련도·사기가 내려갑니다.</p>
       </div>
       <div className="sub">
+        <b>수비 편성</b> <small>적이 이 성을 칠 때의 주력 (행동 소모 없음)</small>
+        <div className="tactic-pick">
+          <button className={!city.defForm ? 'active' : ''} onClick={() => onCommand({ type: 'setDefense', generalId: actor.id, formation: null })}>자동 ({FORMATIONS.find((x) => x.id === defFormOf(state, { ...city, defForm: undefined }))!.name})</button>
+          {FORMATIONS.map((f) => (
+            <button key={f.id} className={city.defForm === f.id ? 'active' : ''} disabled={f.id === 'cavalry' && !hasHorses(state, pf, city.troops)} title={f.id === 'archer' ? '성벽 위 궁노는 돌진하는 기병에게 특히 강하다' : f.id === 'infantry' ? '창벽으로 기병을 막지만 궁노에 약하다' : f.id === 'cavalry' ? '궁노대를 덮치지만 창방패에 막힌다. 이기면 매섭게 추격' : '특별한 상성 없음'} onClick={() => onCommand({ type: 'setDefense', generalId: actor.id, formation: f.id })}>{f.icon} {f.name}</button>
+          ))}
+        </div>
+      </div>
+      <div className="sub">
+        <b>수련·학문</b> <small>금 {BALANCE.studyGold} · {actor.name}의 능력 +{BALANCE.studyMin}~{BALANCE.studyMax} (무작위, {BALANCE.studyHighFrom} 이상은 절반, 같은 성에 그 능력 90+ 스승이 있으면 +1)</small>
+        <div className="row2">
+          <select value={studyStat} onChange={(e) => setStudy(e.target.value as StudyStat)}>
+            {(Object.keys(STUDY_LABEL) as StudyStat[]).map((k) => <option key={k} value={k}>{STUDY_LABEL[k]} — 현재 {actor.stats[k]}</option>)}
+          </select>
+          <button disabled={actor.stats[studyStat] >= 100 || state.factions[pf].gold < BALANCE.studyGold} onClick={() => onCommand({ type: 'study', generalId: actor.id, stat: studyStat })}>📚 수련</button>
+        </div>
+      </div>
+      <div className="sub">
         <b>출진</b>
         {enemies.length === 0 ? <p className="muted">인접한 적 도시가 없습니다.</p> : (
           <>
@@ -239,7 +273,7 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
               const to = state.cities[target];
               const road = neighbors(state, city.id).find((n) => n.city.id === target)?.road;
               if (!road) return null;
-              const horses = hasHorses(state, pf);
+              const horses = hasHorses(state, pf, troops);
               const rec = bestFormation(state, pf, road, to, horses);
               const cur = formPick ?? rec;
               const duel = duelPreview(state, actor, target);
@@ -251,11 +285,12 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
                     const off = f.id === 'cavalry' && !horses;
                     const pctTxt = Math.round((e.attack - 1) * 100);
                     return (
-                      <button key={f.id} className={cur === f.id ? 'active' : ''} disabled={off} title={`${f.desc}${e.reasons.length ? `\n${e.reasons.join('\n')}` : ''}${off ? '\n말 산지(의주·함흥·청진·혜산·제주)가 없음' : ''}`} onClick={() => setForm(f.id)}>
-                        {f.icon} {f.name} {off ? '말 없음' : pctTxt === 0 ? '±0' : `${pctTxt > 0 ? '+' : ''}${pctTxt}%`}{f.id === rec && !off ? ' ★' : ''}
+                      <button key={f.id} className={cur === f.id ? 'active' : ''} disabled={off} onClickCapture={() => setAdvisor(undefined)} title={`${f.desc}${e.reasons.length ? `\n${e.reasons.join('\n')}` : ''}${off ? `\n군마 부족: ${horsesNeeded(troops).toLocaleString()}필 필요, 보유 ${(state.factions[pf].horses ?? 0).toLocaleString()}필` : ''}`} onClick={() => setForm(f.id)}>
+                        {f.icon} {f.name} {off ? '군마 부족' : pctTxt === 0 ? '±0' : `${pctTxt > 0 ? '+' : ''}${pctTxt}%`}{f.id === rec && !off ? ' ★' : ''}
                       </button>
                     );
                   })}
+                  <p className="hint">적 수비 편성: <b>{FORMATIONS.find((x) => x.id === defFormOf(state, to))!.icon} {FORMATIONS.find((x) => x.id === defFormOf(state, to))!.name}</b> · 군마 {(state.factions[pf].horses ?? 0).toLocaleString()}필</p>
                   {duel && <p className="hint duel-hint">⚔️ 일기토가 벌어질 수 있음: {actor.name}(무력 {actor.stats.war}) 대 {duel.champ.name}(무력 {duel.champ.stats.war}) — 이길 확률 {Math.round(duel.win * 100)}%</p>}
                 </div>
               );
@@ -283,11 +318,11 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
               return (
                 <div className="tactic-pick">
                   <small>계책</small>
-                  <button className={tactic === '' ? 'active' : ''} onClick={() => setTactic('')}>정공법</button>
+                  <button className={tactic === '' ? 'active' : ''} onClick={() => { setTactic(''); setAdvisor(undefined); }}>정공법</button>
                   {TACTICS.map((t) => {
                     const p = tacticChance(t.id, ctx);
                     return (
-                      <button key={t.id} className={tactic === t.id ? 'active' : ''} disabled={p === 0} title={t.desc} onClick={() => setTactic(t.id)}>
+                      <button key={t.id} className={tactic === t.id ? 'active' : ''} disabled={p === 0} title={t.desc} onClick={() => { setTactic(t.id); setAdvisor(undefined); }}>
                         {t.icon} {t.name} {p === 0 ? '불가' : `${Math.round(p * 100)}%`}
                       </button>
                     );
@@ -295,7 +330,33 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
                 </div>
               );
             })()}
-            <button disabled={troops < least} onClick={() => { const to = state.cities[target]; const road = neighbors(state, city.id).find((n) => n.city.id === target)!.road; onCommand({ type: 'march', generalId: actor.id, toCityId: target, troops, tactic: tactic || undefined, formation: formPick ?? bestFormation(state, pf, road, to) }); }}>⚔️ {troops < least ? `최소 ${least.toLocaleString()}명 필요` : `${troops.toLocaleString()}명 출진`}</button>
+            {target && (() => {
+              const ckey = `${target}|${troops}|${state.turn}`;
+              const open = councilOpen?.key === ckey ? councilOpen : null;
+              return (
+                <div className="council-box">
+                  {!open ? (
+                    <button className="ghost" onClick={() => setCouncil({ key: ckey, advice: council(state, pf, actor, target, troops).advice })}>🪶 책사 회의 열기 <small>지력 {BALANCE.councilMinInt}+ 책사들의 의견</small></button>
+                  ) : open.advice.length === 0 ? <p className="muted small">지력 {BALANCE.councilMinInt} 이상인 책사가 없습니다.</p> : (
+                    <>
+                      <div className="muted small">🪶 책사 회의 — 지력이 높을수록 판단이 정확합니다. 실제 결과는 아무도 모릅니다.</div>
+                      {open.advice.map((a) => {
+                        const ag = state.generals[a.advisorId];
+                        const chosen = advisorId === a.advisorId;
+                        return (
+                          <div key={a.advisorId} className={`advice ${chosen ? 'chosen' : ''}`}>
+                            <b>{ag.name}</b> <small className="muted">지력 {ag.stats.intellect} · 판단 정확도 {Math.round(a.accuracy * 100)}%</small>
+                            <div>“{a.text}”</div>
+                            {a.plan && <button onClick={() => { setForm(a.plan!.formation); setTactic(a.plan!.tactic ?? ''); setAdvisor(a.advisorId); }}>{chosen ? '✓ 이 계책을 따름' : '이 계책을 따른다'} <small>(따르면 충성 +{BALANCE.adviceLoyalty})</small></button>}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+            <button disabled={troops < least} onClick={() => { const to = state.cities[target]; const road = neighbors(state, city.id).find((n) => n.city.id === target)!.road; onCommand({ type: 'march', generalId: actor.id, toCityId: target, troops, tactic: tactic || undefined, formation: formPick ?? bestFormation(state, pf, road, to, hasHorses(state, pf, troops)), advisorId }); }}>⚔️ {troops < least ? `최소 ${least.toLocaleString()}명 필요` : `${troops.toLocaleString()}명 출진`}</button>
             <p className="hint">군량 {Math.ceil(troops * BALANCE.foodPerTroop).toLocaleString()} 소모. 도하·고개·겨울은 공격에 불리합니다. ★는 이 길에 맞는 추천 편성입니다.</p>
           </>
         )}

@@ -34,6 +34,8 @@ export interface Faction {
   food: number;
   wood: number;
   iron: number;
+  /** v4.0 군마 (제주·관북 등 말 산지에서 기른다. 기병 편성·교역·예물에 쓴다) */
+  horses?: number;
   alive: boolean;
 }
 
@@ -69,6 +71,14 @@ export interface City {
   fire?: number;
   /** 태수 장수 id (v2.4) */
   governor?: string;
+  /** v4.0 실측 지형: 산악도(0~100), 분지 정도(0~1), 지형 구분 */
+  relief?: number;
+  basin?: number;
+  landform?: 'plain' | 'hill' | 'mountain' | 'basin';
+  /** v4.0 말 산지 등급 (턴마다 군마 생산) */
+  horses?: number;
+  /** v4.0 수비 편성 (없으면 성벽·지형에 맞춰 자동) */
+  defForm?: import('../battle/formation').FormationKind;
   droughtTurns?: number; // 이번 해 가뭄을 겪은 계절 수 (가을 수확 감소)
 }
 
@@ -122,7 +132,7 @@ export interface LogEntry {
   event?: EventKind;
   other?: FactionId | null;
 }
-export type EventKind = 'capture' | 'destroyed' | 'rebel' | 'debut' | 'death' | 'uprising' | 'plague' | 'fire' | 'harvest' | 'surrender' | 'treaty';
+export type EventKind = 'capture' | 'destroyed' | 'rebel' | 'debut' | 'death' | 'uprising' | 'plague' | 'fire' | 'harvest' | 'surrender' | 'treaty' | 'fate' | 'duel';
 
 export type MissionKind = 'own_all_cities' | 'destroy_faction' | 'recruit';
 export interface Mission {
@@ -132,6 +142,12 @@ export interface Mission {
   target: number;
   factionId?: FactionId;
 }
+
+/** v4.0 포로: 성이 함락될 때 사로잡힌 적 장수 */
+export interface Captive { generalId: GeneralId; captor: FactionId; from: FactionId | null; turn: number; cityId: CityId }
+
+/** v4.0 함락 때 수비 장수의 운명 */
+export interface GeneralFate { generalId: GeneralId; fate: 'escaped' | 'captured' | 'slain' | 'fled'; to?: CityId; troops?: number; chance: { escape: number; captured: number; slain: number } }
 
 export interface BattleReport {
   turn: number;
@@ -154,6 +170,9 @@ export interface BattleReport {
   duel?: import('../battle/battle').DuelResult;
   phases?: { clashAttacker: number; clashDefender: number; pursuit: number; pursuer: 'attacker' | 'defender' };
   defenderSurvivors?: number;
+  defForm?: import('../battle/formation').FormationKind;
+  fates?: GeneralFate[];
+  fortune?: string;
 }
 
 export interface AiTraceEntry {
@@ -211,6 +230,8 @@ export interface GameState {
   offers: DiplomaticOffer[]; // AI → 플레이어 제안 (플레이어 응답 대기)
   /** v3.6 플레이어 도시 포위: 다음 턴 시작에 플레이어가 고른 대응으로 결판난다 */
   sieges?: Siege[];
+  /** v4.0 플레이어가 처분을 정해야 하는 포로 */
+  captives?: Captive[];
   /** v3.6.1 세력별 화친 재요청 금지 기한 (이 턴 전까지 거절) */
   parleyUntil?: Record<FactionId, number>;
   /** 개발자 모드: 지난 턴 AI 판단 근거 (v3.0, 선택 — 저장해도 무방) */

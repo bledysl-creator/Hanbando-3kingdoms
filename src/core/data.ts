@@ -13,6 +13,8 @@ export interface FactionDef { id: string; name: string; hanja: string; color: st
 export interface CityDef {
   id: string; name: string; lon: number; lat: number; elev?: number; terrain: Terrain; fortress: boolean; port: boolean;
   population: number; agriculture: number; commerce: number; wall: number; wood: number; iron: number;
+  /** v4.0 실측 지형·말 산지 */
+  relief?: number; basin?: number; landform?: 'plain' | 'hill' | 'mountain' | 'basin'; horses?: number;
   /** 군현 지도(v3.2)에서만: 원래 관할 도시와 그 도시의 치소(중심 시·군) 여부 */
   parent?: string; seat?: boolean;
 }

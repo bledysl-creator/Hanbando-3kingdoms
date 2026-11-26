@@ -242,6 +242,18 @@ export function BattleReportView({ state, report }: { state: GameState; report: 
           {report.won && report.defenderSurvivors !== undefined && <li><b>③ 패잔병</b> 살아남은 수비병 {fmt(report.defenderSurvivors)}명 (일부는 이웃 성으로 달아나고 일부는 투항)</li>}
         </ol>
       )}
+      {report.fates && report.fates.length > 0 && (
+        <div className="fates">
+          <h4>장수의 운명</h4>
+          {report.fates.map((x) => (
+            <div key={x.generalId} className={`fate ${x.fate}`}>
+              {x.fate === 'escaped' ? '🏃' : x.fate === 'captured' ? '⛓️' : x.fate === 'slain' ? '💀' : '🌫️'} <b>{state.generals[x.generalId]?.name}</b> — {x.fate === 'escaped' ? `${x.troops ? `패잔병 ${fmt(x.troops)}명을 이끌고 ` : ''}${state.cities[x.to!]?.name}(으)로 탈출` : x.fate === 'captured' ? '사로잡힘' : x.fate === 'slain' ? '전사' : '홀로 달아나 몸을 숨김'}
+              <small className="muted"> (탈출 {Math.round(x.chance.escape * 100)}% · 포로 {Math.round(x.chance.captured * 100)}% · 전사 {Math.round(x.chance.slain * 100)}%)</small>
+            </div>
+          ))}
+        </div>
+      )}
+      {report.fortune && <div className="duel-banner">🎲 전장의 변수: {report.fortune}</div>}
       <h4>원인 분석</h4>
       <ul>{report.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
     </div>

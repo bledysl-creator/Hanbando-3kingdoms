@@ -1,5 +1,5 @@
 import { TACTICS, tacticChance, type TacticKind } from '../battle/tactics';
-import { bestFormation, hasHorses } from '../battle/formation';
+import { bestFormation } from '../battle/formation';
 // 규칙 기반 + Utility AI (Game.md 5-5). 플레이어와 같은 명령만 사용한다.
 import { BALANCE } from '../config';
 import { executeCommand, foodPrice, type Command } from '../commands/commands';
@@ -125,7 +125,7 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
       if (BALANCE.siegeChoice && n.city.owner !== null && n.city.owner === s.playerFactionId) ratio /= BALANCE.siegeAiCaution;
       if (ratio > needRatio) {
         const value = (n.city.population / 10000 + n.city.agriculture / 20 + n.city.commerce / 20) * (n.city.owner === null ? 0.8 : 1);
-        opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops, tactic: bestTactic(s, g, n.city, n.road), formation: bestFormation(s, fid, n.road, n.city, cached(s, `horses:${fid}`, () => hasHorses(s, fid))) }, why: `승산 ${ratio.toFixed(2)}` });
+        opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops, tactic: bestTactic(s, g, n.city, n.road), formation: bestFormation(s, fid, n.road, n.city, true, troops) }, why: `승산 ${ratio.toFixed(2)}` });
       }
     }
   }
@@ -258,6 +258,14 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
     if (city[field] < 100) opts.push({ score: 20 + g.stats.politics / 10 + (foodRatio < 1 ? 10 : 0), cmd: { type: 'develop', generalId: g.id, field }, why: '내정' });
     if (isFrontier && city.wall < 90 && f.wood > 3000) opts.push({ score: 18 + g.stats.politics / 12, cmd: { type: 'develop', generalId: g.id, field: 'wall' }, why: '성벽 보수' });
   }
+  // v4.0 수련·학문: 금이 넉넉하면 후방 장수가 가장 잘하는 능력을 더 갈고닦는다
+  if (f.gold > BALANCE.aiStudyGold && !isFrontier) {
+    const st = g.stats;
+    const stat = st.intellect >= Math.max(st.war, st.leadership) ? 'intellect' : st.war >= st.leadership ? 'war' : 'leadership';
+    if (st[stat] < 100) opts.push({ score: 22, cmd: { type: 'study', generalId: g.id, stat }, why: '수련·학문' });
+  }
+  // v4.0 군마: 말 산지가 없는 부유한 나라는 시장에서 말을 사 둔다
+  if (f.gold > BALANCE.aiHorseGold && (f.horses ?? 0) < BALANCE.aiHorseKeep) opts.push({ score: 21, cmd: { type: 'trade', generalId: g.id, action: 'buyHorses', amount: 200 }, why: '군마 매입' });
   return opts;
 }
 

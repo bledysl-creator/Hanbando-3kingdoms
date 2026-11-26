@@ -9,9 +9,10 @@ import { EventCards, pickEvents, type EventCardItem } from './components/EventCa
 import { SiegeModal } from './components/Siege';
 import { DiplomacyModal, OffersModal } from './components/Diplomacy';
 import { CommandBar, EventLog, MiniMap, MissionPanel, RulerCard, SideMenu, TopBar, TurnButton, type BarKey, type MenuKey } from './components/Hud';
+import { CaptiveModal, CityTraitCard } from './components/Captives';
 import { SimStatsModal, BattleReportView, BattlesModal, ArmyModal, TacticsModal, DevModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
 
-type ModalKey = 'dev' | 'tactics' | 'army' | 'generals' | 'cities' | 'chronicle' | 'factions' | 'battles' | 'settings' | 'help' | 'diplomacy' | null;
+type ModalKey = 'dev' | 'tactics' | 'army' | 'generals' | 'cities' | 'chronicle' | 'factions' | 'battles' | 'settings' | 'help' | 'diplomacy' | 'captives' | null;
 
 export function App() {
   const [state, setState] = useState<GameState | null>(null);
@@ -142,6 +143,8 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
     flash(result.ok ? result.message : result.error, result.ok);
     if (result.ok && cmd.type === 'march' && next.lastBattles.length > before) setReport(next.lastBattles.length - 1);
     if (result.ok && cmd.type === 'march') setSelected(next.generals[cmd.generalId].city);
+    // v4.0 내 출진에서 생긴 장수 운명·일기토도 바로 알린다
+    if (result.ok && cmd.type === 'march' && localStorage.getItem('hanbando.eventCards') !== '0') setEvents(pickEvents(state, next, 5, true));
   };
 
   const [events, setEvents] = useState<EventCardItem[]>([]);
@@ -178,6 +181,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
     else if (k === '외교') setModal('diplomacy');
   };
 
+  const myCaptives = pf ? (state.captives ?? []).filter((c) => c.captor === pf).length : 0;
   const idle = pf ? Object.values(state.generals).filter((g) => g.alive && g.faction === pf && !g.acted && state.cities[g.city].owner === pf).length : 0;
 
   return (
@@ -190,6 +194,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
 
       <div className="left-col">
         <RulerCard state={state} />
+        {selected && <CityTraitCard state={state} cityId={selected} />}
         {pf && <SideMenu active={selected && state.cities[selected]?.owner === pf ? tab : null} onPick={onMenu} />}
       </div>
 
@@ -226,6 +231,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
           <TurnButton onClick={() => setAuto((a) => !a)} label={auto ? '일시정지' : '자동 진행'} disabled={state.outcome !== 'playing'} />
         )}
         {pf && <div className="idle-hint">대기 장수 {idle}명</div>}
+        {myCaptives > 0 && <button className="siege-alert captive-alert" onClick={() => setModal('captives')}>⛓️ 포로 {myCaptives}명 — 처분 정하기</button>}
         {mySieges.length > 0 && <button className="siege-alert" onClick={() => setSiegeHidden(false)}>⚔️ 포위된 성 {mySieges.length}곳 — 대응 정하기</button>}
       </div>
 
@@ -262,6 +268,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
       {modal === 'chronicle' && <ChronicleModal state={state} onClose={() => setModal(null)} />}
       {modal === 'factions' && <FactionsModal state={state} onClose={() => setModal(null)} />}
       {modal === 'battles' && <BattlesModal state={state} onClose={() => setModal(null)} />}
+      {modal === 'captives' && <CaptiveModal state={state} onClose={() => setModal(null)} onCommand={onCommand} />}
       {modal === 'diplomacy' && pf && <DiplomacyModal state={state} onClose={() => setModal(null)} onCommand={onCommand} />}
       {pf && state.offers.some((o) => o.to === pf) && !offersHidden && (
         <OffersModal state={state} onClose={() => setOffersHidden(true)} onRespond={(i, a) => { const r = respondOffer(state, pf, i, a); setState(r.state); flash(r.result.ok ? r.result.message : r.result.error, r.result.ok); }} />

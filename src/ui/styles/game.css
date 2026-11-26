@@ -347,3 +347,22 @@ button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 .duel-banner { margin: 6px 0; padding: 6px 10px; border-left: 3px solid #e0a030; background: rgba(224,160,48,.12); font-size: 13px; }
 .battle-phases { margin: 6px 0; padding-left: 4px; list-style: none; font-size: 13px; }
 .battle-phases li { margin: 2px 0; }
+
+/* v4.0 도시 특징 카드·책사 회의·포로 */
+.city-trait-card { margin-top: 8px; padding: 8px 10px; font-size: 12px; max-width: 300px; }
+.city-trait-card .ct-head { margin-bottom: 4px; }
+.city-trait-card .ct-row { margin: 2px 0; line-height: 1.35; }
+.city-trait-card .ct-row small { color: #b8ad95; }
+.council-box { margin: 6px 0; }
+.council-box .advice { margin: 4px 0; padding: 6px 8px; border-left: 3px solid #6a5a3a; background: rgba(255,255,255,.04); font-size: 12px; }
+.council-box .advice.chosen { border-left-color: #e0b040; background: rgba(224,176,64,.1); }
+.council-box .advice button { margin-top: 4px; }
+.captive-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+.captive-actions { display: flex; gap: 4px; }
+.captive-actions .danger { border-color: #a33; }
+.captive-alert { background: #3a2a10; }
+.captive-actions button { background: rgba(255,255,255,.06); color: #efe6cc; border: 1px solid #6a5a3a; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.captive-actions button:hover { background: rgba(224,176,64,.15); }
+.fates .fate { font-size: 13px; margin: 2px 0; }
+.fates .fate.slain b { color: #e07070; }
+.fates .fate.captured b { color: #e0b040; }

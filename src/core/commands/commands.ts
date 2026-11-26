@@ -6,11 +6,13 @@ import type { TacticKind } from '../battle/tactics';
 // 명령: 플레이어와 AI가 똑같이 사용한다 (CLAUDE.md 규칙 6).
 import { BALANCE } from '../config';
 import { resolveBattle, type BattleInput, type BattleOutcome } from '../battle/battle';
-import { hasHorses, type FormationKind } from '../battle/formation';
+import { defFormOf, FORMATIONS, hasHorses, horsesNeeded, type FormationKind } from '../battle/formation';
 import { beginSiege } from '../systems/siege';
-import { chance, pick } from '../rng/rng';
+import { chance, rand } from '../rng/rng';
 import { estimateRatio } from '../battle/estimate';
 import { killGeneral } from '../systems/lifecycle';
+import { decideCaptiveMut, decideFates } from '../systems/captives';
+import { followsAdvice } from '../battle/council';
 import { discord, rumor, scout, withinTwo } from '../systems/intrigue';
 import { generalsIn, isConnectedToCapital, lastStandBonus, minGarrison, minMarch, neighbors, roadBetween, supplyRatio } from '../query';
 import type { City, EventKind, GameState, General, LogKind, Road } from '../state/types';
@@ -23,21 +25,27 @@ export type Command =
   | { type: 'develop'; generalId: string; field: DevelopField }
   | { type: 'conscript'; generalId: string; amount: number }
   | { type: 'train'; generalId: string }
-  | { type: 'march'; generalId: string; toCityId: string; troops: number; tactic?: TacticKind; formation?: FormationKind }
+  | { type: 'march'; generalId: string; toCityId: string; troops: number; tactic?: TacticKind; formation?: FormationKind; advisorId?: string }
   | { type: 'transfer'; generalId: string; toCityId: string; troops: number }
   | { type: 'recruit'; generalId: string; targetId: string }
   | { type: 'reward'; generalId: string; targetId: string }
-  | { type: 'diplomacy'; generalId: string; targetFactionId: string; proposal: Proposal; gold: number }
+  | { type: 'diplomacy'; generalId: string; targetFactionId: string; proposal: Proposal; gold: number; horses?: number }
   | { type: 'breakTreaty'; generalId: string; targetFactionId: string }
   | { type: 'scout'; generalId: string; cityId: string }
   | { type: 'rumor'; generalId: string; cityId: string }
   | { type: 'discord'; generalId: string; targetId: string }
-  | { type: 'trade'; generalId: string; action: 'buyFood' | 'sellFood'; amount: number }
+  | { type: 'trade'; generalId: string; action: 'buyFood' | 'sellFood' | 'buyHorses' | 'sellHorses'; amount: number }
   | { type: 'disband'; generalId: string; amount: number }
   | { type: 'buildShips'; generalId: string }
   | { type: 'relief'; generalId: string }
   | { type: 'appoint'; generalId: string; targetId: string }
-  | { type: 'extinguish'; generalId: string };
+  | { type: 'extinguish'; generalId: string }
+  | { type: 'study'; generalId: string; stat: StudyStat }
+  | { type: 'setDefense'; generalId: string; formation: FormationKind | null }
+  | { type: 'captive'; generalId: string; targetId: string; action: 'recruit' | 'release' | 'execute' };
+
+export type StudyStat = 'leadership' | 'war' | 'intellect' | 'politics' | 'charm';
+export const STUDY_LABEL: Record<StudyStat, string> = { leadership: '통솔 (병법 훈련)', war: '무력 (무예 수련)', intellect: '지력 (병서 공부)', politics: '정치 (경세 공부)', charm: '매력 (예법·인망)' };
 
 export type CommandResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -57,7 +65,8 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
   const g = s.generals[cmd.generalId];
   if (!g || !g.alive) return { ok: false, error: '장수를 찾을 수 없습니다.' };
   if (g.faction !== factionId) return { ok: false, error: '우리 세력 장수가 아닙니다.' };
-  if (g.acted) return { ok: false, error: `${g.name}은(는) 이번 턴에 이미 행동했습니다.` };
+  const free = cmd.type === 'setDefense' || cmd.type === 'captive'; // v4.0 행동을 쓰지 않는 명령
+  if (g.acted && !free) return { ok: false, error: `${g.name}은(는) 이번 턴에 이미 행동했습니다.` };
   const city = s.cities[g.city];
   if (city.owner !== factionId) return { ok: false, error: '우리 도시에 있는 장수만 명령할 수 있습니다.' };
   const f = s.factions[factionId];
@@ -136,7 +145,7 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (troops < minMarch(s)) return { ok: false, error: `출진 병력은 ${minMarch(s).toLocaleString()}명 이상이어야 합니다 (도시에 ${minGarrison(s)}명은 남겨야 함).` };
       const foodNeed = Math.ceil(troops * BALANCE.foodPerTroop);
       if (f.food < foodNeed) return { ok: false, error: '군량이 부족합니다.' };
-      if (cmd.formation === 'cavalry' && !hasHorses(s, factionId)) return { ok: false, error: '말 산지(의주·함흥·청진·혜산·제주)가 없어 기병을 꾸릴 수 없습니다.' };
+      if (cmd.formation === 'cavalry' && !hasHorses(s, factionId, troops)) return { ok: false, error: `군마가 모자라 기병을 꾸릴 수 없습니다 (말 ${horsesNeeded(troops).toLocaleString()}필 필요, 보유 ${(f.horses ?? 0).toLocaleString()}필). 제주·관북 같은 말 산지를 얻거나 시장에서 사 오세요.` };
       // 장수가 명령을 거부할 수도 있다 (복종도·성향·승산)
       const pRefuse = refuseChance(s, g, estimateRatio(s, g, city, to, troops));
       if (pRefuse > 0 && chance(s, pRefuse)) {
@@ -145,6 +154,13 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         remember(g, s.turn, 'refusedOrder', f.rulerId);
         log(s, `${g.name}이(가) ${to.name} 출진 명령을 거부했습니다.`, 'warn', factionId);
         return { ok: true, message: `${g.name}: "이 싸움은 따를 수 없습니다." — 명령 거부 (거부 확률 ${Math.round(pRefuse * 100)}%)` };
+      }
+      // v4.0 책사의 계획을 그대로 따르면 그 책사의 충성이 조금 오른다
+      let advised = '';
+      if (cmd.advisorId && followsAdvice(s, factionId, g, to.id, troops, cmd.advisorId, cmd.formation, cmd.tactic)) {
+        const a = s.generals[cmd.advisorId];
+        a.loyalty = Math.min(100, a.loyalty + BALANCE.adviceLoyalty);
+        advised = ` · ${a.name}: "제 말을 들어 주시니 몸 바쳐 보답하겠습니다." (충성 +${BALANCE.adviceLoyalty})`;
       }
       f.food -= foodNeed;
       city.troops -= troops;
@@ -155,7 +171,8 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         beginSiege(s, factionId, g, city, to, troops, cmd.tactic, cmd.formation);
         return { ok: true, message: `${to.name}을(를) 포위했습니다.` };
       }
-      return finishAttack(s, factionId, g, city, to, troops, road, cmd.tactic, { battle: { formation: cmd.formation } });
+      const res = finishAttack(s, factionId, g, city, to, troops, road, cmd.tactic, { battle: { formation: cmd.formation } });
+      return res.ok && advised ? { ok: true, message: res.message + advised } : res;
     }
     case 'recruit': {
       const t = s.generals[cmd.targetId];
@@ -176,6 +193,30 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
         return { ok: true, message: `${t.name} 등용 성공!` };
       }
       return { ok: true, message: `${t.name}이(가) 등용을 거절했습니다. (성공률 ${Math.round(p * 100)}%)` };
+    }
+    case 'study': {
+      // v4.0 수련·학문: 금을 써서 능력치가 1~5 오른다 (이미 높으면 덜 오름, 같은 성에 그 능력 90+ 스승이 있으면 +1)
+      const t = g;
+      const cur = t.stats[cmd.stat];
+      if (cur >= 100) return { ok: false, error: '이미 최고 경지입니다.' };
+      if (f.gold < BALANCE.studyGold) return { ok: false, error: `금이 부족합니다 (${BALANCE.studyGold} 필요).` };
+      f.gold -= BALANCE.studyGold;
+      let gain = BALANCE.studyMin + Math.floor(rand(s) * (BALANCE.studyMax - BALANCE.studyMin + 1));
+      if (cur >= BALANCE.studyHighFrom) gain = Math.max(1, Math.floor(gain / 2));
+      const mentor = generalsIn(s, city.id, factionId).filter((x) => x.id !== t.id && x.stats[cmd.stat] >= 90).sort((a, b) => b.stats[cmd.stat] - a.stats[cmd.stat])[0];
+      if (mentor) gain += 1;
+      gain = Math.min(gain, 100 - cur);
+      t.stats[cmd.stat] = cur + gain;
+      g.acted = true;
+      return { ok: true, message: `${t.name}의 ${STUDY_LABEL[cmd.stat].split(' ')[0]} ${cur} → ${t.stats[cmd.stat]} (+${gain})${mentor ? ` — 스승 ${mentor.name}의 가르침 +1` : ''}` };
+    }
+    case 'setDefense': {
+      // v4.0 수비 편성 (행동을 쓰지 않음)
+      city.defForm = cmd.formation ?? undefined;
+      return { ok: true, message: `${city.name} 수비 편성: ${cmd.formation ? FORMATIONS.find((x) => x.id === cmd.formation)!.name : '자동'}` };
+    }
+    case 'captive': {
+      return decideCaptiveMut(s, factionId, cmd.targetId, cmd.action);
     }
     case 'extinguish': {
       if (!(city.fire ?? 0)) return { ok: false, error: '이 도시에는 산불이 없습니다.' };
@@ -223,10 +264,26 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       return { ok: true, message: `${city.name}에서 전선 ${n}척을 건조했습니다. (보유 ${city.ships}척)` };
     }
     case 'trade': {
+      if (cmd.action === 'buyHorses' || cmd.action === 'sellHorses') {
+        // v4.0 군마 거래: 말 1필 = 곡식 horseFoodRatio석 값, 10필 단위
+        const n = Math.max(0, Math.floor(cmd.amount / 10) * 10);
+        if (n < 10) return { ok: false, error: '10필 단위로 거래합니다.' };
+        const price = horsePrice(s, city.id, cmd.action);
+        const gold = Math.round(n * price);
+        if (cmd.action === 'buyHorses') {
+          if (f.gold < gold) return { ok: false, error: '금이 부족합니다.' };
+          f.gold -= gold; f.horses = (f.horses ?? 0) + n;
+        } else {
+          if ((f.horses ?? 0) < n) return { ok: false, error: '군마가 부족합니다.' };
+          f.horses = (f.horses ?? 0) - n; f.gold += gold;
+        }
+        g.acted = true;
+        return { ok: true, message: `${city.name} 시장에서 군마 ${n.toLocaleString()}필을 ${cmd.action === 'buyHorses' ? '사들였' : '팔았'}습니다. (금 ${gold.toLocaleString()}, 1필 ${price.toFixed(1)})` };
+      }
       const amount = Math.min(BALANCE.tradeMax, Math.max(0, Math.floor(cmd.amount / 1000) * 1000));
       if (amount < 1000) return { ok: false, error: '1,000석 단위로 거래합니다.' };
       const tm = traitSum(f.traits, 'market');
-      const price = Math.round(foodPrice(s, city.id, cmd.action) * (cmd.action === 'buyFood' ? 1 - tm : 1 + tm));
+      const price = Math.round(foodPrice(s, city.id, cmd.action as 'buyFood' | 'sellFood') * (cmd.action === 'buyFood' ? 1 - tm : 1 + tm));
       const gold = Math.round((amount / 1000) * price);
       if (cmd.action === 'buyFood') {
         if (f.gold < gold) return { ok: false, error: '금이 부족합니다.' };
@@ -264,10 +321,16 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (cur === cmd.proposal) return { ok: false, error: '이미 맺은 맹약입니다.' };
       if (cur === 'alliance') return { ok: false, error: '이미 동맹 중입니다.' };
       const gold = Math.max(0, Math.floor(cmd.gold));
+      const horses = Math.max(0, Math.floor(cmd.horses ?? 0));
       if (f.gold < gold) return { ok: false, error: '금이 부족합니다.' };
+      if ((f.horses ?? 0) < horses) return { ok: false, error: '군마가 부족합니다.' };
       f.gold -= gold;
+      f.horses = (f.horses ?? 0) - horses;
       g.acted = true;
-      const r = tryProposal(s, factionId, t.id, cmd.proposal, g.id, gold);
+      // v4.0 말은 금으로 치면 시세만큼의 예물이다 (말 산지가 없는 나라일수록 더 반긴다)
+      const horseValue = Math.round(horses * horsePrice(s, city.id, 'sellHorses') * (hasHorses(s, t.id, 5000) ? 1 : 1.5));
+      const r = tryProposal(s, factionId, t.id, cmd.proposal, g.id, gold + horseValue);
+      if (r.accepted && horses > 0) t.horses = (t.horses ?? 0) + horses;
       const what = cmd.proposal === 'truce' ? '휴전' : '동맹';
       if (r.accepted) {
         if (gold > 0) t.gold += gold;
@@ -381,6 +444,11 @@ export function foodPrice(s: GameState, cityId: string, action: 'buyFood' | 'sel
   return Math.round(action === 'buyFood' ? base * season * (1 - market) : base * season * (1 + market));
 }
 
+/** v4.0 말 1필 값 (금): 곡식 시세 × horseFoodRatio / 1000 */
+export function horsePrice(s: GameState, cityId: string, action: 'buyHorses' | 'sellHorses'): number {
+  return (foodPrice(s, cityId, action === 'buyHorses' ? 'buyFood' : 'sellFood') * BALANCE.horseFoodRatio) / 1000 * (action === 'buyHorses' ? 1.2 : 0.8);
+}
+
 /** 세력 특성 효과 합계 (v2.7) */
 export interface AttackOptions {
   /** 이미 정해진 전투 결과 (청야로 빈 성을 넘겨받을 때) */
@@ -394,45 +462,75 @@ export interface AttackOptions {
   returnTroops?: (n: number) => void;
 }
 
+/** 출진 전투 입력 (finishAttack·책사 조언 공용, v4.0) */
+export function marchInput(s: GameState, factionId: string, g: General, city: City, to: City, troops: number, road: Road, tactic?: TacticKind, formation?: FormationKind): BattleInput {
+  const f = s.factions[factionId];
+  const defenders = generalsIn(s, to.id).filter((x) => x.faction === to.owner);
+  const sr = supplyRatio(s, factionId);
+  return {
+    attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic, formation, traitAttack: traitSum(f.traits, 'attack'), attackerShips: city.ships ?? 0, navalTrait: f.traits.includes('수군'),
+    attackerMorale: city.morale, attackerTraining: city.training, supply: sr < BALANCE.lowSupplyThreshold ? sr : undefined,
+    isolated: !isConnectedToCapital(s, factionId, city.id),
+    lastStand: lastStandBonus(s, to.owner),
+    cavalryTrait: f.traits.includes('최강무력'),
+    defForm: defFormOf(s, to),
+  };
+}
+
 /** 전투를 치르고 함락·퇴각을 처리한다 (출진·포위 공용, v3.6에서 분리) */
 export function finishAttack(s: GameState, factionId: string, g: General, city: City, to: City, troops: number, road: Road, tactic?: TacticKind, opt: AttackOptions = {}): CommandResult {
   const f = s.factions[factionId];
   const defenderFaction = to.owner;
   const defenders = generalsIn(s, to.id).filter((x) => x.faction === defenderFaction);
-  const out = opt.outcome ?? resolveBattle(s, {
-    attackerTroops: troops, attackerGeneral: g, defenderCity: to, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic, traitAttack: traitSum(f.traits, 'attack'), attackerShips: city.ships ?? 0, navalTrait: f.traits.includes('수군'),
-    attackerMorale: city.morale, attackerTraining: city.training, supply: supplyRatio(s, factionId) < BALANCE.lowSupplyThreshold ? supplyRatio(s, factionId) : undefined,
-    isolated: !isConnectedToCapital(s, factionId, city.id),
-    lastStand: lastStandBonus(s, defenderFaction),
-    cavalryTrait: f.traits.includes('최강무력'),
-    ...opt.battle,
-  });
+  const out = opt.outcome ?? resolveBattle(s, { ...marchInput(s, factionId, g, city, to, troops, road, tactic), ...opt.battle });
   opt.after?.(out);
-  s.lastBattles.push({
+  const report = {
     turn: s.turn, attackerFaction: factionId, defenderFaction, fromCity: city.id, toCity: to.id, generalId: g.id,
     attackerTroops: troops, defenderTroops: to.troops, ...out,
-  });
+  };
+  s.lastBattles.push(report);
   if (s.lastBattles.length > 30) s.lastBattles.splice(0, s.lastBattles.length - 30);
 
   const survivors = troops - out.attackerLoss;
   const defTroopsBefore = to.troops;
+  // v4.0 기병이 잃은 말
+  if (out.formation === 'cavalry') f.horses = Math.max(0, (f.horses ?? 0) - horsesNeeded(out.attackerLoss));
   // v3.9 일기토에서 베인 장수
   if (out.duel?.slain) {
     const loser = s.generals[out.duel.winnerId === out.duel.attackerId ? out.duel.defenderId : out.duel.attackerId];
     if (loser?.alive) killGeneral(s, loser, `⚔️ ${s.generals[out.duel.winnerId].name}이(가) ${to.name} 앞 일기토에서 ${loser.name}을(를) 베었습니다!`);
   } else if (out.duel) {
-    log(s, `⚔️ ${to.name} 앞 일기토: ${s.generals[out.duel.winnerId].name}이(가) ${s.generals[out.duel.winnerId === out.duel.attackerId ? out.duel.defenderId : out.duel.attackerId].name}을(를) 꺾었습니다.`, 'info', factionId);
+    log(s, `⚔️ ${to.name} 앞 일기토: ${s.generals[out.duel.winnerId].name}이(가) ${s.generals[out.duel.winnerId === out.duel.attackerId ? out.duel.defenderId : out.duel.attackerId].name}을(를) 꺾었습니다.`, 'info', factionId, { event: 'duel', other: to.owner });
   }
   const defName = defenderFaction ? s.factions[defenderFaction].name : '중립';
   if (out.tactic?.kind === 'fire' && out.tactic.success) { igniteCity(s, to.id, 1); out.reasons.push(`화공의 불길이 ${to.name} 일대로 번졌습니다`); }
   if (out.won) {
-    // v3.9 패잔병: 살아남은 수비병 일부는 이웃 아군 성으로 빠져나가고, 흩어진 병사 일부는 투항한다
+    // v3.9 패잔병 + v4.0 장수의 운명: 탈출한 장수가 패잔병을 이끌고 이웃 아군 성으로 간다
     const left = Math.max(0, defTroopsBefore - out.defenderLoss);
     const haven = defenderFaction ? neighbors(s, to.id).filter((n) => n.city.owner === defenderFaction).map((n) => n.city).sort((a, b) => b.troops - a.troops)[0] : undefined;
-    const fled = haven ? Math.floor(left * BALANCE.routRetreatShare) : 0;
+    const fates = defenderFaction || defenders.length ? decideFates(s, defenders, to.id, factionId, haven?.id, out.formation === 'cavalry') : [];
+    out.fates = fates;
+    report.fates = fates;
+    const leader = fates.filter((x) => x.fate === 'escaped').map((x) => s.generals[x.generalId]).sort((a, b) => b.stats.leadership - a.stats.leadership)[0];
+    const trap = (to.basin ?? 0) >= BALANCE.basinFrom ? 1 - BALANCE.basinTrap * (to.basin ?? 0) : 1;
+    const share = BALANCE.routRetreatShare * trap * (leader ? 0.6 + leader.stats.leadership / 250 : BALANCE.fateLeaderless);
+    const fled = haven ? Math.min(left, Math.floor(left * share)) : 0;
     const joined = Math.floor((left - fled) * BALANCE.routSurrenderShare);
-    if (haven && fled > 0) { haven.troops += fled; out.reasons.push(`패잔병 ${fled.toLocaleString()}명이 ${haven.name}(으)로 달아남`); }
+    if (haven && fled > 0) out.reasons.push(`패잔병 ${fled.toLocaleString()}명이 ${leader ? `${leader.name}을(를) 따라 ` : ''}${haven.name}(으)로 달아남${trap < 1 ? ' (분지에 갇혀 빠져나가기 어려움)' : ''}`);
+    if (haven && fled > 0) { haven.troops += fled; const lf = fates.find((x) => x.generalId === leader?.id); if (lf) lf.troops = fled; }
     if (joined >= 100) out.reasons.push(`흩어진 수비병 ${joined.toLocaleString()}명이 투항해 편입됨`);
+    const FATE: Record<string, string> = { escaped: '탈출', captured: '사로잡힘', slain: '전사', fled: '홀로 달아나 몸을 숨김' };
+    for (const x of fates) {
+      const d = s.generals[x.generalId];
+      if (x.fate !== 'slain') log(s, `${to.name} 함락 — ${d.name}: ${FATE[x.fate]}${x.to ? ` (${s.cities[x.to].name})` : ''}`, x.fate === 'escaped' ? 'warn' : 'danger', defenderFaction, { event: 'fate', other: factionId });
+    }
+    // 군마 노획
+    if (defenderFaction && (s.factions[defenderFaction].horses ?? 0) > 0 && !opt.noPlunder) {
+      const df = s.factions[defenderFaction];
+      const cnt = Object.values(s.cities).filter((c) => c.owner === defenderFaction).length;
+      const h = Math.floor((df.horses ?? 0) / Math.max(1, cnt) * BALANCE.plunderRatio);
+      if (h > 0) { df.horses = (df.horses ?? 0) - h; f.horses = (f.horses ?? 0) + h; out.reasons.push(`군마 ${h.toLocaleString()}필 노획`); }
+    }
     to.troops = survivors + joined;
     to.morale = Math.min(100, city.morale + BALANCE.victoryMorale);
     to.training = city.training;
@@ -452,17 +550,8 @@ export function finishAttack(s: GameState, factionId: string, g: General, city: 
     to.order = Math.max(10, to.order - 20);
     to.population = Math.round(to.population * 0.95);
     g.city = to.id;
-    // 패배한 수비 장수: 인접 아군 도시로 퇴각, 없으면 재야
     remember(g, s.turn, 'defeated', defenders[0]?.id ?? g.id);
-    for (const d of defenders) {
-      remember(d, s.turn, 'defeatedBy', g.id);
-      const retreat = defenderFaction
-        ? pick(s, neighbors(s, to.id).filter((n) => n.city.owner === defenderFaction).map((n) => n.city.id))
-        : undefined;
-      if (retreat) d.city = retreat;
-      else if (d.faction && s.factions[d.faction]?.rulerId !== d.id) d.faction = null;
-      else if (d.faction) d.faction = null; // 군주도 도망칠 곳이 없으면 재야로
-    }
+    for (const d of defenders) if (d.alive) remember(d, s.turn, 'defeatedBy', g.id);
     log(s, `${s.factions[factionId].name}군 ${g.name}이(가) ${defName}의 ${to.name}을(를) 함락했습니다!`, 'danger', factionId, { event: 'capture', other: defenderFaction });
     if (to.seat && defenderFaction) submitCounties(s, to.id, factionId, defenderFaction);
     checkFactionDestroyed(s, defenderFaction);

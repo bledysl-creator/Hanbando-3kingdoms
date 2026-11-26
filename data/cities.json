@@ -13,7 +13,11 @@
   "wall": 90,
   "wood": 3,
   "iron": 2,
-  "elev": 92
+  "elev": 92,
+  "relief": 21,
+  "basin": 0.5,
+  "landform": "plain",
+  "horses": 2
  },
  {
   "id": "anju",
@@ -29,7 +33,11 @@
   "wall": 70,
   "wood": 2,
   "iron": 2,
-  "elev": 35
+  "elev": 35,
+  "relief": 17,
+  "basin": 0.19,
+  "landform": "plain",
+  "horses": 0
  },
  {
   "id": "ganggye",
@@ -43,9 +51,13 @@
   "agriculture": 20,
   "commerce": 20,
   "wall": 86,
-  "wood": 5,
+  "wood": 6,
   "iron": 4,
-  "elev": 623
+  "elev": 623,
+  "relief": 59,
+  "basin": 1.0,
+  "landform": "basin",
+  "horses": 0
  },
  {
   "id": "pyongyang",
@@ -56,12 +68,16 @@
   "fortress": true,
   "port": true,
   "population": 110000,
-  "agriculture": 60,
+  "agriculture": 64,
   "commerce": 80,
   "wall": 85,
   "wood": 2,
   "iron": 3,
-  "elev": 56
+  "elev": 56,
+  "relief": 9,
+  "basin": 0.06,
+  "landform": "plain",
+  "horses": 0
  },
  {
   "id": "haeju",
@@ -72,12 +88,16 @@
   "fortress": false,
   "port": true,
   "population": 40000,
-  "agriculture": 62,
+  "agriculture": 72,
   "commerce": 50,
   "wall": 40,
   "wood": 2,
-  "iron": 1,
-  "elev": 151
+  "iron": 4,
+  "elev": 151,
+  "relief": 49,
+  "basin": 0.0,
+  "landform": "hill",
+  "horses": 0
  },
  {
   "id": "kaesong",
@@ -93,7 +113,11 @@
   "wall": 50,
   "wood": 2,
   "iron": 1,
-  "elev": 69
+  "elev": 69,
+  "relief": 23,
+  "basin": 0.25,
+  "landform": "plain",
+  "horses": 0
  },
  {
   "id": "hyesan",
@@ -107,9 +131,13 @@
   "agriculture": 15,
   "commerce": 15,
   "wall": 82,
-  "wood": 6,
+  "wood": 7,
   "iron": 4,
-  "elev": 1017
+  "elev": 1017,
+  "relief": 48,
+  "basin": 0.62,
+  "landform": "hill",
+  "horses": 1
  },
  {
   "id": "chongjin",
@@ -124,8 +152,12 @@
   "commerce": 50,
   "wall": 80,
   "wood": 4,
-  "iron": 5,
-  "elev": 786
+  "iron": 6,
+  "elev": 786,
+  "relief": 68,
+  "basin": 0.56,
+  "landform": "mountain",
+  "horses": 2
  },
  {
   "id": "hamhung",
@@ -141,7 +173,11 @@
   "wall": 70,
   "wood": 4,
   "iron": 3,
-  "elev": 127
+  "elev": 127,
+  "relief": 19,
+  "basin": 0.62,
+  "landform": "plain",
+  "horses": 2
  },
  {
   "id": "wonsan",
@@ -157,7 +193,11 @@
   "wall": 45,
   "wood": 3,
   "iron": 2,
-  "elev": 298
+  "elev": 298,
+  "relief": 47,
+  "basin": 0.56,
+  "landform": "hill",
+  "horses": 0
  },
  {
   "id": "hanyang",
@@ -173,7 +213,11 @@
   "wall": 75,
   "wood": 2,
   "iron": 2,
-  "elev": 67
+  "elev": 67,
+  "relief": 21,
+  "basin": 0.31,
+  "landform": "plain",
+  "horses": 0
  },
  {
   "id": "suwon",
@@ -189,7 +233,11 @@
   "wall": 96,
   "wood": 2,
   "iron": 1,
-  "elev": 71
+  "elev": 71,
+  "relief": 17,
+  "basin": 0.44,
+  "landform": "plain",
+  "horses": 0
  },
  {
   "id": "chuncheon",
@@ -205,7 +253,11 @@
   "wall": 60,
   "wood": 5,
   "iron": 2,
-  "elev": 305
+  "elev": 305,
+  "relief": 39,
+  "basin": 1.0,
+  "landform": "basin",
+  "horses": 0
  },
  {
   "id": "cheongju",
@@ -220,8 +272,12 @@
   "commerce": 40,
   "wall": 45,
   "wood": 3,
-  "iron": 2,
-  "elev": 155
+  "iron": 3,
+  "elev": 155,
+  "relief": 26,
+  "basin": 0.31,
+  "landform": "hill",
+  "horses": 0
  },
  {
   "id": "gongju",
@@ -232,12 +288,16 @@
   "fortress": true,
   "port": false,
   "population": 50000,
-  "agriculture": 60,
+  "agriculture": 72,
   "commerce": 45,
   "wall": 65,
   "wood": 2,
   "iron": 1,
-  "elev": 153
+  "elev": 153,
+  "relief": 22,
+  "basin": 0.62,
+  "landform": "plain",
+  "horses": 0
  },
  {
   "id": "jeonju",
@@ -253,7 +313,11 @@
   "wall": 50,
   "wood": 2,
   "iron": 1,
-  "elev": 88
+  "elev": 88,
+  "relief": 32,
+  "basin": 0.56,
+  "landform": "hill",
+  "horses": 0
  },
  {
   "id": "gwangju",
@@ -269,7 +333,11 @@
   "wall": 45,
   "wood": 2,
   "iron": 1,
-  "elev": 95
+  "elev": 95,
+  "relief": 25,
+  "basin": 0.56,
+  "landform": "hill",
+  "horses": 0
  },
  {
   "id": "naju",
@@ -285,7 +353,11 @@
   "wall": 40,
   "wood": 2,
   "iron": 1,
-  "elev": 88
+  "elev": 88,
+  "relief": 11,
+  "basin": 0.38,
+  "landform": "plain",
+  "horses": 0
  },
  {
   "id": "gangneung",
@@ -300,8 +372,12 @@
   "commerce": 50,
   "wall": 50,
   "wood": 5,
-  "iron": 2,
-  "elev": 401
+  "iron": 4,
+  "elev": 401,
+  "relief": 58,
+  "basin": 0.56,
+  "landform": "mountain",
+  "horses": 0
  },
  {
   "id": "daegu",
@@ -317,7 +393,11 @@
   "wall": 50,
   "wood": 3,
   "iron": 3,
-  "elev": 172
+  "elev": 172,
+  "relief": 37,
+  "basin": 0.69,
+  "landform": "basin",
+  "horses": 0
  },
  {
   "id": "gyeongju",
@@ -333,7 +413,11 @@
   "wall": 70,
   "wood": 3,
   "iron": 4,
-  "elev": 204
+  "elev": 204,
+  "relief": 30,
+  "basin": 0.81,
+  "landform": "basin",
+  "horses": 0
  },
  {
   "id": "jinju",
@@ -349,7 +433,11 @@
   "wall": 65,
   "wood": 3,
   "iron": 2,
-  "elev": 95
+  "elev": 95,
+  "relief": 13,
+  "basin": 0.56,
+  "landform": "plain",
+  "horses": 0
  },
  {
   "id": "busan",
@@ -365,7 +453,11 @@
   "wall": 50,
   "wood": 3,
   "iron": 3,
-  "elev": 87
+  "elev": 87,
+  "relief": 32,
+  "basin": 0.12,
+  "landform": "hill",
+  "horses": 0
  },
  {
   "id": "jeju",
@@ -381,6 +473,10 @@
   "wall": 35,
   "wood": 3,
   "iron": 1,
-  "elev": 282
+  "elev": 282,
+  "relief": 95,
+  "basin": 0.31,
+  "landform": "hill",
+  "horses": 6
  }
 ]
