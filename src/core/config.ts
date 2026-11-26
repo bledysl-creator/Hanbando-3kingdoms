@@ -228,6 +228,9 @@ export const BALANCE = {
     infantryWall: 1.1, infantryRough: 1.1, infantryPursuit: 0.6,
     archerRiver: 1.15, archerWet: 0.8, archerWall: 0.95, archerOwnLoss: 0.8, archerPursuit: 0.8,
     cavalryOpen: 1.2, cavalryRough: 0.75, cavalryRiver: 0.85, cavalryWall: 0.85, cavalrySnow: 0.9, cavalryPursuit: 2,
+    /** v4.1 창병: 험지 +5%, 추격 약함 / 전차병: 평지 돌격 최강, 험지·강·성벽·진흙(비·눈)에 약함 */
+    spearRough: 1.05, spearPursuit: 0.6,
+    chariotOpen: 1.35, chariotRough: 0.6, chariotRiver: 0.7, chariotWall: 0.75, chariotMud: 0.8, chariotPursuit: 1.5,
     /** 최강무력 특성 세력(여포·마등·공손찬)의 기병 돌격 추가 */
     cavalryTraitBonus: 0.1,
     /** 이 성벽 이상(또는 산성·요새)이면 '큰 성': 보병 +, 기병·궁노 − */
@@ -259,14 +262,28 @@ export const BALANCE = {
   basinFrom: 0.66, basinDefense: 0.08, basinTrap: 0.5,
   /** 공격 편성 × 수비 편성 상성 (공격 배율). 성벽 위 궁노는 돌진하는 기병에게 특히 매섭다 */
   counter: {
-    infantry: { infantry: 1, archer: 0.95, cavalry: 1.1, balanced: 1 },
-    archer: { infantry: 1.1, archer: 1, cavalry: 0.9, balanced: 1 },
-    cavalry: { infantry: 0.85, archer: 0.9, cavalry: 1, balanced: 1 },
-    balanced: { infantry: 1, archer: 1, cavalry: 1, balanced: 1 },
+    infantry: { infantry: 1, spear: 1, archer: 0.95, cavalry: 1.05, chariot: 1.1 },
+    spear: { infantry: 1, spear: 1, archer: 0.95, cavalry: 1.15, chariot: 1.2 },
+    archer: { infantry: 1.1, spear: 1.1, archer: 1, cavalry: 0.9, chariot: 0.95 },
+    cavalry: { infantry: 0.95, spear: 0.75, archer: 1.1, cavalry: 1, chariot: 1.05 },
+    chariot: { infantry: 1.05, spear: 0.7, archer: 1.05, cavalry: 0.95, chariot: 1 },
   } as Record<string, Record<string, number>>,
   wallArcherVsCavalry: 0.85,
   /** 군마: 기병 10명당 말 1필, 말 산지 등급당 계절마다 horsesPerLevel필, 시작 시 등급당 horsesStartPerLevel필 */
   horsePerTroop: 0.1, horsesPerLevel: 60, horsesStartPerLevel: 600,
+  /** v4.1 군사 편제: 병사 1명을 그 병종으로 바꾸는 데 드는 자원, 편제를 바꾼 비율 × trainDrop 만큼 훈련도 하락 */
+  unitCost: {
+    infantry: {}, spear: { iron: 0.3 }, archer: { wood: 0.3, iron: 0.05 },
+    cavalry: { horses: 1, iron: 0.1 }, chariot: { horses: 0.5, iron: 1 },
+  } as Record<string, { horses?: number; iron?: number; wood?: number }>,
+  organizeTrainDrop: 20, horseRefund: 0.8,
+  /** 처음 편제: 보병·창병·궁병 (말 산지·마창이 있으면 기병 조금) */
+  startComp: { infantry: 0.45, spear: 0.2, archer: 0.35 } as Record<string, number>,
+  startCavalryPerRanch: 0.04,
+  /** 전차병은 큰 도시만 (인구, 군현 지도는 /regionPopDiv) */
+  chariotCityPop: 70000, regionPopDiv: 12,
+  /** v4.1 마창(대3·중2·소1): 계절마다 저절로 ranchPassive×규모 필, '말 기르기'는 품(금·곡식)을 들여 규모×breedPer 필 */
+  ranchPassive: 20, /** 쌓아 둔 말은 계절마다 horseDecay만큼 줄어든다 (먹이·늙음) */ horseDecay: 0.04, breedPer: 150, breedGold: 150, breedFoodPerLevel: 1000,
   /** 말 1필 값 = 곡식 horseFoodRatio석 값 (시장 시세를 따른다), 예물로 줄 때 금 가치 */
   horseFoodRatio: 40,
   /** 책사: 지력 이상, 최대 인원, 판단 오차 = (100−지력)/100 × councilNoise, 따르면 충성 + */
@@ -278,7 +295,7 @@ export const BALANCE = {
   /** 탈출한 장수는 패잔병을 이끌고 간다: 퇴각 비율 × (0.6 + 통솔/250), 장수가 못 빠져나가면 ×fateLeaderless */
   fateLeaderless: 0.6,
   /** 포로: AI 등용 기본, 플레이어 등용 기본, 처형 시 의리 높은 우리 장수 충성 −, 처분 없이 지나면 석방 */
-  aiStudyGold: 4000, aiHorseGold: 6000, aiHorseKeep: 1500,
+  aiStudyGold: 4000, aiHorseGold: 6000, aiHorseKeep: 1500, aiOrganizeGap: 0.25, aiBreedGold: 1500,
   captiveRecruitBase: 0.25, captiveExecuteLoyalty: 3, captiveExpire: 8,
 
   // AI

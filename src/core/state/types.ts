@@ -77,8 +77,12 @@ export interface City {
   landform?: 'plain' | 'hill' | 'mountain' | 'basin';
   /** v4.0 말 산지 등급 (턴마다 군마 생산) */
   horses?: number;
-  /** v4.0 수비 편성 (없으면 성벽·지형에 맞춰 자동) */
+  /** v4.0 수비 편성 (v4.1부터 쓰지 않음, 옛 세이브 호환) */
   defForm?: import('../battle/formation').FormationKind;
+  /** v4.1 군사 편제: 병종별 비율 (합 1) */
+  comp?: import('../battle/formation').Comp;
+  /** v4.1 마창 규모 (0 없음 · 1 소 · 2 중 · 3 대) */
+  ranch?: number;
   droughtTurns?: number; // 이번 해 가뭄을 겪은 계절 수 (가을 수확 감소)
 }
 
@@ -171,6 +175,8 @@ export interface BattleReport {
   phases?: { clashAttacker: number; clashDefender: number; pursuit: number; pursuer: 'attacker' | 'defender' };
   defenderSurvivors?: number;
   defForm?: import('../battle/formation').FormationKind;
+  comp?: import('../battle/formation').Comp;
+  defComp?: import('../battle/formation').Comp;
   fates?: GeneralFate[];
   fortune?: string;
 }
@@ -259,6 +265,8 @@ export interface Siege {
   tactic?: import('../battle/tactics').TacticKind;
   /** v3.9 병종 편성 */
   formation?: import('../battle/formation').FormationKind;
+  /** v4.1 포위군 편제 */
+  comp?: import('../battle/formation').Comp;
   morale: number;
   training: number;
   ships: number;

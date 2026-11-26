@@ -4,6 +4,7 @@ import { generalsIn, lastStandBonus, neighbors } from '../query';
 import type { City, GameState, General } from '../state/types';
 import { weatherAttackModifier } from '../systems/weather';
 import { qualityFactor } from './battle';
+import { compEffect, compOf } from './formation';
 import { landmarksOfCity, landmarksOnRoad } from '../data';
 
 /** lastStand: 수비 세력 배수진 배율을 미리 구해 두었으면 넘긴다 (AI 성능, v3.7) */
@@ -29,5 +30,7 @@ export function estimateRatio(s: GameState, g: General, from: City, to: City, tr
   const def = to.troops * (0.5 + best / 100) * qualityFactor(to.morale, to.training) * wallMul * (to.terrain === 'mountain' ? BALANCE.mountainDefenseBonus : 1);
   const forts = 1 + BALANCE.landmarkFortressBonus * landmarksOfCity(to.id, 'fortress').length;
   const elev = 1 + Math.min(BALANCE.elevDefenseCap, ((to.elev ?? 0) / 1000) * BALANCE.elevDefensePer1000m);
-  return atk / Math.max(1, def * forts * elev * (lastStand ?? lastStandBonus(s, to.owner)));
+  // v4.1 편제 효과 (병종 지형·상성)
+  const ce = road ? compEffect(compOf(from), compOf(to), road, to, s.weather[to.id], to.wall >= 50, ownTraits.includes('최강무력')).attack : 1;
+  return (atk * ce) / Math.max(1, def * forts * elev * (lastStand ?? lastStandBonus(s, to.owner)));
 }

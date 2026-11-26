@@ -940,7 +940,7 @@ describe('군현 지도 진행·태수 (v3.8)', () => {
   });
 });
 
-import { formationEffect, hasHorses, bestFormation, duelPreview } from '../src/core/battle/formation';
+import { formationEffect, hasHorses, duelPreview, organizeCost, compEffect, compOf, isBigCity } from '../src/core/battle/formation';
 describe('냉병기 전투 (v3.9)', () => {
   const land = { from: 'hanyang', to: 'kaesong', type: 'land' as const };
   const base = (s: ReturnType<typeof newGame>) => ({ attackerTroops: 30000, attackerGeneral: s.generals.guan_yu, defenderCity: s.cities.kaesong, defenderGenerals: [], road: land, season: 0, weather: 'clear' as const, noDuel: true });
@@ -956,9 +956,8 @@ describe('냉병기 전투 (v3.9)', () => {
     expect(hasHorses(s, 'lu')).toBe(true);
     expect(hasHorses(s, 'shu')).toBe(false);
     s.cities.hanyang.troops = 40000;
-    const r = applyCommand(s, 'shu', { type: 'march', generalId: 'guan_yu', toCityId: 'kaesong', troops: 20000, formation: 'cavalry' });
+    const r = applyCommand(s, 'shu', { type: 'organize', generalId: 'guan_yu', comp: { infantry: 0.5, cavalry: 0.5 } });
     expect(r.result.ok).toBe(false);
-    expect(bestFormation(s, 'shu', land, s.cities.kaesong)).not.toBe('cavalry');
   });
   it('이긴 쪽은 적게, 진 쪽은 추격으로 크게 잃고 기병은 추격이 매섭다', () => {
     const s = newGame();
@@ -1032,6 +1031,7 @@ describe('v4.0 전투 확률·지형·책사·수련·군마·포로', () => {
     expect(counterMul('cavalry', 'archer', true).mul).toBeLessThan(counterMul('cavalry', 'archer', false).mul);
     expect(counterMul('cavalry', 'archer', true).mul).toBeLessThan(counterMul('cavalry', 'balanced', true).mul);
     const s = newGame();
+    s.cities.suwon.comp = { infantry: 0.4, archer: 0.6 };
     expect(defFormOf(s, s.cities.suwon)).toBe('archer');
   });
   it('책사 회의: 지력 높은 책사가 더 정확하고, 계책을 따르면 충성이 오른다', () => {
@@ -1119,5 +1119,79 @@ describe('v4.0 군주의 운명', () => {
       expect(['escaped', 'slain']).toContain(f.fate);
       expect(d.captives ?? []).toHaveLength(0);
     }
+  });
+});
+
+describe('v4.1 마창·군사 편제·전차병', () => {
+  const land = { from: 'hanyang', to: 'kaesong', type: 'land' as const };
+  it('대도시는 대(3) 마창, 산악 고을은 마창이 없고, 시작 편제는 마창만큼 기병을 갖는다', () => {
+    const s = newGame();
+    expect(s.cities.pyongyang.ranch).toBe(3);
+    expect(s.cities.hanyang.ranch).toBe(3);
+    expect(s.cities.gangneung.ranch ?? 0).toBe(0);
+    const c = compOf(s.cities.pyongyang);
+    expect(c.cavalry!).toBeGreaterThan(0.1);
+    expect(Object.values(c).reduce((a, b) => a + (b ?? 0), 0)).toBeCloseTo(1, 5);
+  });
+  it('말 기르기: 금·곡식을 들여 마창 규모만큼 말이 는다, 마창 없는 곳은 안 된다', () => {
+    const s = newGame();
+    s.factions.shu.gold = 9999; s.factions.shu.food = 99999;
+    const before = s.factions.shu.horses ?? 0;
+    const r = applyCommand(s, 'shu', { type: 'breedHorses', generalId: 'guan_yu' });
+    expect(r.result.ok).toBe(true);
+    expect(r.state.factions.shu.horses! - before).toBeGreaterThanOrEqual(3 * BALANCE.breedPer * 0.8);
+    expect(r.state.factions.shu.gold).toBe(9999 - BALANCE.breedGold);
+    const n = endTurn(s);
+    expect(n.factions.shu.horses!).toBeGreaterThan(before);
+  });
+  it('편제: 기병은 말, 전차병은 큰 도시와 철이 필요하다', () => {
+    const s = newGame();
+    const city = s.cities.hanyang;
+    city.comp = { infantry: 1 }; city.troops = 10000;
+    s.factions.shu.horses = 0;
+    expect(organizeCost(s, city, { infantry: 0.7, cavalry: 0.3 }).error).toContain('군마');
+    s.factions.shu.horses = 5000; s.factions.shu.iron = 50000;
+    const ok = organizeCost(s, city, { infantry: 0.7, cavalry: 0.3 });
+    expect(ok.error).toBeUndefined();
+    expect(ok.horses).toBe(3000);
+    expect(isBigCity(s, city)).toBe(true);
+    const small = s.cities.gangneung;
+    small.comp = { infantry: 1 };
+    expect(organizeCost(s, small, { infantry: 0.8, chariot: 0.2 }).error).toContain('큰 도시');
+    const ch = organizeCost(s, city, { infantry: 0.8, chariot: 0.2 });
+    expect(ch.iron).toBe(2000);
+    const r = applyCommand(s, 'shu', { type: 'organize', generalId: 'guan_yu', comp: { infantry: 0.7, cavalry: 0.3 } });
+    expect(r.result.ok).toBe(true);
+    expect(r.state.cities.hanyang.comp!.cavalry).toBeCloseTo(0.3, 5);
+    expect(r.state.factions.shu.horses).toBe(2000);
+    expect(r.state.cities.hanyang.training).toBeLessThan(s.cities.hanyang.training);
+  });
+  it('징병한 신병은 보병으로 섞인다', () => {
+    const s = newGame();
+    s.factions.shu.gold = 99999; s.factions.shu.iron = 99999;
+    s.cities.hanyang.comp = { cavalry: 1 }; s.cities.hanyang.troops = 10000;
+    const r = applyCommand(s, 'shu', { type: 'conscript', generalId: 'guan_yu', amount: 5000 });
+    expect(r.result.ok).toBe(true);
+    const c = compOf(r.state.cities.hanyang);
+    expect(c.infantry!).toBeGreaterThan(0.2);
+    expect(c.cavalry!).toBeLessThan(0.8);
+  });
+  it('전차병은 평지 공격력이 가장 높고 산길에선 약하다, 창병은 기병·전차를 막는다', () => {
+    const s = newGame();
+    const k = s.cities.kaesong;
+    const inf = { infantry: 1 };
+    const eff = (a: Record<string, number>, d: Record<string, number> = inf, road = land, c = k) => compEffect(a, d, road, c, 'clear', false).attack;
+    for (const u of ['infantry', 'spear', 'archer', 'cavalry']) expect(eff({ chariot: 1 })).toBeGreaterThan(eff({ [u]: 1 }));
+    expect(eff({ chariot: 1 }, inf, { ...land, type: 'pass' as never }, s.cities.chuncheon)).toBeLessThan(1);
+    expect(eff({ cavalry: 1 }, { spear: 1 })).toBeLessThan(eff({ cavalry: 1 }, inf));
+    expect(eff({ chariot: 1 }, { spear: 1 })).toBeLessThan(eff({ chariot: 1 }, inf));
+  });
+  it('전투 보고에 양쪽 편제가 남는다', () => {
+    const s = newGame();
+    s.cities.kaesong.comp = { spear: 1 };
+    const o = resolveBattle({ rng: 1 }, { attackerTroops: 20000, attackerGeneral: s.generals.guan_yu, defenderCity: s.cities.kaesong, defenderGenerals: [], road: land, season: 0, weather: 'clear', noDuel: true, attackerComp: { cavalry: 1 }, defenderComp: compOf(s.cities.kaesong) });
+    expect(o.comp!.cavalry).toBe(1);
+    expect(o.defComp!.spear).toBe(1);
+    expect(o.reasons.join()).toContain('편제');
   });
 });

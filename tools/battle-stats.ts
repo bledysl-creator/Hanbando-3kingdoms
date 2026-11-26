@@ -7,6 +7,7 @@ const N = +(process.argv[2] ?? 100), T = +(process.argv[3] ?? 160), OUT = proces
 // v4.0 'shuffle': 세력마다 핵심 장수(군주 제외 상위 4명)를 무작위로 다른 세력에 다시 나눠 준다
 const SHUFFLE = process.argv[5] === 'shuffle';
 const all: (BattleReport & { game: number })[] = [];
+const endComp: Record<string, number> = { n: 0, horses: 0, infantry: 0, spear: 0, archer: 0, cavalry: 0, chariot: 0 };
 const games: { winner: string | null; turn: number; lu: boolean }[] = [];
 for (let i = 0; i < N; i++) {
   const s = createGame(DATA, SCENARIOS['197_sabun'], { seed: 20000 + i, playerFactionId: null });
@@ -24,6 +25,8 @@ for (let i = 0; i < N; i++) {
     endTurnMut(s);
     for (const b of s.lastBattles) if (!before.has(b)) all.push({ ...b, game: i });
   }
+  for (const c of Object.values(s.cities)) if (c.owner) { endComp.n += c.troops; for (const k of Object.keys(c.comp ?? {})) endComp[k] = (endComp[k] ?? 0) + (c.comp as Record<string, number>)[k] * c.troops; }
+  for (const f of Object.values(s.factions)) if (f.alive) endComp.horses += f.horses ?? 0;
   games.push({ winner: s.winner, turn: s.turn, lu: s.factions.lu.alive });
 }
 const pct = (a: number, b: number) => `${((a / Math.max(1, b)) * 100).toFixed(1)}%`;
@@ -58,14 +61,17 @@ const wl = all.map((b) => (b.won ? b.attackerLoss / Math.max(1, b.attackerTroops
 const ll = all.map((b) => (b.won ? b.defenderLoss / Math.max(1, b.defenderTroops) : b.attackerLoss / Math.max(1, b.attackerTroops)));
 const avg = (xs: number[]) => `${((xs.reduce((a, x) => a + x, 0) / Math.max(1, xs.length)) * 100).toFixed(1)}%`;
 console.log(`이긴 쪽 평균 손실 ${avg(wl)} · 진 쪽 평균 손실 ${avg(ll)}`);
-const fm: Record<string, [number, number]> = {}; for (const b of all) { const t = (fm[b.formation ?? 'balanced'] ??= [0, 0]); t[0]++; if (b.won) t[1]++; }
-console.log('편성:', JSON.stringify(Object.fromEntries(Object.entries(fm).map(([k, [n, w]]) => [k, `${n}회 승 ${pct(w, n)}`]))));
+// v4.1 편제: 공격·수비 평균 병종 비율, 기병·전차병이 많은(25%+) 공격의 승률
+const UK = ['infantry', 'spear', 'archer', 'cavalry', 'chariot'] as const;
+const avgComp = (sel: (b: BattleReport) => Record<string, number | undefined> | undefined) => Object.fromEntries(UK.map((k) => [k, `${((all.reduce((a, b) => a + (sel(b)?.[k] ?? 0), 0) / Math.max(1, all.length)) * 100).toFixed(1)}%`]));
+console.log('공격 편제 평균:', JSON.stringify(avgComp((b) => b.comp)));
+console.log('수비 편제 평균:', JSON.stringify(avgComp((b) => b.defComp)));
+for (const k of ['cavalry', 'chariot', 'spear', 'archer'] as const) { const xs = all.filter((b) => (b.comp?.[k] ?? 0) >= 0.25); console.log(`  ${k} 25%+ 공격 ${xs.length}회 승 ${pct(xs.filter((b) => b.won).length, xs.length)}`); }
+console.log(`끝난 판 도시 평균 편제: ${JSON.stringify(Object.fromEntries(UK.map((k) => [k, `${((endComp[k] / Math.max(1, endComp.n)) * 100).toFixed(1)}%`])))} · 판 끝 군마 평균 ${Math.round(endComp.horses / N)}필`);
 const duels = all.filter((b) => b.duel);
 console.log(`일기토 ${duels.length}회 (판당 ${(duels.length / N).toFixed(1)}) · 장수 전사 ${duels.filter((b) => b.duel!.slain).length} · 일기토 이긴 쪽 전투 승 ${pct(duels.filter((b) => (b.duel!.winnerId === b.duel!.attackerId) === b.won).length, duels.length)}`);
 const dn: Record<string, number> = {}; for (const b of duels) dn[b.duel!.winnerId] = (dn[b.duel!.winnerId] ?? 0) + 1;
 console.log('일기토 승리 상위:', Object.entries(dn).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${DATA.generals.find((g) => g.id === k)?.name ?? k} ${v}`).join(', '));
 const fates: Record<string, number> = {}; for (const b of all) for (const x of b.fates ?? []) fates[x.fate] = (fates[x.fate] ?? 0) + 1;
 console.log('함락 때 장수 운명:', JSON.stringify(fates), `· 전장의 변수 ${pct(all.filter((b) => b.fortune).length, all.length)}`);
-const dfm: Record<string, number> = {}; for (const b of all) dfm[b.defForm ?? '-'] = (dfm[b.defForm ?? '-'] ?? 0) + 1;
-console.log('수비 편성:', JSON.stringify(dfm));
 if (OUT) writeFileSync(OUT, JSON.stringify({ games, battles: all.map(({ reasons, ...b }) => ({ ...b, reasons: reasons.length })) }));

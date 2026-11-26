@@ -7,8 +7,9 @@ import { recordAnnal } from '../systems/chronicle';
 import { regionize } from './regionize';
 import { foundFaction } from './found';
 import { spreadGenerals } from './spread';
+import { isBigCity } from '../battle/formation';
 
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
 export interface CreateOptions {
@@ -129,6 +130,14 @@ export function createGame(data: GameData, scenario: ScenarioDef, opts: CreateOp
     let lv = 0;
     for (const c of Object.values(s.cities)) if (c.owner === f.id) lv += c.horses ?? 0;
     f.horses = f.horses ?? Math.round(lv * BALANCE.horsesStartPerLevel * (s.mapScale === 'region' ? 13 / 10 : 1));
+  }
+  // v4.1 시작 편제: 보병·창병·궁병 기본 + 마창 규모만큼 기병, 큰 도시는 전차병 조금
+  for (const c of Object.values(s.cities)) {
+    const cav = (c.ranch ?? 0) * BALANCE.startCavalryPerRanch + (c.horses ?? 0) * 0.02;
+    const ch = c.owner && isBigCity(s, c) ? 0.04 : 0;
+    const base = BALANCE.startComp;
+    const rest = 1 - cav - ch;
+    c.comp = { infantry: base.infantry * rest, spear: base.spear * rest, archer: base.archer * rest, cavalry: cav, chariot: ch };
   }
   rollWeather(s);
   recordAnnal(s);

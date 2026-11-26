@@ -1,3 +1,4 @@
+import { addToCity, compOf } from '../battle/formation';
 // v3.8 군현 지도: 장수가 없는 후방 현의 남는 병력은 계절마다 한 걸음씩 전선 쪽으로 모인다.
 // 345곳 지도에서는 장수가 도시 수보다 적어, 장수 없는 후방 현에 병력이 묶여 전쟁이 끝나지 않던 문제를 푼다.
 // 모든 세력(플레이어 포함)에 똑같이 적용되는 지도 규칙이다.
@@ -31,6 +32,7 @@ export function processRegionMuster(s: GameState) {
       a.troops -= m.n;
       b.training = Math.round((b.training * b.troops + a.training * m.n) / (b.troops + m.n));
       b.morale = Math.round((b.morale * b.troops + a.morale * m.n) / (b.troops + m.n));
+      addToCity(b, m.n, compOf(a));
       b.troops += m.n;
       total += m.n;
     }

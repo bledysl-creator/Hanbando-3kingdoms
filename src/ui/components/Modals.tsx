@@ -1,7 +1,7 @@
 // 목록·보고서 창: 장수, 도시, 연표, 세력 정보, 전투 보고, 설정/저장, 도움말
 import { useEffect, useState, type ReactNode } from 'react';
 import type { BattleReport, GameState } from '../../core';
-import { BALANCE, FORMATIONS, TACTICS, MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
+import { BALANCE, compText, TACTICS, MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
 import { exportJson, indexedDbRepo, migrate, type SaveMeta } from '../../save/saveRepository';
 import { Portrait } from './Portrait';
 
@@ -229,7 +229,7 @@ export function BattleReportView({ state, report }: { state: GameState; report: 
         <div className="x">VS</div>
         <div><b style={{ color: def?.color }}>{def?.name ?? '중립'}</b><br />병력 {fmt(report.defenderTroops)} · 손실 {fmt(report.defenderLoss)}</div>
       </div>
-      {report.formation && report.formation !== 'balanced' && (() => { const f = FORMATIONS.find((x) => x.id === report.formation)!; return <div className="battle-badge">{f.icon} {f.name} 편성</div>; })()}
+      {report.comp && <div className="battle-badge">편제 {compText(report.comp)}{report.defComp ? ` 대 ${compText(report.defComp)}` : ''}</div>}
       {report.duel && (
         <div className="duel-banner">
           ⚔️ 일기토 — <b>{state.generals[report.duel.attackerId]?.name}</b> 대 <b>{state.generals[report.duel.defenderId]?.name}</b> : <b className="good">{state.generals[report.duel.winnerId]?.name}</b> 승리{report.duel.slain ? ' · 상대 장수 전사' : ''}

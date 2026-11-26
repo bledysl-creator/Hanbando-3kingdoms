@@ -1,5 +1,5 @@
 import { TACTICS, tacticChance, type TacticKind } from '../battle/tactics';
-import { bestFormation } from '../battle/formation';
+import { aiTargetComp, compOf, organizeCost, UNIT_KINDS } from '../battle/formation';
 // 규칙 기반 + Utility AI (Game.md 5-5). 플레이어와 같은 명령만 사용한다.
 import { BALANCE } from '../config';
 import { executeCommand, foodPrice, type Command } from '../commands/commands';
@@ -125,7 +125,7 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
       if (BALANCE.siegeChoice && n.city.owner !== null && n.city.owner === s.playerFactionId) ratio /= BALANCE.siegeAiCaution;
       if (ratio > needRatio) {
         const value = (n.city.population / 10000 + n.city.agriculture / 20 + n.city.commerce / 20) * (n.city.owner === null ? 0.8 : 1);
-        opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops, tactic: bestTactic(s, g, n.city, n.road), formation: bestFormation(s, fid, n.road, n.city, true, troops) }, why: `승산 ${ratio.toFixed(2)}` });
+        opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops, tactic: bestTactic(s, g, n.city, n.road)}, why: `승산 ${ratio.toFixed(2)}` });
       }
     }
   }
@@ -263,6 +263,17 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
     const st = g.stats;
     const stat = st.intellect >= Math.max(st.war, st.leadership) ? 'intellect' : st.war >= st.leadership ? 'war' : 'leadership';
     if (st[stat] < 100) opts.push({ score: 22, cmd: { type: 'study', generalId: g.id, stat }, why: '수련·학문' });
+  }
+  // v4.1 군사 편제: 목표 편제와 많이 다르면 고친다 (전선 우선). 마창이 있으면 말을 기른다
+  if (city.troops >= 1000 * K) {
+    const enemyCav = Math.max(0, ...enemyNs.map((n) => { const c = compOf(n.city); return (c.cavalry ?? 0) + (c.chariot ?? 0); }));
+    const target = aiTargetComp(s, fid, city, enemyCav);
+    const cur = compOf(city);
+    const gap = UNIT_KINDS.reduce((a, k) => a + Math.abs((target[k] ?? 0) - (cur[k] ?? 0)), 0) / 2;
+    if (gap >= BALANCE.aiOrganizeGap && !organizeCost(s, city, target).error) opts.push({ score: isFrontier ? 30 : 19, cmd: { type: 'organize', generalId: g.id, comp: target }, why: `편제 조정 (차이 ${Math.round(gap * 100)}%)` });
+  }
+  if ((city.ranch ?? 0) > 0 && f.gold > BALANCE.aiBreedGold && f.food > totalT * BALANCE.foodPerTroop * 3 && (f.horses ?? 0) < totalT * 0.15) {
+    opts.push({ score: 23 + (city.ranch ?? 0), cmd: { type: 'breedHorses', generalId: g.id }, why: '말 기르기' });
   }
   // v4.0 군마: 말 산지가 없는 부유한 나라는 시장에서 말을 사 둔다
   if (f.gold > BALANCE.aiHorseGold && (f.horses ?? 0) < BALANCE.aiHorseKeep) opts.push({ score: 21, cmd: { type: 'trade', generalId: g.id, action: 'buyHorses', amount: 200 }, why: '군마 매입' });

@@ -56,6 +56,15 @@ export function migrate(raw: unknown): GameState {
     s.captives ??= [];
     s.saveVersion = 11;
   }
+  // v11 → v12: 마창 규모·군사 편제 (v4.1). 마창은 데이터에서, 편제는 기본값(보병·창병·궁병)
+  if (s.saveVersion < 12) {
+    const src = new Map([...DATA.cities, ...REGION_GRAPH.cities].map((c) => [c.id, c]));
+    for (const c of Object.values(s.cities)) {
+      c.ranch = src.get(c.id)?.ranch ?? 0;
+      c.comp ??= { ...(BALANCE.startComp as Record<string, number>) } as never;
+    }
+    s.saveVersion = 12;
+  }
   return s;
 }
 

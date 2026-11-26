@@ -17,7 +17,8 @@
   "relief": 21,
   "basin": 0.5,
   "landform": "plain",
-  "horses": 2
+  "horses": 2,
+  "ranch": 2
  },
  {
   "id": "anju",
@@ -37,7 +38,8 @@
   "relief": 17,
   "basin": 0.19,
   "landform": "plain",
-  "horses": 0
+  "horses": 0,
+  "ranch": 1
  },
  {
   "id": "ganggye",
@@ -57,7 +59,8 @@
   "relief": 59,
   "basin": 1.0,
   "landform": "basin",
-  "horses": 0
+  "horses": 0,
+  "ranch": 0
  },
  {
   "id": "pyongyang",
@@ -77,7 +80,8 @@
   "relief": 9,
   "basin": 0.06,
   "landform": "plain",
-  "horses": 0
+  "horses": 0,
+  "ranch": 3
  },
  {
   "id": "haeju",
@@ -97,7 +101,8 @@
   "relief": 49,
   "basin": 0.0,
   "landform": "hill",
-  "horses": 0
+  "horses": 0,
+  "ranch": 1
  },
  {
   "id": "kaesong",
@@ -117,7 +122,8 @@
   "relief": 23,
   "basin": 0.25,
   "landform": "plain",
-  "horses": 0
+  "horses": 0,
+  "ranch": 2
  },
  {
   "id": "hyesan",
@@ -137,7 +143,8 @@
   "relief": 48,
   "basin": 0.62,
   "landform": "hill",
-  "horses": 1
+  "horses": 1,
+  "ranch": 1
  },
  {
   "id": "chongjin",
@@ -157,7 +164,8 @@
   "relief": 68,
   "basin": 0.56,
   "landform": "mountain",
-  "horses": 2
+  "horses": 2,
+  "ranch": 0
  },
  {
   "id": "hamhung",
@@ -177,7 +185,8 @@
   "relief": 19,
   "basin": 0.62,
   "landform": "plain",
-  "horses": 2
+  "horses": 2,
+  "ranch": 3
  },
  {
   "id": "wonsan",
@@ -197,7 +206,8 @@
   "relief": 47,
   "basin": 0.56,
   "landform": "hill",
-  "horses": 0
+  "horses": 0,
+  "ranch": 1
  },
  {
   "id": "hanyang",
@@ -217,7 +227,8 @@
   "relief": 21,
   "basin": 0.31,
   "landform": "plain",
-  "horses": 0
+  "horses": 0,
+  "ranch": 3
  },
  {
   "id": "suwon",
@@ -237,7 +248,8 @@
   "relief": 17,
   "basin": 0.44,
   "landform": "plain",
-  "horses": 0
+  "horses": 0,
+  "ranch": 3
  },
  {
   "id": "chuncheon",
@@ -257,7 +269,8 @@
   "relief": 39,
   "basin": 1.0,
   "landform": "basin",
-  "horses": 0
+  "horses": 0,
+  "ranch": 1
  },
  {
   "id": "cheongju",
@@ -277,7 +290,8 @@
   "relief": 26,
   "basin": 0.31,
   "landform": "hill",
-  "horses": 0
+  "horses": 0,
+  "ranch": 1
  },
  {
   "id": "gongju",
@@ -297,7 +311,8 @@
   "relief": 22,
   "basin": 0.62,
   "landform": "plain",
-  "horses": 0
+  "horses": 0,
+  "ranch": 2
  },
  {
   "id": "jeonju",
@@ -317,7 +332,8 @@
   "relief": 32,
   "basin": 0.56,
   "landform": "hill",
-  "horses": 0
+  "horses": 0,
+  "ranch": 1
  },
  {
   "id": "gwangju",
@@ -337,7 +353,8 @@
   "relief": 25,
   "basin": 0.56,
   "landform": "hill",
-  "horses": 0
+  "horses": 0,
+  "ranch": 1
  },
  {
   "id": "naju",
@@ -357,7 +374,8 @@
   "relief": 11,
   "basin": 0.38,
   "landform": "plain",
-  "horses": 0
+  "horses": 0,
+  "ranch": 1
  },
  {
   "id": "gangneung",
@@ -377,7 +395,8 @@
   "relief": 58,
   "basin": 0.56,
   "landform": "mountain",
-  "horses": 0
+  "horses": 0,
+  "ranch": 0
  },
  {
   "id": "daegu",
@@ -397,7 +416,8 @@
   "relief": 37,
   "basin": 0.69,
   "landform": "basin",
-  "horses": 0
+  "horses": 0,
+  "ranch": 3
  },
  {
   "id": "gyeongju",
@@ -417,7 +437,8 @@
   "relief": 30,
   "basin": 0.81,
   "landform": "basin",
-  "horses": 0
+  "horses": 0,
+  "ranch": 3
  },
  {
   "id": "jinju",
@@ -437,7 +458,8 @@
   "relief": 13,
   "basin": 0.56,
   "landform": "plain",
-  "horses": 0
+  "horses": 0,
+  "ranch": 2
  },
  {
   "id": "busan",
@@ -457,7 +479,8 @@
   "relief": 32,
   "basin": 0.12,
   "landform": "hill",
-  "horses": 0
+  "horses": 0,
+  "ranch": 3
  },
  {
   "id": "jeju",
@@ -477,6 +500,7 @@
   "relief": 95,
   "basin": 0.31,
   "landform": "hill",
-  "horses": 6
+  "horses": 6,
+  "ranch": 3
  }
 ]

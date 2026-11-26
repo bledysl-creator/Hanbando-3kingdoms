@@ -7,13 +7,13 @@ import { marchInput } from '../commands/commands';
 import { generalsIn, neighbors } from '../query';
 import type { GameState, General } from '../state/types';
 import { resolveBattle } from './battle';
-import { FORMATIONS, hasHorses, type FormationKind } from './formation';
+import { FORMATIONS, type FormationKind } from './formation';
 import { TACTICS, tacticChance, type TacticKind } from './tactics';
 
-export interface Plan { formation: FormationKind; tactic?: TacticKind }
+export interface Plan { formation?: FormationKind; tactic?: TacticKind }
 export interface Advice { advisorId: string; plan: Plan | null; believed: number; text: string; accuracy: number }
 
-const key = (p: Plan) => `${p.formation}|${p.tactic ?? ''}`;
+const key = (p: Plan) => `${p.formation ?? ''}|${p.tactic ?? ''}`;
 
 /** 문자열 → 0~1 고정 난수 (상태를 건드리지 않는다) */
 function hash01(str: string): number {
@@ -32,7 +32,8 @@ export function planOdds(s: GameState, fid: string, g: General, toId: string, tr
   if (!road) return [];
   const defenders = generalsIn(s, toId).filter((x) => x.faction === to.owner);
   const tactics: (TacticKind | undefined)[] = [undefined, ...TACTICS.filter((t) => tacticChance(t.id, { general: g, defenders, weather: s.weather[toId], road, target: to }) > 0).map((t) => t.id)];
-  const forms = FORMATIONS.filter((f) => f.id !== 'cavalry' || hasHorses(s, fid, troops)).map((f) => f.id);
+  // v4.1 편제는 도시의 군사 편제를 따른다 — 책사는 계책(과 정공법)을 두고 다툰다
+  const forms: (FormationKind | undefined)[] = [undefined];
   const out: { plan: Plan; win: number }[] = [];
   for (const formation of forms) for (const tactic of tactics) {
     const input = marchInput(s, fid, g, from, to, troops, road, tactic, formation);
@@ -53,9 +54,9 @@ export function advisorsOf(s: GameState, fid: string): General[] {
 }
 
 function planName(p: Plan): string {
-  const f = FORMATIONS.find((x) => x.id === p.formation)!;
+  const f = p.formation ? FORMATIONS.find((x) => x.id === p.formation)! : null;
   const t = p.tactic ? TACTICS.find((x) => x.id === p.tactic)! : null;
-  return `${f.icon}${f.name}${t ? ` + ${t.icon}${t.name}` : ' 정공법'}`;
+  return `${f ? `${f.icon}${f.name} ` : ''}${t ? `${t.icon}${t.name}` : '정공법'}`;
 }
 
 /** 한 책사의 의견 */
@@ -93,5 +94,5 @@ export function followsAdvice(s: GameState, fid: string, g: General, toId: strin
   const a = s.generals[advisorId];
   if (!a || a.faction !== fid || a.stats.intellect < BALANCE.councilMinInt) return false;
   const adv = adviceOf(s, a, planOdds(s, fid, g, toId, troops), toId, troops);
-  return !!adv.plan && adv.plan.formation === (formation ?? 'balanced') && adv.plan.tactic === tactic;
+  return !!adv.plan && adv.plan.formation === formation && adv.plan.tactic === tactic;
 }

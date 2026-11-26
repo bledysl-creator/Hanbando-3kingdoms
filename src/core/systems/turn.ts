@@ -39,7 +39,7 @@ export function processEconomy(s: GameState) {
       const rk = s.mapScale === 'region' ? BALANCE.regionResourceScale : 1;
       wood += c.wood * BALANCE.woodPerLevel * rk * ((c.fire ?? 0) > 0 ? BALANCE.fireWoodPenalty : 1);
       iron += c.iron * BALANCE.ironPerLevel * rk;
-      horses += (c.horses ?? 0) * BALANCE.horsesPerLevel * orderMul; // v4.0 군마
+      horses += ((c.horses ?? 0) * BALANCE.horsesPerLevel + (c.ranch ?? 0) * BALANCE.ranchPassive) * orderMul; // v4.0 군마 + v4.1 마창
       troops += c.troops;
       // 인구·민심
       c.population = Math.round(c.population * (1 + BALANCE.popGrowth * (c.order / 100) - (s.season === 3 ? 0.004 : 0)));
@@ -51,7 +51,7 @@ export function processEconomy(s: GameState) {
     f.food += Math.round(harvest + fish);
     f.wood += wood;
     f.iron += iron;
-    f.horses = Math.round((f.horses ?? 0) + horses);
+    f.horses = Math.round((f.horses ?? 0) * (1 - BALANCE.horseDecay) + horses);
     const eat = Math.round(troops * BALANCE.foodPerTroop);
     f.food -= eat;
     if (f.food < 0) {

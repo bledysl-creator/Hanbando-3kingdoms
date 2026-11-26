@@ -1,6 +1,6 @@
 // v4.0 도시 특징: 산물·지형·성벽을 한눈에 (도시 특징 카드)
 import { BALANCE } from '../config';
-import { reliefOf } from '../battle/formation';
+import { isBigCity, reliefOf } from '../battle/formation';
 import type { City, GameState } from '../state/types';
 
 export interface CityTrait { icon: string; label: string; desc: string }
@@ -15,6 +15,9 @@ export function cityTraits(s: GameState, c: City): CityTrait[] {
   if (c.wood >= 5) out.push({ icon: '🌲', label: '울창한 숲', desc: '목재가 많이 나 성벽·전선을 짓기 좋다 (산불 주의)' });
   if ((c.horses ?? 0) >= 4) out.push({ icon: '🐎', label: '큰 목장', desc: `말이 많이 난다 (계절마다 약 ${(c.horses ?? 0) * BALANCE.horsesPerLevel}필). 기병을 꾸리고 교역·예물로 쓴다` });
   else if ((c.horses ?? 0) > 0) out.push({ icon: '🐴', label: '말 산지', desc: `말을 기른다 (계절마다 약 ${(c.horses ?? 0) * BALANCE.horsesPerLevel}필)` });
+  const rl = c.ranch ?? 0;
+  if (rl > 0) out.push({ icon: '🏇', label: `마창 ${['', '소', '중', '대'][rl]}`, desc: `말 목장 (계절마다 말 ${rl * BALANCE.ranchPassive}필, '말 기르기'로 더 늘림) — 기병·전차병의 바탕` });
+  if (isBigCity(s, c)) out.push({ icon: '🛞', label: '전차 도시', desc: '큰 도시라 철을 들여 전차병을 꾸릴 수 있다 (평지 공격력 최고)' });
   if (c.port) out.push({ icon: '⚓', label: '항구', desc: '어물과 바닷길 교역, 전선 건조' });
   const rel = reliefOf(c);
   if (c.landform === 'basin') out.push({ icon: '🥣', label: '분지', desc: `능선에 둘러싸인 분지 (둘러싼 정도 ${Math.round((c.basin ?? 0) * 100)}%) — 들어오는 길이 좁아 지키기 쉽지만, 함락되면 빠져나가기 어렵다` });

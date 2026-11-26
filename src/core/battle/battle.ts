@@ -6,7 +6,7 @@ import type { City, General, Road } from '../state/types';
 import { weatherAttackModifier } from '../systems/weather';
 import { tacticChance, TACTICS, type TacticKind } from './tactics';
 import { landmarksOfCity, landmarksOnRoad } from '../data';
-import { counterMul, formationEffect, FORMATIONS, reliefOf, type FormationKind } from './formation';
+import { compEffect, compFromFormation, compText, normComp, reliefOf, type Comp, type FormationKind } from './formation';
 
 export interface BattleInput {
   attackerMorale?: number;
@@ -41,6 +41,9 @@ export interface BattleInput {
   noDuel?: boolean;
   /** v4.0 수비 편성 (없으면 균형) */
   defForm?: FormationKind;
+  /** v4.1 공격군·수비군 편제 (병종 비율). 없으면 formation/defForm 또는 처음 편제 */
+  attackerComp?: Comp;
+  defenderComp?: Comp;
 }
 
 /** v3.9 일기토 결과 */
@@ -61,6 +64,8 @@ export interface BattleOutcome {
   duel?: DuelResult;
   formation?: FormationKind;
   defForm?: FormationKind;
+  comp?: Comp;
+  defComp?: Comp;
   /** v4.0 전장의 변수 */
   fortune?: string;
   /** v4.0 함락 때 수비 장수의 운명 (finishAttack이 채움) */
@@ -146,17 +151,13 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
 
   const city = b.defenderCity;
   // v3.9 병종 편성
-  const fe = formationEffect(b.formation, b.road, city, b.weather);
-  if (b.formation && b.formation !== 'balanced') {
-    const fname = FORMATIONS.find((x) => x.id === b.formation)!.name;
-    atk *= fe.attack;
-    if (b.formation === 'cavalry' && b.cavalryTrait && fe.attack > 1) { atk *= 1 + BALANCE.formation.cavalryTraitBonus; fe.reasons.push(`천하무쌍 기병대 +${Math.round(BALANCE.formation.cavalryTraitBonus * 100)}%`); }
-    reasons.push(fe.reasons.length ? `[${fname}] ${fe.reasons.join(', ')}` : `[${fname}] 이 땅에서는 특별한 이점이 없음`);
-  }
-  // v4.0 수비 편성 상성 (성벽 위 궁노 vs 기병 등)
-  const defForm = b.defForm ?? 'balanced';
-  const cm = counterMul(b.formation, defForm, !b.ignoreWalls && city.wall >= 50);
-  if (cm.mul !== 1) { atk *= cm.mul; reasons.push(cm.reason!); }
+  // v4.1 군사 편제: 병종마다 지형·날씨·성벽 효과와 상대 편제와의 상성을 병력 비율로 섞는다
+  const aComp = normComp(b.attackerComp ?? compFromFormation(b.formation));
+  const dComp = normComp(b.defenderComp ?? compFromFormation(b.defForm));
+  const fe = compEffect(aComp, dComp, b.road, city, b.weather, !b.ignoreWalls && city.wall >= 50, b.cavalryTrait);
+  atk *= fe.attack;
+  reasons.push(`[편제] ${compText(aComp)} vs ${compText(dComp)} → ${fe.attack >= 1 ? '+' : '−'}${Math.round(Math.abs(fe.attack - 1) * 100)}%`);
+  for (const r of fe.reasons) reasons.push(`  · ${r}`);
   // v4.0 실측 지형: 험한 산골짜기에서는 대군이 한꺼번에 펼치지 못한다
   const rel = reliefOf(city);
   if (rel >= BALANCE.frontageFrom && b.attackerTroops > city.troops * 1.2) {
@@ -255,11 +256,11 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
     defenderSurvivors = city.troops - defenderLoss;
     phases = { clashAttacker: attackerLoss, clashDefender: dClash, pursuit, pursuer: 'attacker' };
     reasons.unshift(`${g.name}의 공격력 ${Math.round(atk).toLocaleString()} vs 수비력 ${Math.round(def).toLocaleString()} — 공격 성공`);
-    if (pursuit > 0) reasons.push(`성이 무너지자 ${b.formation === 'cavalry' ? '기병이 ' : ''}달아나는 수비군을 추격해 ${pursuit.toLocaleString()}명을 더 쓰러뜨림`);
+    if (pursuit > 0) reasons.push(`성이 무너지자 ${(aComp.cavalry ?? 0) + (aComp.chariot ?? 0) >= 0.25 ? '기병·전차가 ' : ''}달아나는 수비군을 추격해 ${pursuit.toLocaleString()}명을 더 쓰러뜨림`);
   } else {
     defenderLoss = Math.min(city.troops - 1, Math.round(city.troops * winnerRate * (walled ? BALANCE.wallClashShield : 1)));
     const aClash = Math.round(b.attackerTroops * Math.min(0.6, loserRate * (b.ignoreWalls ? 1 : 1 + city.wall / BALANCE.assaultWallDiv / 2)) * fe.ownLoss);
-    const pursuit = Math.round((b.attackerTroops - aClash) * pursuitRate * (defForm === 'cavalry' ? 1.5 : 1));
+    const pursuit = Math.round((b.attackerTroops - aClash) * pursuitRate * (1 + ((dComp.cavalry ?? 0) + (dComp.chariot ?? 0) * 0.5) * 1.0));
     attackerLoss = Math.min(b.attackerTroops, aClash + pursuit);
     phases = { clashAttacker: aClash, clashDefender: defenderLoss, pursuit, pursuer: 'defender' };
     reasons.unshift(`${g.name}의 공격력 ${Math.round(atk).toLocaleString()} vs 수비력 ${Math.round(def).toLocaleString()} — 공격 실패`);
@@ -268,5 +269,5 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   if (b.attackerTroops > city.troops * 1.5 && !won) reasons.push('병력은 우세했으나 지형과 성벽을 넘지 못함');
   if (b.attackerTroops < city.troops && won) reasons.push('적은 병력으로 큰 성을 무너뜨린 대승!');
 
-  return { attackerPower: Math.round(atk), defenderPower: Math.round(def), attackerLoss, defenderLoss: Math.max(0, defenderLoss), won, reasons: reasons.map(fixJosa), tactic, defenderSurvivors, phases, duel, formation: b.formation, defForm: b.defForm, fortune };
+  return { attackerPower: Math.round(atk), defenderPower: Math.round(def), attackerLoss, defenderLoss: Math.max(0, defenderLoss), won, reasons: reasons.map(fixJosa), tactic, defenderSurvivors, phases, duel, formation: b.formation, defForm: b.defForm, comp: aComp, defComp: dComp, fortune };
 }
