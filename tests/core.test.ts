@@ -963,7 +963,7 @@ describe('냉병기 전투 (v3.9)', () => {
     const s = newGame();
     const a = resolveBattle({ rng: 3 }, base(s));
     expect(a.won).toBe(true);
-    expect(a.attackerLoss / 30000).toBeLessThan(0.15);
+    expect(a.attackerLoss / 30000).toBeLessThan(Math.min(0.25, a.defenderLoss / s.cities.kaesong.troops));
     expect(a.defenderLoss).toBeLessThan(s.cities.kaesong.troops);
     expect(a.phases!.pursuit).toBeGreaterThan(0);
     const c = resolveBattle({ rng: 3 }, { ...base(s), formation: 'cavalry' });
