@@ -375,3 +375,4 @@ button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 .organize .org-num { text-align: right; font-variant-numeric: tabular-nums; }
 .organize .org-num small { color: #9aa; margin-left: 3px; }
 .hint.bad { color: #e07060; }
+.ranch-row { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; } .ranch-row small { color: #9aa; }

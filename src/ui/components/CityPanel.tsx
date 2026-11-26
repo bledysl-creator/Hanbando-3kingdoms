@@ -497,7 +497,7 @@ function OrganizeBox({ state, cityId, actor, onCommand }: { state: GameState; ci
       <div className="sub">
         <b>마창 ({RANCH_LABEL[lv]})</b> <small>{lv > 0 ? `계절마다 말 ${BALANCE.ranchPassive * lv}필이 저절로 늘어남` : '이 고을에는 말을 기를 목장이 없습니다'}</small>
         {lv > 0 && (
-          <div className="row2">
+          <div className="ranch-row">
             <button disabled={f.gold < BALANCE.breedGold || f.food < breedFood} onClick={() => onCommand({ type: 'breedHorses', generalId: actor.id })}>🐎 말 기르기 +{breedYield(state, city, actor).toLocaleString()}필</button>
             <small>금 {BALANCE.breedGold} · 곡식 {breedFood.toLocaleString()} · {actor.name}의 정치가 높을수록 많이</small>
           </div>
