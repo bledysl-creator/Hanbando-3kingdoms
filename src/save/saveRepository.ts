@@ -65,6 +65,11 @@ export function migrate(raw: unknown): GameState {
     }
     s.saveVersion = 12;
   }
+  // v12 → v13: 장수 성장 경험(exp·grown)과 포위군 부장(deputyId) — 모두 선택 필드라 빈 값으로 시작 (v4.2)
+  if (s.saveVersion < 13) {
+    for (const g of Object.values(s.generals)) { g.exp ??= {}; g.grown ??= 0; }
+    s.saveVersion = 13;
+  }
   return s;
 }
 

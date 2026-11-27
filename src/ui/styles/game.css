@@ -376,3 +376,11 @@ button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 .organize .org-num small { color: #9aa; margin-left: 3px; }
 .hint.bad { color: #e07060; }
 .ranch-row { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; } .ranch-row small { color: #9aa; }
+/* v4.2 능력치 등급·성장 */
+.grade { font-size: 10px; padding: 0 3px; border-radius: 3px; margin-left: 2px; background: #ffffff18; }
+.grade.gS { background: #b8862b; color: #1a1206; }
+.grade.gA { background: #6d8f3a; color: #0d1406; }
+.grade.gB { background: #3f6a8a; color: #e8f2fa; }
+.bar i.exp { position: absolute; left: 0; bottom: 0; height: 2px; background: #9fe07a; }
+.gd-bar { grid-template-columns: 64px 1fr; }
+.deputy-pick select { min-width: 0; max-width: 100%; }

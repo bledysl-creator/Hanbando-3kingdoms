@@ -17,6 +17,8 @@ import { discord, rumor, scout, withinTwo } from '../systems/intrigue';
 import { generalsIn, isConnectedToCapital, lastStandBonus, minGarrison, minMarch, neighbors, roadBetween, supplyRatio } from '../query';
 import type { City, EventKind, GameState, General, LogKind, Road } from '../state/types';
 import { refuseChance, remember } from '../systems/persona';
+import { developGain, gainExp, supplyMul, trainGain, type StatKey } from '../systems/stats';
+import { relationBetween } from '../query';
 import { canAttack, pairKey, statusOf, tryProposal, type Proposal } from '../diplomacy/diplomacy';
 
 export type DevelopField = 'agriculture' | 'commerce' | 'wall';
@@ -25,7 +27,7 @@ export type Command =
   | { type: 'develop'; generalId: string; field: DevelopField }
   | { type: 'conscript'; generalId: string; amount: number }
   | { type: 'train'; generalId: string }
-  | { type: 'march'; generalId: string; toCityId: string; troops: number; tactic?: TacticKind; formation?: FormationKind; advisorId?: string }
+  | { type: 'march'; generalId: string; toCityId: string; troops: number; tactic?: TacticKind; formation?: FormationKind; advisorId?: string; deputyId?: string }
   | { type: 'transfer'; generalId: string; toCityId: string; troops: number }
   | { type: 'recruit'; generalId: string; targetId: string }
   | { type: 'reward'; generalId: string; targetId: string }
@@ -61,8 +63,29 @@ export function log(s: GameState, rawText: string, kind: LogKind = 'info', facti
   }
 }
 
+/** v4.2 성장: 명령을 해낸 장수가 그 일에 쓰인 능력의 경험을 얻는다 */
+export function growFrom(s: GameState, g: General, kind: string, factionId: string | null) {
+  const table = BALANCE.growExp[kind];
+  if (!table) return;
+  // 적성: 원래 잘하는 일일수록 빨리 는다 (능력 30 → ×0.7, 90 → ×1.3) — 맹장이 내정만 하다 명재상이 되지는 않는다
+  for (const [k, v] of Object.entries(table)) gainExp(s, g, k as StatKey, (v ?? 0) * (BALANCE.growAptBase + g.stats[k as StatKey] / 100), (t) => log(s, t, 'good', factionId));
+}
+
 /** 상태를 직접 수정한다(드래프트). UI는 applyCommand로 복사본에 적용할 것. */
 export function executeCommand(s: GameState, factionId: string, cmd: Command): CommandResult {
+  const g = s.generals[cmd.generalId];
+  const wasActed = g?.acted;
+  const r = executeCommandInner(s, factionId, cmd);
+  if (r.ok && g && !wasActed && g.acted) {
+    const kind = cmd.type === 'develop' ? (cmd.field === 'wall' ? 'wall' : 'develop')
+      : cmd.type === 'recruit' ? (r.message.includes('등용 성공') ? 'recruitOk' : 'recruitFail')
+      : cmd.type === 'scout' || cmd.type === 'rumor' || cmd.type === 'discord' ? 'intrigue' : cmd.type;
+    growFrom(s, g, kind, factionId);
+  }
+  return r;
+}
+
+function executeCommandInner(s: GameState, factionId: string, cmd: Command): CommandResult {
   const g = s.generals[cmd.generalId];
   if (!g || !g.alive) return { ok: false, error: '장수를 찾을 수 없습니다.' };
   if (g.faction !== factionId) return { ok: false, error: '우리 세력 장수가 아닙니다.' };
@@ -79,7 +102,8 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (f.gold < gold) return { ok: false, error: '금이 부족합니다.' };
       if (isWall && f.wood < BALANCE.wallWood) return { ok: false, error: '목재가 부족합니다.' };
       if (city[cmd.field] >= 100) return { ok: false, error: '이미 최대치입니다.' };
-      const gain = Math.max(1, Math.round(2 + g.stats.politics / 15));
+      // v4.2 성벽 보수는 정치(공사 관리)와 지력(축성 설계)을 함께 본다
+      const gain = developGain(g, isWall);
       f.gold -= gold;
       if (isWall) f.wood -= BALANCE.wallWood;
       city[cmd.field] = Math.min(100, city[cmd.field] + gain);
@@ -101,9 +125,12 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       const total = city.troops + amount;
       addToCity(city, amount); // v4.1 신병은 보병
       city.training = Math.round((city.training * city.troops + BALANCE.newRecruitTraining * amount) / total);
-      city.morale = Math.round((city.morale * city.troops + BALANCE.newRecruitMorale * amount) / total);
+      // v4.2 매력: 사람을 끄는 장수가 모으면 백성의 원망이 덜하고 신병의 사기가 높다
+      const rm = BALANCE.newRecruitMorale + (g.stats.charm - 50) / BALANCE.recruitMoraleDiv;
+      city.morale = Math.round((city.morale * city.troops + rm * amount) / total);
       city.troops = total;
-      city.order = Math.max(0, city.order - (amount / 1000) * BALANCE.conscriptOrderLossPer1000);
+      const om = Math.max(0.5, BALANCE.conscriptCharmBase - g.stats.charm / BALANCE.conscriptCharmDiv);
+      city.order = Math.max(0, city.order - (amount / 1000) * BALANCE.conscriptOrderLossPer1000 * om);
       g.acted = true;
       return { ok: true, message: `${g.name}이(가) ${city.name}에서 ${amount.toLocaleString()}명을 징병했습니다.` };
     }
@@ -112,7 +139,8 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       const food = Math.ceil(city.troops * BALANCE.trainFood);
       if (f.food < food) return { ok: false, error: '군량이 부족합니다.' };
       f.food -= food;
-      const gain = Math.max(3, Math.round(4 + g.stats.leadership / 10));
+      // v4.2 훈련: 통솔(조련) 위주, 무력(무예 시범)이 거든다
+      const gain = trainGain(g);
       city.training = Math.min(100, city.training + gain);
       city.morale = Math.min(100, city.morale + 3);
       g.acted = true;
@@ -146,10 +174,20 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (!canAttack(s, factionId, to.owner)) return { ok: false, error: `${s.factions[to.owner!].name}과(와)는 ${statusOf(s, factionId, to.owner) === 'truce' ? '휴전' : '동맹'} 중이라 공격할 수 없습니다. 먼저 맹약을 파기하세요.` };
       const troops = Math.min(Math.floor(cmd.troops), city.troops - minGarrison(s));
       if (troops < minMarch(s)) return { ok: false, error: `출진 병력은 ${minMarch(s).toLocaleString()}명 이상이어야 합니다 (도시에 ${minGarrison(s)}명은 남겨야 함).` };
-      const foodNeed = Math.ceil(troops * BALANCE.foodPerTroop);
+      // v4.2 부장: 같은 성의 아직 행동하지 않은 우리 장수 1명
+      let deputy: General | null = null;
+      if (cmd.deputyId) {
+        const d = s.generals[cmd.deputyId];
+        if (!d || !d.alive || d.faction !== factionId || d.city !== city.id || d.id === g.id) return { ok: false, error: '부장은 같은 성에 있는 우리 장수여야 합니다.' };
+        if (d.acted) return { ok: false, error: `${d.name}은(는) 이번 턴에 이미 행동했습니다.` };
+        if (relationBetween(s, g.id, d.id)?.type === 'enmity') return { ok: false, error: `${g.name}과(와) ${d.name}은(는) 서로 원수라 한 부대로 묶을 수 없습니다.` };
+        deputy = d;
+      }
+      // v4.2 정치 병참: 출진 성의 최고 정치 장수가 군량을 아낀다
+      const foodNeed = Math.ceil(troops * BALANCE.foodPerTroop * supplyMul(s, city.id, factionId));
       if (f.food < foodNeed) return { ok: false, error: '군량이 부족합니다.' };
       // 장수가 명령을 거부할 수도 있다 (복종도·성향·승산)
-      const pRefuse = refuseChance(s, g, estimateRatio(s, g, city, to, troops));
+      const pRefuse = refuseChance(s, g, estimateRatio(s, g, city, to, troops, undefined, deputy));
       if (pRefuse > 0 && chance(s, pRefuse)) {
         g.acted = true;
         g.loyalty = Math.max(0, g.loyalty - 2);
@@ -167,13 +205,14 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       f.food -= foodNeed;
       city.troops -= troops;
       g.acted = true;
+      if (deputy) deputy.acted = true;
 
       // v3.6 플레이어 도시를 노리면 바로 싸우지 않고 한 계절 포위한다 → 플레이어가 대응을 고른다
       if (s.playerFactionId && to.owner === s.playerFactionId && factionId !== s.playerFactionId && BALANCE.siegeChoice) {
-        beginSiege(s, factionId, g, city, to, troops, cmd.tactic, cmd.formation);
+        beginSiege(s, factionId, g, city, to, troops, cmd.tactic, cmd.formation, deputy);
         return { ok: true, message: `${to.name}을(를) 포위했습니다.` };
       }
-      const res = finishAttack(s, factionId, g, city, to, troops, road, cmd.tactic, { battle: { formation: cmd.formation } });
+      const res = finishAttack(s, factionId, g, city, to, troops, road, cmd.tactic, { battle: { formation: cmd.formation, attackerDeputy: deputy, bond: deputy ? relationBetween(s, g.id, deputy.id)?.type : undefined } });
       return res.ok && advised ? { ok: true, message: res.message + advised } : res;
     }
     case 'recruit': {
@@ -335,7 +374,9 @@ export function executeCommand(s: GameState, factionId: string, cmd: Command): C
       if (!t || t.faction !== factionId) return { ok: false, error: '우리 장수가 아닙니다.' };
       if (f.gold < BALANCE.rewardGold) return { ok: false, error: '금이 부족합니다.' };
       f.gold -= BALANCE.rewardGold;
-      t.loyalty = Math.min(100, t.loyalty + BALANCE.rewardLoyalty + traitSum(f.traits, 'rewardLoyalty'));
+      // v4.2 군주 매력이 높을수록 같은 포상도 더 고맙게 받는다
+      const rc = Math.round(((s.generals[f.rulerId]?.stats.charm ?? 60) - 60) / BALANCE.rewardCharmDiv);
+      t.loyalty = Math.min(100, t.loyalty + Math.max(2, BALANCE.rewardLoyalty + rc + traitSum(f.traits, 'rewardLoyalty')));
       remember(t, s.turn, 'rewarded', f.rulerId);
       g.acted = true;
       return { ok: true, message: `${t.name}에게 포상했습니다. (충성 ${t.loyalty})` };
@@ -523,6 +564,20 @@ export function finishAttack(s: GameState, factionId: string, g: General, city: 
   };
   s.lastBattles.push(report);
   if (s.lastBattles.length > 30) s.lastBattles.splice(0, s.lastBattles.length - 30);
+  // v4.2 성장: 싸운 장수가 경험을 얻는다 (주장 통솔, 부장 무력, 수비 대장 통솔, 일기토 무력, 계책 지력)
+  {
+    const dep = opt.battle?.attackerDeputy;
+    const up = (x: General, k: StatKey, v: number, fid: string | null) => gainExp(s, x, k, v, (t) => log(s, t, 'good', fid));
+    up(g, 'leadership', out.won ? BALANCE.growBattleLeadWin : BALANCE.growBattleLeadLose, factionId);
+    if (dep?.alive) up(dep, 'war', BALANCE.growDeputyWar, factionId);
+    const dl = defenders.reduce<General | null>((a, x) => (!a || x.stats.leadership > a.stats.leadership ? x : a), null);
+    if (dl) up(dl, 'leadership', out.won ? BALANCE.growDefLead / 2 : BALANCE.growDefLead, defenderFaction);
+    if (out.duel) {
+      const w = s.generals[out.duel.winnerId], l = s.generals[out.duel.winnerId === out.duel.attackerId ? out.duel.defenderId : out.duel.attackerId];
+      up(w, 'war', BALANCE.growDuelWin, w.faction); if (l?.alive) up(l, 'war', BALANCE.growDuelLose, l.faction);
+    }
+    if (out.tactic?.success) up(dep && dep.stats.intellect > g.stats.intellect ? dep : g, 'intellect', BALANCE.growTactic, factionId);
+  }
 
   const survivors = troops - out.attackerLoss;
   const defTroopsBefore = to.troops;
@@ -583,6 +638,8 @@ export function finishAttack(s: GameState, factionId: string, g: General, city: 
     to.order = Math.max(10, to.order - 20);
     to.population = Math.round(to.population * 0.95);
     g.city = to.id;
+    const dep = opt.battle?.attackerDeputy;
+    if (dep?.alive && dep.faction === factionId) dep.city = to.id; // 부장도 함께 성에 들어간다
     remember(g, s.turn, 'defeated', defenders[0]?.id ?? g.id);
     for (const d of defenders) if (d.alive) remember(d, s.turn, 'defeatedBy', g.id);
     log(s, `${s.factions[factionId].name}군 ${g.name}이(가) ${defName}의 ${to.name}을(를) 함락했습니다!`, 'danger', factionId, { event: 'capture', other: defenderFaction });
@@ -593,7 +650,7 @@ export function finishAttack(s: GameState, factionId: string, g: General, city: 
     to.troops = Math.max(1, to.troops - out.defenderLoss);
     to.morale = Math.min(100, to.morale + 5);
     if (opt.returnTroops) opt.returnTroops(survivors); else { addToCity(city, survivors, aComp); city.troops += survivors; }
-    city.morale = Math.max(0, city.morale - BALANCE.defeatMorale);
+    city.morale = Math.max(0, city.morale - Math.round(BALANCE.defeatMorale * Math.max(0.6, 1.2 - g.stats.charm / BALANCE.defeatCharmDiv))); // v4.2 매력: 패배해도 장수를 믿고 흩어지지 않음
     if (road.type === 'sea' && (city.ships ?? 0) > 0) city.ships = Math.floor((city.ships ?? 0) * (1 - BALANCE.shipLossOnFail));
     if (chance(s, BALANCE.battleDeathChance * (g.persona.risk / 60))) {
       killGeneral(s, g, `${g.name}이(가) ${to.name} 공격 중 전사했습니다!`);

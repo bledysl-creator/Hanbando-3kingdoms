@@ -19,6 +19,7 @@ import { processWildfires } from './wildfire';
 import { processGovernors } from './office';
 import { traitSum } from '../commands/commands';
 import { landmarksOfCity } from '../data';
+import { chancellorOf, rulerCharmDrift } from './stats';
 
 export function processEconomy(s: GameState) {
   for (const f of Object.values(s.factions)) {
@@ -47,8 +48,10 @@ export function processEconomy(s: GameState) {
       c.morale += (70 - c.morale) * 0.1; // 사기는 서서히 평상(70)으로
       c.morale = Math.round(c.morale);
     }
-    f.gold += Math.round(gold);
-    f.food += Math.round(harvest + fish);
+    // v4.2 재상: 세력 최고 정치 장수가 나라 살림 전체를 끌어올린다
+    const cm = chancellorOf(s, f.id).mul;
+    f.gold += Math.round(gold * cm);
+    f.food += Math.round(harvest * cm + fish);
     f.wood += wood;
     f.iron += iron;
     f.horses = Math.round((f.horses ?? 0) * (1 - BALANCE.horseDecay) + horses);
@@ -80,7 +83,8 @@ export function processLoyalty(s: GameState) {
     if (f.rulerId === g.id) { g.loyalty = 100; continue; }
     const rel = relationBetween(s, g.id, f.rulerId);
     if (rel?.type === 'sworn') { g.loyalty = 100; continue; }
-    const drift = -(g.persona.ambition - 50) / 40 + (g.persona.righteousness - 50) / 60 + randRange(s, -1, 1);
+    // v4.2 군주의 매력(인망)이 모든 신하의 마음을 붙잡는다
+    const drift = -(g.persona.ambition - 50) / 40 + (g.persona.righteousness - 50) / 60 + rulerCharmDrift(s.generals[f.rulerId]) + randRange(s, -1, 1);
     g.loyalty = Math.max(0, Math.min(100, Math.round(g.loyalty + drift)));
     if (g.loyalty < BALANCE.defectLoyalty && g.persona.ambition > BALANCE.defectAmbition && chance(s, BALANCE.defectChance)) {
       g.faction = null;

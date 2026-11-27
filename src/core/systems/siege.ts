@@ -5,7 +5,7 @@ import { BALANCE } from '../config';
 import { resolveBattle, type BattleInput, type BattleOutcome } from '../battle/battle';
 import { finishAttack, log, traitSum } from '../commands/commands';
 import { acceptanceChance, canAttack, setTreaty } from '../diplomacy/diplomacy';
-import { generalsIn, isConnectedToCapital, lastStandBonus, minGarrison, neighbors, roadBetween, supplyRatio } from '../query';
+import { generalsIn, isConnectedToCapital, lastStandBonus, minGarrison, neighbors, relationBetween, roadBetween, supplyRatio } from '../query';
 import { chance } from '../rng/rng';
 import type { City, GameState, General, Siege, SiegeResponse } from '../state/types';
 import type { TacticKind } from '../battle/tactics';
@@ -24,11 +24,11 @@ export const SIEGE_LABEL: Record<SiegeKind, { icon: string; name: string; desc: 
 export const siegesOf = (s: GameState, factionId: string) => (s.sieges ?? []).filter((x) => s.cities[x.toCity]?.owner === factionId);
 
 /** AI의 출진이 플레이어 도시를 노릴 때: 병력을 성 밖에 세우고 포위만 한다 */
-export function beginSiege(s: GameState, factionId: string, g: General, from: City, to: City, troops: number, tactic?: TacticKind, formation?: FormationKind) {
+export function beginSiege(s: GameState, factionId: string, g: General, from: City, to: City, troops: number, tactic?: TacticKind, formation?: FormationKind, deputy?: General | null) {
   s.sieges ??= [];
   const sp = supplyRatio(s, factionId);
   const siege: Siege = {
-    id: `sg${s.turn}_${s.sieges.length}_${g.id}`, turn: s.turn, attackerFaction: factionId, generalId: g.id, fromCity: from.id, toCity: to.id, troops, tactic, formation, comp: formation ? compFromFormation(formation) : compOf(from),
+    id: `sg${s.turn}_${s.sieges.length}_${g.id}`, turn: s.turn, attackerFaction: factionId, generalId: g.id, fromCity: from.id, toCity: to.id, troops, tactic, formation, comp: formation ? compFromFormation(formation) : compOf(from), deputyId: deputy?.id,
     morale: from.morale, training: from.training, ships: from.ships ?? 0,
     supply: sp < BALANCE.lowSupplyThreshold ? sp : undefined, isolated: !isConnectedToCapital(s, factionId, from.id),
   };
@@ -64,6 +64,8 @@ export function evacuateTargets(s: GameState, sg: Siege) {
   const to = s.cities[sg.toCity];
   return neighbors(s, to.id).filter((n) => n.city.owner === to.owner && !(s.sieges ?? []).some((x) => x.toCity === n.city.id)).map((n) => n.city.id);
 }
+/** v4.2 포위군 부장: 아직 살아 있고 같은 세력이며 출진 성에 남아 있어야 함 */
+const deputyOf = (s: GameState, sg: Siege) => { const d = sg.deputyId ? s.generals[sg.deputyId] : undefined; return d && d.alive && d.faction === sg.attackerFaction && d.city === sg.fromCity ? d : null; };
 const bestCommander = (gs: General[]) => gs.reduce<General | null>((a, x) => (!a || x.stats.leadership + x.stats.war > a.stats.leadership + a.stats.war ? x : a), null);
 const envoyOf = (s: GameState, sg: Siege) => {
   const pf = s.cities[sg.toCity].owner!;
@@ -122,6 +124,7 @@ function siegeBattle(s: GameState, sg: Siege, r: SiegeResponse, parleyFailed = f
     attackerTroops: sg.troops, attackerGeneral: g, defenderCity: city, defenderGenerals: defenders, road, season: s.season, weather: s.weather[to.id], tactic: sg.tactic, formation: sg.formation, cavalryTrait: af.traits.includes('최강무력'), attackerComp: sg.comp ?? compFromFormation(sg.formation), defenderComp: compOf(city),
     traitAttack: traitSum(af.traits, 'attack'), attackerShips: sg.ships, navalTrait: af.traits.includes('수군'),
     attackerMorale: sg.morale, attackerTraining: sg.training, supply: sg.supply, isolated: sg.isolated, lastStand: lastStandBonus(s, to.owner), ...extra,
+    attackerDeputy: deputyOf(s, sg), bond: deputyOf(s, sg) ? relationBetween(s, sg.generalId, sg.deputyId!)?.type : undefined,
   };
   return { input, city, pincer };
 }

@@ -3,7 +3,7 @@ import { aiTargetComp, compOf, organizeCost, UNIT_KINDS } from '../battle/format
 // 규칙 기반 + Utility AI (Game.md 5-5). 플레이어와 같은 명령만 사용한다.
 import { BALANCE } from '../config';
 import { executeCommand, foodPrice, type Command } from '../commands/commands';
-import { allGenerals, freeGeneralsIn, generalsIn, minGarrison, minMarch, neighbors } from '../query';
+import { allGenerals, freeGeneralsIn, generalsIn, minGarrison, minMarch, neighbors, relationBetween } from '../query';
 import type { City, GameState, General, Road } from '../state/types';
 import { aiWantsTruce, canAttack, statusOf, tryProposal } from '../diplomacy/diplomacy';
 import { chance } from '../rng/rng';
@@ -11,6 +11,7 @@ import { estimateRatio } from '../battle/estimate';
 import { reliefFood } from '../systems/epidemic';
 import { governorOf } from '../systems/office';
 import { log } from '../commands/commands';
+import { commandCap, unitStats } from '../systems/stats';
 
 interface Option { score: number; cmd: Command; why: string }
 
@@ -99,6 +100,24 @@ function isWeak(s: GameState, fid: string) {
   return mine < top * BALANCE.aiWeakShare;
 }
 
+/** v4.2 부장 고르기: 주장에게 모자란 무력·지력을 메우고, 대군이면 지휘 한도를 늘려 줄 장수. 성에 장수 1명은 남긴다 */
+export function pickDeputy(s: GameState, fid: string, g: General, troops: number): General | null {
+  const here = generalsIn(s, g.city).filter((x) => x.faction === fid && x.id !== g.id);
+  if (here.length < 2) return null;
+  const rulerId = s.factions[fid].rulerId;
+  const over = Math.max(0, troops - commandCap(g.stats.leadership));
+  let best: General | null = null, bestScore: number = BALANCE.aiDeputyMinGain;
+  for (const d of here) {
+    if (d.acted || d.id === rulerId) continue;
+    const bond = relationBetween(s, g.id, d.id)?.type;
+    if (bond === 'enmity') continue;
+    const gain = (bond === 'sworn' ? 6 : bond === 'trust' ? 3 : 0) + Math.max(0, d.stats.war - g.stats.war) + Math.max(0, d.stats.intellect - g.stats.intellect) * 0.6
+      + Math.min(over, d.stats.leadership * BALANCE.deputyCommandPer) / 1000 - (s.cities[g.city].governor === d.id ? 6 : 0);
+    if (gain > bestScore) { best = d; bestScore = gain; }
+  }
+  return best;
+}
+
 function optionsFor(s: GameState, fid: string, g: General): Option[] {
   const f = s.factions[fid];
   const city = s.cities[g.city];
@@ -120,12 +139,13 @@ function optionsFor(s: GameState, fid: string, g: General): Option[] {
     for (const n of enemyNs) {
       if (troops < minMarch(s)) break;
       if (!canAttack(s, fid, n.city.owner)) continue;
-      let ratio = estimateRatio(s, g, city, n.city, troops, lastStandOf(s, n.city.owner));
+      const dep = pickDeputy(s, fid, g, troops);
+      let ratio = estimateRatio(s, g, city, n.city, troops, lastStandOf(s, n.city.owner), dep);
       // v3.6.1 플레이어 성은 한 계절 포위 뒤 농성·협공 등으로 맞서므로 더 넉넉한 승산을 요구한다
       if (BALANCE.siegeChoice && n.city.owner !== null && n.city.owner === s.playerFactionId) ratio /= BALANCE.siegeAiCaution;
       if (ratio > needRatio) {
         const value = (n.city.population / 10000 + n.city.agriculture / 20 + n.city.commerce / 20) * (n.city.owner === null ? 0.8 : 1);
-        opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops, tactic: bestTactic(s, g, n.city, n.road)}, why: `승산 ${ratio.toFixed(2)}` });
+        opts.push({ score: 50 + ratio * 10 + value, cmd: { type: 'march', generalId: g.id, toCityId: n.city.id, troops, tactic: bestTactic(s, dep ? { ...g, stats: unitStats(g, dep) } : g, n.city, n.road), deputyId: dep?.id }, why: `승산 ${ratio.toFixed(2)}${dep ? ` · 부장 ${dep.name}` : ''}` });
       }
     }
   }
