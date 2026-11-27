@@ -1,7 +1,7 @@
 // 외교 창 (v0.4): 세력별 관계, 휴전·동맹 제안, 맹약 파기, 받은 제안 응답
 import { useMemo, useState } from 'react';
 import type { Command, GameState } from '../../core';
-import { acceptanceChance, citiesOf, hasHorses, horsePrice, statusOf, totalTroops, treatyOf } from '../../core';
+import { fixJosa, acceptanceChance, citiesOf, hasHorses, horsePrice, statusOf, totalTroops, treatyOf } from '../../core';
 import { Modal } from './Modals';
 
 const STATUS = { war: '대치', truce: '휴전', alliance: '동맹' } as const;
@@ -82,7 +82,7 @@ export function OffersModal({ state, onRespond, onClose }: { state: GameState; o
     <Modal title="사신이 도착했습니다" onClose={onClose}>
       {state.offers.map((o, i) => o.to !== pf ? null : (
         <div key={i} className="offer">
-          <p><span className="badge" style={{ background: state.factions[o.from].color }}>{state.factions[o.from].hanja}</span> {state.generals[state.factions[o.from].rulerId].name}이(가) <b>{o.proposal === 'truce' ? '휴전(2년)' : '동맹'}</b>을 청합니다.{o.gold ? ` 예물: 금 ${o.gold.toLocaleString()}` : ''}</p>
+          <p><span className="badge" style={{ background: state.factions[o.from].color }}>{state.factions[o.from].hanja}</span> {fixJosa(`${state.generals[state.factions[o.from].rulerId].name}이(가)`)} <b>{o.proposal === 'truce' ? '휴전(2년)' : '동맹'}</b>을 청합니다.{o.gold ? ` 예물: 금 ${o.gold.toLocaleString()}` : ''}</p>
           <div className="actions row">
             <button className="primary" onClick={() => onRespond(i, true)}>받아들인다</button>
             <button onClick={() => onRespond(i, false)}>거절한다</button>

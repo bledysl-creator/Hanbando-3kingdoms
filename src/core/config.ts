@@ -15,6 +15,8 @@ export const BALANCE = {
 
   // 명령 비용
   developGold: 300,
+  /** v4.2.1 맡기기는 금이 이만큼 아래로 내려가면 금 드는 명령을 멈춘다 */
+  delegateGoldKeep: 1500,
   wallGold: 200,
   wallWood: 1000,
   conscriptGoldPerTroop: 0.1,

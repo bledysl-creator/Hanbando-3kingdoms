@@ -1,7 +1,7 @@
 // v3.6 성이 포위당했을 때 대응 고르기: 농성·협공·출성 요격·청야 철수·화친 요청, 대응마다 예상 결과
 import { useMemo, useState } from 'react';
 import type { GameState, Siege, SiegeKind, SiegeResponse } from '../../core';
-import { SIEGE_LABEL, evacuateTargets, pincerSources, siegeForecast } from '../../core';
+import { fixJosa, SIEGE_LABEL, evacuateTargets, pincerSources, siegeForecast } from '../../core';
 import { Modal } from './Modals';
 import { TroopSlider } from './CityPanel';
 import { Portrait } from './Portrait';
@@ -43,7 +43,7 @@ function SiegeCard({ state, sg, onRespond }: { state: GameState; sg: Siege; onRe
         <Portrait general={g} color={af.color} size={56} />
         <div>
           <b style={{ color: af.color }}>{af.name}군</b> {g.name} <small className="muted">(통솔 {g.stats.leadership} · 무력 {g.stats.war} · 지력 {g.stats.intellect})</small>
-          <div>병력 <b className="bad">{sg.troops.toLocaleString()}</b>명이 <b>{to.name}</b>을(를) 포위 — 성안 병력 <b>{to.troops.toLocaleString()}</b> · 성벽 {to.wall} · 사기 {to.morale}</div>
+          <div>병력 <b className="bad">{sg.troops.toLocaleString()}</b>명이 <b>{to.name}</b>{fixJosa(`${to.name}을(를)`).slice(to.name.length)} 포위 — 성안 병력 <b>{to.troops.toLocaleString()}</b> · 성벽 {to.wall} · 사기 {to.morale}</div>
           <div className="muted small">출발: {state.cities[sg.fromCity].name}{sg.tactic ? ' · 계책을 준비한 듯함' : ''}</div>
         </div>
       </div>
@@ -68,7 +68,7 @@ function SiegeCard({ state, sg, onRespond }: { state: GameState; sg: Siege; onRe
               {k === 'evacuate' && targets.length > 0 && (
                 <div className="siege-ctl">
                   <select value={dest} onChange={(e) => setDest(e.target.value)}>
-                    {targets.map((id) => <option key={id} value={id}>{state.cities[id].name}(으)로 (병력 {state.cities[id].troops.toLocaleString()})</option>)}
+                    {targets.map((id) => <option key={id} value={id}>{fixJosa(`${state.cities[id].name}(으)로`)} (병력 {state.cities[id].troops.toLocaleString()})</option>)}
                   </select>
                 </div>
               )}

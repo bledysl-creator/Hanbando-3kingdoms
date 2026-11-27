@@ -18,9 +18,11 @@ interface Props {
   onCommand: (cmd: Command) => void;
   onClose: () => void;
   onTargetHover: (ids: string[]) => void;
+  /** v4.2.1 남은 장수를 내정·인사로 맡기기 */
+  onDelegate?: (cityId: string) => void;
 }
 
-export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTargetHover }: Props) {
+export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTargetHover, onDelegate }: Props) {
   const c = state.cities[cityId];
   const pf = state.playerFactionId;
   const owner = c.owner ? state.factions[c.owner] : null;
@@ -30,6 +32,9 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
   const ready = gens.filter((g) => !g.acted);
   const [gid, setGid] = useState<string>('');
   const [allGens, setAllGens] = useState(false);
+  // v4.2.1 내 도시는 명령이 먼저 보이도록 도시 수치를 접어 둔다 (펼침 여부는 기억)
+  const [statsOpen, setStatsOpen] = useState(() => { try { return localStorage.getItem('hanbando.cityStats') === '1'; } catch { return false; } });
+  const toggleStats = () => setStatsOpen((v) => { try { localStorage.setItem('hanbando.cityStats', v ? '0' : '1'); } catch { /* 저장 불가 */ } return !v; });
   useEffect(() => {
     if (!ready.find((g) => g.id === gid)) setGid(ready[0]?.id ?? '');
   }, [cityId, ready.map((g) => g.id).join()]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -51,7 +56,10 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
       <div className="gen-strip">
         <div className="gen-strip-head">
           <b>장수 {gens.length}</b>
-          {mine && <small className="muted">행동 가능 {ready.length}명 · 눌러서 고르기</small>}
+          {mine && <small className="muted">행동 가능 {ready.length}명</small>}
+          {mine && ready.length > 0 && onDelegate && (
+            <button className="gen-more delegate" title="남은 장수에게 내정·인사(개발·구휼·등용·포상·훈련·태수 등)를 알아서 맡깁니다. 출진·병력 이동·징병·계략은 하지 않습니다." onClick={() => onDelegate(c.id)}>🤖 맡기기</button>
+          )}
           {gens.length > 5 && (
             <button className="gen-more" onClick={() => setAllGens((v) => !v)} aria-expanded={allGens}>{allGens ? '▲ 접기' : `▼ 전체`}</button>
           )}
@@ -75,29 +83,14 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
           {gens.length === 0 && <span className="muted">없음</span>}
         </div>
       </div>
-      <div className="stat-grid">
-        <span>세력</span><b>{owner ? `${owner.name}(${owner.hanja})` : '중립'}</b>
-        <span>병력</span><b>{(() => { const v = visibleTroops(state, pf, c.id); return v.value === null ? '알 수 없음 (첩보 필요)' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)} (${v.age}턴 전 첩보)`; })()}</b>{(c.fire ?? 0) > 0 && <><span>산불</span><b className="bad">🔥 {c.fire}턴 — 인구·농지·목재 피해 중 (비가 오면 꺼짐)</b></>}{(c.epidemic ?? 0) > 0 && <><span>역병</span><b className="bad">🦠 {c.epidemic}턴 남음 — 인구·병력 감소 중</b></>}{c.port && <><span>전선</span><b>⛵ {c.ships ?? 0}척</b></>}
-        <span>인구</span><b>{fmt(c.population)}</b>
-        <span>민심</span><b>{Math.round(c.order)}</b>
-        <Bar label="농업" v={c.agriculture} />
-        <Bar label="상업" v={c.commerce} />
-        <Bar label="성벽" v={c.wall} />
-        <Bar label="사기" v={c.morale} />
-        <Bar label="훈련" v={c.training} />
-        <span>특산</span><b>목재 {c.wood} · 철 {c.iron}</b>
-        <span>날씨</span><b>{WEATHER_ICON[state.weather[c.id] ?? 'clear']} {WEATHER_LABEL[state.weather[c.id] ?? 'clear']}</b>
-      </div>
-
-      {c.parent ? (
-        <p className="regions-line"><span className="muted">{REGIONS.find((r) => r.id === c.id)?.province} · {c.seat ? '치소' : '속현'} · 옛 관할 {DATA.cities.find((x) => x.id === c.parent)?.name}</span></p>
-      ) : (
-        <p className="regions-line"><span className="muted">관할 시·군 {REGIONS.filter((r) => r.parent === c.id).length}곳:</span> {REGIONS.filter((r) => r.parent === c.id).map((r) => r.name).join(' · ')}</p>
+      {mine && (
+        <button className="city-summary" onClick={toggleStats} aria-expanded={statsOpen} title="도시 정보 펼치기·접기">
+          <span>⚔️ {fmt(c.troops)}</span><span>😊 {Math.round(c.order)}</span><span>🌾 {c.agriculture}</span><span>🪙 {c.commerce}</span><span>🧱 {c.wall}</span><span>🎯 {c.training}</span>
+          <span>{WEATHER_ICON[state.weather[c.id] ?? 'clear']}</span>{(c.fire ?? 0) > 0 && <span className="bad">🔥</span>}{(c.epidemic ?? 0) > 0 && <span className="bad">🦠</span>}
+          <em>{statsOpen ? '▲' : '▼ 정보'}</em>
+        </button>
       )}
-      {free.length > 0 && (
-        <p className="muted">재야 인재: {free.map((g) => g.name).join(', ')}</p>
-      )}
-
+      {mine && !statsOpen && free.length > 0 && <p className="muted small free-hint">🧑‍🎓 재야 인재: {free.map((g) => g.name).join(', ')} — 인재 탭에서 등용</p>}
       {mine && (
         <>
           <div className="tabs">
@@ -108,12 +101,38 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
           {ready.length === 0 ? (
             <p className="muted">이번 턴에 행동할 수 있는 장수가 없습니다.</p>
           ) : (
-            <p className="actor-line">실행 장수 <b>{actor?.name}</b> <small className="muted">통{actor?.stats.leadership} 무{actor?.stats.war} 지{actor?.stats.intellect} 정{actor?.stats.politics} 매{actor?.stats.charm} — 위 장수 목록에서 바꿈</small></p>
+            <p className="actor-line">실행 장수 <b>{actor?.name}</b> <small className="muted">통{actor?.stats.leadership} 무{actor?.stats.war} 지{actor?.stats.intellect} 정{actor?.stats.politics} 매{actor?.stats.charm}</small></p>
           )}
           {actor && tab === '내정' && <DomesticTab state={state} cityId={c.id} actor={actor} onCommand={onCommand} />}
           {actor && tab === '군사' && <MilitaryTab key={`${c.id}:${actor.id}`} state={state} actor={actor} cityTroops={c.troops} population={c.population} neighbors={ns} onCommand={onCommand} onTargetHover={onTargetHover} />}
           {actor && tab === '계략' && <IntrigueTab state={state} actor={actor} onCommand={onCommand} />}
           {actor && tab === '인재' && <TalentTab state={state} actor={actor} free={free} onCommand={onCommand} />}
+        </>
+      )}
+      {(!mine || statsOpen) && (
+        <>
+        <div className="stat-grid">
+          <span>세력</span><b>{owner ? `${owner.name}(${owner.hanja})` : '중립'}</b>
+          <span>병력</span><b>{(() => { const v = visibleTroops(state, pf, c.id); return v.value === null ? '알 수 없음 (첩보 필요)' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)} (${v.age}턴 전 첩보)`; })()}</b>{(c.fire ?? 0) > 0 && <><span>산불</span><b className="bad">🔥 {c.fire}턴 — 인구·농지·목재 피해 중 (비가 오면 꺼짐)</b></>}{(c.epidemic ?? 0) > 0 && <><span>역병</span><b className="bad">🦠 {c.epidemic}턴 남음 — 인구·병력 감소 중</b></>}{c.port && <><span>전선</span><b>⛵ {c.ships ?? 0}척</b></>}
+          <span>인구</span><b>{fmt(c.population)}</b>
+          <span>민심</span><b>{Math.round(c.order)}</b>
+          <Bar label="농업" v={c.agriculture} />
+          <Bar label="상업" v={c.commerce} />
+          <Bar label="성벽" v={c.wall} />
+          <Bar label="사기" v={c.morale} />
+          <Bar label="훈련" v={c.training} />
+          <span>특산</span><b>목재 {c.wood} · 철 {c.iron}</b>
+          <span>날씨</span><b>{WEATHER_ICON[state.weather[c.id] ?? 'clear']} {WEATHER_LABEL[state.weather[c.id] ?? 'clear']}</b>
+        </div>
+  
+        {c.parent ? (
+          <p className="regions-line"><span className="muted">{REGIONS.find((r) => r.id === c.id)?.province} · {c.seat ? '치소' : '속현'} · 옛 관할 {DATA.cities.find((x) => x.id === c.parent)?.name}</span></p>
+        ) : (
+          <p className="regions-line"><span className="muted">관할 시·군 {REGIONS.filter((r) => r.parent === c.id).length}곳:</span> {REGIONS.filter((r) => r.parent === c.id).map((r) => r.name).join(' · ')}</p>
+        )}
+        {free.length > 0 && (
+          <p className="muted">재야 인재: {free.map((g) => g.name).join(', ')}</p>
+        )}
         </>
       )}
       {!mine && pf && (
@@ -143,6 +162,12 @@ function DomesticTab({ state, cityId, actor, onCommand }: { state: GameState; ci
   const city = state.cities[cityId];
   return (
     <div className="actions">
+      {/* v4.2.1 가장 자주 쓰는 개발을 맨 위에 한 줄로 */}
+      <div className="dev-row">
+        <button disabled={city.agriculture >= 100} onClick={() => onCommand({ type: 'develop', generalId: actor.id, field: 'agriculture' })}>🌾 농업 <b>{city.agriculture}</b><small>금 {BALANCE.developGold} · +{gain}</small></button>
+        <button disabled={city.commerce >= 100} onClick={() => onCommand({ type: 'develop', generalId: actor.id, field: 'commerce' })}>🪙 상업 <b>{city.commerce}</b><small>금 {BALANCE.developGold} · +{gain}</small></button>
+        <button disabled={city.wall >= 100} title="정치+지력" onClick={() => onCommand({ type: 'develop', generalId: actor.id, field: 'wall' })}>🧱 성벽 <b>{city.wall}</b><small>금 {BALANCE.wallGold} · 목재 {BALANCE.wallWood / 1000}천 · +{developGain(actor, true)}</small></button>
+      </div>
       {(city.fire ?? 0) > 0 && (
         <button className="urgent" onClick={() => onCommand({ type: 'extinguish', generalId: actor.id })}>🧯 산불 진화 <small>금 {BALANCE.extinguishGold} · 민심 +2</small></button>
       )}
@@ -191,9 +216,6 @@ function DomesticTab({ state, cityId, actor, onCommand }: { state: GameState; ci
           );
         })()}
       </div>
-      <button onClick={() => onCommand({ type: 'develop', generalId: actor.id, field: 'agriculture' })}>🌾 농업 개발 <small>금 {BALANCE.developGold} · +{gain}</small></button>
-      <button onClick={() => onCommand({ type: 'develop', generalId: actor.id, field: 'commerce' })}>🪙 상업 개발 <small>금 {BALANCE.developGold} · +{gain}</small></button>
-      <button onClick={() => onCommand({ type: 'develop', generalId: actor.id, field: 'wall' })}>🧱 성벽 보수 <small>금 {BALANCE.wallGold} · 목재 {BALANCE.wallWood} · +{developGain(actor, true)} (정치+지력)</small></button>
     </div>
   );
 }
@@ -232,35 +254,7 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
       {(supply < 1 || isolated) && (
         <p className="warn-line">{supply < 1 ? `⚠ 군량 보급 ${Math.round(supply * 100)}% — 출진 시 공격력 감소. ` : ''}{isolated ? '⚠ 본거지와 끊긴 고립 도시 — 출진 시 −20%' : ''}</p>
       )}
-      <div className="sub">
-        {city.port && (
-          <div className="ships-line">
-            ⛵ 전선 <b>{city.ships ?? 0}</b>척 / {BALANCE.maxShipsPerCity}
-            <button disabled={(city.ships ?? 0) >= BALANCE.maxShipsPerCity} onClick={() => onCommand({ type: 'buildShips', generalId: actor.id })}>
-              전선 {BALANCE.shipsPerBuild}척 건조 <small>목재 {BALANCE.shipWood * BALANCE.shipsPerBuild} · 금 {BALANCE.shipGold * BALANCE.shipsPerBuild}{state.factions[pf].traits.includes('수군') ? ' (수군 −30%)' : ''}</small>
-            </button>
-            <p className="hint">바닷길 상륙은 전선이 많을수록 유리하고, 적 항구의 전선은 상륙을 막습니다.</p>
-          </div>
-        )}
-        <b>훈련</b> <small>곡 {Math.ceil(city.troops * BALANCE.trainFood).toLocaleString()} · 훈련 +{trainGain(actor)} (통솔+무력) · 사기 +3</small>
-        <button disabled={city.training >= 100} onClick={() => onCommand({ type: 'train', generalId: actor.id })}>🎯 병사 훈련 (현재 {city.training})</button>
-      </div>
-      <div className="sub">
-        <b>징병</b> <small>금 {Math.ceil(amount * BALANCE.conscriptGoldPerTroop)} · 철 {Math.ceil(amount * BALANCE.conscriptIronPerTroop)} · 인구 −{amount.toLocaleString()}</small>
-        <input type="range" min={0} max={maxConscript} step={500} value={amount} onChange={(e) => setAmount(+e.target.value)} />
-        <button disabled={amount < 100} onClick={() => onCommand({ type: 'conscript', generalId: actor.id, amount })}>🛡️ {amount.toLocaleString()}명 징병</button>
-        <p className="hint">병사도 결국 백성입니다. 징병하면 생산 인구와 민심이 줄고, 신병이 섞여 훈련도·사기가 내려갑니다.</p>
-      </div>
-      <OrganizeBox key={`org:${city.id}:${city.troops}`} state={state} cityId={city.id} actor={actor} onCommand={onCommand} />
-      <div className="sub">
-        <b>수련·학문</b> <small>금 {BALANCE.studyGold} · {actor.name}의 능력 +{BALANCE.studyMin}~{BALANCE.studyMax} (무작위, {BALANCE.studyHighFrom} 이상은 절반, 같은 성에 그 능력 90+ 스승이 있으면 +1)</small>
-        <div className="row2">
-          <select value={studyStat} onChange={(e) => setStudy(e.target.value as StudyStat)}>
-            {(Object.keys(STUDY_LABEL) as StudyStat[]).map((k) => <option key={k} value={k}>{STUDY_LABEL[k]} — 현재 {actor.stats[k]}</option>)}
-          </select>
-          <button disabled={actor.stats[studyStat] >= 100 || state.factions[pf].gold < BALANCE.studyGold} onClick={() => onCommand({ type: 'study', generalId: actor.id, stat: studyStat })}>📚 수련</button>
-        </div>
-      </div>
+      {/* v4.2.1 출진·이동을 맨 위로 (군사 탭에서 가장 자주 쓰는 명령) */}
       <div className="sub">
         <b>출진</b>
         {enemies.length === 0 ? <p className="muted">인접한 적 도시가 없습니다.</p> : (
@@ -386,6 +380,35 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
             <button onClick={() => onCommand({ type: 'transfer', generalId: actor.id, toCityId: dest, troops: moveTroops })}>🚶 {moveTroops > 0 ? `장수 + 병력 ${moveTroops.toLocaleString()}명 이동` : '장수만 이동'}</button>
           </>
         )}
+      </div>
+      <div className="sub">
+        {city.port && (
+          <div className="ships-line">
+            ⛵ 전선 <b>{city.ships ?? 0}</b>척 / {BALANCE.maxShipsPerCity}
+            <button disabled={(city.ships ?? 0) >= BALANCE.maxShipsPerCity} onClick={() => onCommand({ type: 'buildShips', generalId: actor.id })}>
+              전선 {BALANCE.shipsPerBuild}척 건조 <small>목재 {BALANCE.shipWood * BALANCE.shipsPerBuild} · 금 {BALANCE.shipGold * BALANCE.shipsPerBuild}{state.factions[pf].traits.includes('수군') ? ' (수군 −30%)' : ''}</small>
+            </button>
+            <p className="hint">바닷길 상륙은 전선이 많을수록 유리하고, 적 항구의 전선은 상륙을 막습니다.</p>
+          </div>
+        )}
+        <b>훈련</b> <small>곡 {Math.ceil(city.troops * BALANCE.trainFood).toLocaleString()} · 훈련 +{trainGain(actor)} (통솔+무력) · 사기 +3</small>
+        <button disabled={city.training >= 100} onClick={() => onCommand({ type: 'train', generalId: actor.id })}>🎯 병사 훈련 (현재 {city.training})</button>
+      </div>
+      <div className="sub">
+        <b>징병</b> <small>금 {Math.ceil(amount * BALANCE.conscriptGoldPerTroop)} · 철 {Math.ceil(amount * BALANCE.conscriptIronPerTroop)} · 인구 −{amount.toLocaleString()}</small>
+        <input type="range" min={0} max={maxConscript} step={500} value={amount} onChange={(e) => setAmount(+e.target.value)} />
+        <button disabled={amount < 100} onClick={() => onCommand({ type: 'conscript', generalId: actor.id, amount })}>🛡️ {amount.toLocaleString()}명 징병</button>
+        <p className="hint">병사도 결국 백성입니다. 징병하면 생산 인구와 민심이 줄고, 신병이 섞여 훈련도·사기가 내려갑니다.</p>
+      </div>
+      <OrganizeBox key={`org:${city.id}:${city.troops}`} state={state} cityId={city.id} actor={actor} onCommand={onCommand} />
+      <div className="sub">
+        <b>수련·학문</b> <small>금 {BALANCE.studyGold} · {actor.name}의 능력 +{BALANCE.studyMin}~{BALANCE.studyMax} (무작위, {BALANCE.studyHighFrom} 이상은 절반, 같은 성에 그 능력 90+ 스승이 있으면 +1)</small>
+        <div className="row2">
+          <select value={studyStat} onChange={(e) => setStudy(e.target.value as StudyStat)}>
+            {(Object.keys(STUDY_LABEL) as StudyStat[]).map((k) => <option key={k} value={k}>{STUDY_LABEL[k]} — 현재 {actor.stats[k]}</option>)}
+          </select>
+          <button disabled={actor.stats[studyStat] >= 100 || state.factions[pf].gold < BALANCE.studyGold} onClick={() => onCommand({ type: 'study', generalId: actor.id, stat: studyStat })}>📚 수련</button>
+        </div>
       </div>
     </div>
   );
