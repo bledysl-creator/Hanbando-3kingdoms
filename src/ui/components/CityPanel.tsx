@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Advice, Command, Comp, UnitKind, GameState, General, StudyStat, TacticKind } from '../../core';
-import { BALANCE, DATA, STUDY_LABEL, council, compEffect, compOf, compText, horsePrice, breedYield, RANCH_LABEL, isBigCity, organizeCost, UNIT_KINDS, duelPreview, foodPrice, governorOf, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, developGain, trainGain, supplyMul, unitStats, commandCap, statGrade, relationBetween, minGarrison, minMarch, disbandPreview, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
+import { BALANCE, DATA, STUDY_LABEL, council, compEffect, compOf, compText, horsePrice, breedYield, RANCH_LABEL, isBigCity, organizeCost, UNIT_KINDS, duelPreview, foodPrice, governorOf, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, STAT_KEYS, STAT_NAME, developGain, trainGain, supplyMul, unitStats, commandCap, statGrade, relationBetween, minGarrison, minMarch, disbandPreview, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -29,6 +29,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
   const free = freeGeneralsIn(state, c.id);
   const ready = gens.filter((g) => !g.acted);
   const [gid, setGid] = useState<string>('');
+  const [allGens, setAllGens] = useState(false);
   useEffect(() => {
     if (!ready.find((g) => g.id === gid)) setGid(ready[0]?.id ?? '');
   }, [cityId, ready.map((g) => g.id).join()]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -46,6 +47,34 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
           <div className="landmarks-line">{landmarksOfCity(c.id).map((l) => (l.type === 'port' ? '⚓' : '🏯') + l.name).join(' · ')}</div>
         )}
       </h2>
+      {/* 장수 목록: 도시 이름 바로 아래. 한 줄 5명, ▼로 전체. 행동 남은 장수는 금테, 마친 장수는 회색, 고른 실행 장수는 채워진 테 */}
+      <div className="gen-strip">
+        <div className="gen-strip-head">
+          <b>장수 {gens.length}</b>
+          {mine && <small className="muted">행동 가능 {ready.length}명 · 눌러서 고르기</small>}
+          {gens.length > 5 && (
+            <button className="gen-more" onClick={() => setAllGens((v) => !v)} aria-expanded={allGens}>{allGens ? '▲ 접기' : `▼ 전체`}</button>
+          )}
+        </div>
+        <div className="gen-row5">
+          {(() => { const sorted = mine ? [...gens].sort((a, b) => Number(a.acted) - Number(b.acted)) : gens; return allGens ? sorted : sorted.slice(0, 5); })().map((g, i) => {
+            const canAct = mine && !g.acted;
+            const cls = `gen-cell ${mine && g.acted ? 'done' : ''} ${canAct ? 'ready' : ''} ${g.id === gid ? 'chosen' : ''}`;
+            return (
+              <button key={g.id} className={cls} aria-disabled={!canAct} onClick={() => canAct && setGid(g.id)} aria-label={`${g.name} ${mine ? (g.acted ? '행동 마침' : '행동 가능') : ''}`}>
+                <Portrait general={g} color={owner?.color ?? '#777'} size={34} />
+                <span className="gen-name">{g.name}</span>
+                <span className={`ct-tip gen-tip ${i % 5 >= 3 ? 'right' : ''}`} role="tooltip">
+                  <b>{g.name} <small>{g.hanja} · {state.year - g.birth}세{mine ? (g.acted ? ' · 행동 마침' : ' · 행동 가능') : ''}</small></b>
+                  {STAT_KEYS.map((k) => <span key={k} className="tip-stat"><em>{STAT_NAME[k]}</em> {g.stats[k]} <i className={`grade g${statGrade(g.stats[k])}`}>{statGrade(g.stats[k])}</i></span>)}
+                  {g.faction && <span className="tip-stat wide"><em>충성</em> {g.loyalty}</span>}
+                </span>
+              </button>
+            );
+          })}
+          {gens.length === 0 && <span className="muted">없음</span>}
+        </div>
+      </div>
       <div className="stat-grid">
         <span>세력</span><b>{owner ? `${owner.name}(${owner.hanja})` : '중립'}</b>
         <span>병력</span><b>{(() => { const v = visibleTroops(state, pf, c.id); return v.value === null ? '알 수 없음 (첩보 필요)' : v.exact ? fmt(v.value) : `약 ${fmt(v.value)} (${v.age}턴 전 첩보)`; })()}</b>{(c.fire ?? 0) > 0 && <><span>산불</span><b className="bad">🔥 {c.fire}턴 — 인구·농지·목재 피해 중 (비가 오면 꺼짐)</b></>}{(c.epidemic ?? 0) > 0 && <><span>역병</span><b className="bad">🦠 {c.epidemic}턴 남음 — 인구·병력 감소 중</b></>}{c.port && <><span>전선</span><b>⛵ {c.ships ?? 0}척</b></>}
@@ -65,16 +94,6 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
       ) : (
         <p className="regions-line"><span className="muted">관할 시·군 {REGIONS.filter((r) => r.parent === c.id).length}곳:</span> {REGIONS.filter((r) => r.parent === c.id).map((r) => r.name).join(' · ')}</p>
       )}
-      <h4>장수 ({gens.length})</h4>
-      <div className="gen-row">
-        {gens.map((g) => (
-          <div key={g.id} className={`gen-chip ${g.acted ? 'acted' : ''}`} title={`통${g.stats.leadership} 무${g.stats.war} 지${g.stats.intellect} 정${g.stats.politics} 매${g.stats.charm} · 충성 ${g.loyalty}`}>
-            <Portrait general={g} color={owner?.color ?? '#777'} size={36} />
-            <span>{g.name}</span>
-          </div>
-        ))}
-        {gens.length === 0 && <span className="muted">없음</span>}
-      </div>
       {free.length > 0 && (
         <p className="muted">재야 인재: {free.map((g) => g.name).join(', ')}</p>
       )}
@@ -89,14 +108,7 @@ export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTar
           {ready.length === 0 ? (
             <p className="muted">이번 턴에 행동할 수 있는 장수가 없습니다.</p>
           ) : (
-            <label className="field">
-              실행 장수
-              <select value={gid} onChange={(e) => setGid(e.target.value)}>
-                {ready.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name} (통{g.stats.leadership} 무{g.stats.war} 지{g.stats.intellect} 정{g.stats.politics} 매{g.stats.charm})</option>
-                ))}
-              </select>
-            </label>
+            <p className="actor-line">실행 장수 <b>{actor?.name}</b> <small className="muted">통{actor?.stats.leadership} 무{actor?.stats.war} 지{actor?.stats.intellect} 정{actor?.stats.politics} 매{actor?.stats.charm} — 위 장수 목록에서 바꿈</small></p>
           )}
           {actor && tab === '내정' && <DomesticTab state={state} cityId={c.id} actor={actor} onCommand={onCommand} />}
           {actor && tab === '군사' && <MilitaryTab key={`${c.id}:${actor.id}`} state={state} actor={actor} cityTroops={c.troops} population={c.population} neighbors={ns} onCommand={onCommand} onTargetHover={onTargetHover} />}

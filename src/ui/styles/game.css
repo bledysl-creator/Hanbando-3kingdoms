@@ -399,10 +399,39 @@ button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 .ct-tip {
   position: absolute; left: 0; top: calc(100% + 7px); z-index: 50; width: max-content; max-width: 240px;
   padding: 8px 11px; border: 1px solid var(--gold); border-radius: 6px;
-  background: linear-gradient(180deg, #1f1b12f2, #12100bf2); box-shadow: 0 6px 18px #000a, inset 0 0 0 1px #00000080;
+  background: linear-gradient(180deg, #1f1b12, #12100b); box-shadow: 0 6px 18px #000a, inset 0 0 0 1px #00000080;
   color: #e9dcbc; font-family: inherit; font-weight: 400; font-size: 12.5px; line-height: 1.5; white-space: normal;
   opacity: 0; visibility: hidden; transform: translateY(-3px); transition: opacity .15s, transform .15s; pointer-events: none;
 }
 .ct-tip b { display: block; margin-bottom: 3px; color: var(--gold-hi); font-size: 13px; letter-spacing: .02em; }
 .ct-tip::before { content: ''; position: absolute; top: -6px; left: 14px; width: 9px; height: 9px; background: #1f1b12; border-left: 1px solid var(--gold); border-top: 1px solid var(--gold); transform: rotate(45deg); }
 .ct-chip:hover .ct-tip, .ct-chip:focus-visible .ct-tip { opacity: 1; visibility: visible; transform: translateY(0); }
+/* v4.2 도시 장수 목록: 한 줄 5명 + ▼ 전체, 행동 가능 금테 · 행동 마침 회색 · 마우스 능력치 */
+.gen-strip { margin: 6px 0 10px; padding: 7px 8px 8px; border: 1px solid #c9a65a44; border-radius: 8px; background: #0d111780; }
+.gen-strip-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.gen-strip-head b { color: var(--gold-hi); font-size: 14px; white-space: nowrap; }
+.gen-strip-head small { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.gen-more { margin-left: auto; white-space: nowrap; padding: 2px 8px; font-size: 12px; border-radius: 9px; border: 1px solid #c9a65a88; background: #1b1810; color: #f3e6c4; cursor: pointer; }
+.gen-more:hover { border-color: var(--gold-hi); }
+.gen-row5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.gen-cell {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 5px 2px 4px; border: 1px solid transparent; border-radius: 8px; background: transparent;
+  color: #f3e6c4; font: inherit; font-size: 11.5px; cursor: default; min-width: 0;
+}
+.gen-cell .gen-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gen-cell.ready { border-color: #c9a65a99; background: linear-gradient(180deg, #2a2416aa, #17140daa); cursor: pointer; }
+.gen-cell.ready:hover, .gen-cell.ready:focus-visible { border-color: var(--gold-hi); outline: none; }
+.gen-cell.chosen { border: 2px solid var(--gold-hi); box-shadow: 0 0 0 2px #f0d68e33, 0 0 10px #f0d68e44; padding: 4px 1px 3px; }
+.gen-cell.done > :not(.ct-tip) { filter: grayscale(1); opacity: 0.45; }
+.gen-cell:hover .ct-tip, .gen-cell:focus-visible .ct-tip { opacity: 1; visibility: visible; transform: translateY(0); }
+.gen-cell.done:hover > :not(.ct-tip) { opacity: 0.75; }
+.gen-tip { text-align: left; min-width: 150px; }
+.gen-tip.right { left: auto; right: 0; }
+.gen-tip.right::before { left: auto; right: 14px; }
+.gen-tip b small { color: #b8ad95; font-weight: 400; font-size: 11px; }
+.gen-tip .tip-stat { display: inline-flex; align-items: center; gap: 3px; width: 50%; font-size: 12.5px; }
+.gen-tip .tip-stat em { font-style: normal; color: #b8ad95; }
+.gen-tip .tip-stat i { font-style: normal; }
+.actor-line { margin: 6px 0; font-size: 13px; }
+.actor-line b { color: var(--gold-hi); }
