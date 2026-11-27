@@ -8,7 +8,7 @@ import { CityPanel } from './components/CityPanel';
 import { EventCards, pickEvents, type EventCardItem } from './components/EventCard';
 import { SiegeModal } from './components/Siege';
 import { DiplomacyModal, OffersModal } from './components/Diplomacy';
-import { CommandBar, EventLog, MiniMap, MissionPanel, RulerCard, SideMenu, TopBar, TurnButton, type BarKey, type MenuKey } from './components/Hud';
+import { CommandBar, EventLog, MiniMap, RulerCard, SideMenu, TopBar, TurnButton, type BarKey, type MenuKey } from './components/Hud';
 import { CaptiveModal, CityTraitCard } from './components/Captives';
 import { SimStatsModal, BattleReportView, BattlesModal, ArmyModal, TacticsModal, DevModal, ChronicleModal, CitiesModal, FactionsModal, GeneralsModal, HelpModal, Modal, SettingsModal } from './components/Modals';
 
@@ -135,6 +135,9 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
   const [layers, setLayers] = useState<MapLayers>(() => {
     try { return { ...DEFAULT_LAYERS, ...JSON.parse(localStorage.getItem('hanbando.layers') ?? '{}') }; } catch { return DEFAULT_LAYERS; }
   });
+  // v4.2.3 미니맵·지도 모드 패널은 평소 접어 둔다 (펼침 여부 기억)
+  const [mapDock, setMapDock] = useState(() => { try { return localStorage.getItem('hanbando.mapDock') === '1'; } catch { return false; } });
+  const toggleDock = () => setMapDock((v) => { try { localStorage.setItem('hanbando.mapDock', v ? '0' : '1'); } catch { /* 저장 불가 */ } return !v; });
   const toggleLayer = (k: keyof MapLayers) => setLayers((l) => { const n = { ...l, [k]: !l[k] }; localStorage.setItem('hanbando.layers', JSON.stringify(n)); return n; });
   const [siegeHidden, setSiegeHidden] = useState(false);
   useEffect(() => { setOffersHidden(false); setSiegeHidden(false); }, [state.turn]);
@@ -219,7 +222,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
   const idle = pf ? Object.values(state.generals).filter((g) => g.alive && g.faction === pf && !g.acted && state.cities[g.city].owner === pf).length : 0;
 
   return (
-    <div className="game">
+    <div className={`game ${mapDock ? '' : 'dock-closed'}`}>
       <div className="map-layer">
         <KoreaMap layers={layers} mode={mapMode} state={state} selectedCityId={selected} highlightCityIds={hover} onSelectCity={setSelected} />
       </div>
@@ -232,9 +235,10 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
         {pf && <SideMenu active={selected && state.cities[selected]?.owner === pf ? tab : null} onPick={onMenu} />}
       </div>
 
-      <div className="right-col">
-        <MiniMap state={state} />
-        <div className="map-modes panel">
+      <div className={`right-col ${mapDock ? '' : 'docked'}`}>
+        <button className="dock-toggle" onClick={toggleDock} title={mapDock ? '지도 패널 접기' : '미니맵·지도 모드 펼치기 (지형·경제·병력 등)'}>{mapDock ? '▶ 접기' : '◀ 🗺️ 지도'}</button>
+        {mapDock && <MiniMap state={state} />}
+        {mapDock && <div className="map-modes panel">
           {MAP_MODES.map((m) => (
             <button key={m.key} className={mapMode === m.key ? 'active' : ''} onClick={() => setMapMode(m.key)}>{m.label}</button>
           ))}
@@ -248,8 +252,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
               {mapMode === 'terrain' ? <><span className="lg terrain" /> 저지대 → 고산 <small>(실측 고도 음영)</small></> : mapMode === 'weather' ? <span>☀️맑음 🌧️비 ⛈️폭우 🌀태풍 🌨️눈 ❄️폭설 🥶한파 🏜️가뭄 🌫️안개</span> : mapMode === 'supply' ? <><span className="lg ramp" /> 끊김·부족 → 충분 <small>(본거지 연결 × 군량)</small></> : <><span className="lg ramp" /> 낮음 → 높음</>}
             </div>
           )}
-        </div>
-        <MissionPanel state={state} />
+        </div>}
         {selected && (
           <CityPanel state={state} cityId={selected} tab={tab} onTab={setTab} onCommand={onCommand} onClose={() => setSelected(null)} onTargetHover={setHover} onDelegate={onDelegate} />
         )}
@@ -257,8 +260,9 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
 
       <EventLog state={state} onOpen={() => setModal('chronicle')} />
 
+      {/* v4.2.3 명령 아이콘 바: 군주 카드 오른쪽 */}
+      <div className="command-dock"><CommandBar onPick={onBar} /></div>
       <div className="bottom-right">
-        <CommandBar onPick={onBar} />
         {pf ? (
           <TurnButton onClick={nextTurn} disabled={state.outcome !== 'playing'} />
         ) : (
