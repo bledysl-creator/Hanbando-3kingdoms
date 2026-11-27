@@ -1,6 +1,7 @@
 // 화면 테두리 HUD: 상단 자원바, 군주 카드, 좌측 메뉴, 미니맵, 임무, 천하 동향, 하단 명령바, 턴 진행
 import type { GameState } from '../../core';
 import { citiesOf, factionPower, generalsOf, missionProgress, seasonLabel, totalTroops } from '../../core';
+import { useState } from 'react';
 import { KoreaMap } from '../../map/KoreaMap';
 import { Portrait } from './Portrait';
 
@@ -14,6 +15,7 @@ export function TopBar({ state, onHelp, onSettings, onMail, onTrophy }: { state:
       <div className="title">
         삼국지 한반도전 <button className="icon-btn round" title="도움말" onClick={onHelp}>?</button>
       </div>
+      <MissionDropdown state={state} />
       <div className="date">{seasonIcon} {seasonLabel(state)}</div>
       {f ? (
         <div className="resources">
@@ -86,11 +88,24 @@ export function MiniMap({ state }: { state: GameState }) {
   );
 }
 
+/** v4.2.3 주요 임무: 제목 옆 펼침/접기 (펼침 여부 기억) */
+export function MissionDropdown({ state }: { state: GameState }) {
+  const [open, setOpen] = useState(() => { try { return localStorage.getItem('hanbando.missionsOpen') === '1'; } catch { return false; } });
+  if (!state.playerFactionId) return null;
+  const done = state.missions.filter((m) => missionProgress(state, m).done).length;
+  const toggle = () => setOpen((v) => { try { localStorage.setItem('hanbando.missionsOpen', v ? '0' : '1'); } catch { /* 저장 불가 */ } return !v; });
+  return (
+    <div className="mission-drop">
+      <button className={`mission-btn ${open ? 'open' : ''}`} onClick={toggle} aria-expanded={open}>◈ 주요 임무 <b>{done}/{state.missions.length}</b> <span className="caret">{open ? '▲' : '▼'}</span></button>
+      {open && <MissionPanel state={state} />}
+    </div>
+  );
+}
+
 export function MissionPanel({ state }: { state: GameState }) {
   if (!state.playerFactionId) return null;
   return (
     <div className="missions panel">
-      <h3>◈ 주요 임무</h3>
       <ul>
         {state.missions.map((m) => {
           const p = missionProgress(state, m);
