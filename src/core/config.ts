@@ -339,4 +339,55 @@ export const BALANCE = {
   // AI
   failedAttackAttrition: 0.45, // 공격 실패 시에도 수비 측이 입는 소모 비율
   aiAttackRatio: 0.95,
+  // v4.3 5단계 전술 전투: 플레이어가 끼는 전투는 다섯 단계로 나눠 병과마다 병력·전술을 고른다 (docs/balance/tactical-v4.3.md)
+  tactical: {
+    /** 플레이어 전투를 5단계 전술 전투 창으로 (끄면 예전처럼 한 번에 결판) */
+    enabled: true,
+    /** 밸런스 확인용: 모든 전투(AI끼리 포함)를 양쪽 AI 전술로 5단계 진행 (tools에서만 켠다) */
+    autoAll: false,
+    /** 밸런스 확인용: 자동 전투와 5단계 자동 전투를 같은 입력으로 나란히 돌려 통계만 모은다 */
+    compare: false,
+    phases: 5,
+    /** 단계마다 접전 손실 기본값 = clashLoss / phases × lossScale */
+    lossScale: 1.15,
+    /** 한 단계에 진 쪽이 잃을 수 있는 최대 비율 */
+    loserCap: 0.14,
+    /** 사기 하락 = 이번 단계 손실 비율 × moraleLoss, 단계를 이긴 쪽 사기 +winMorale */
+    moraleLoss: 70, winMorale: 2,
+    /** 사기가 routMorale 미만으로 (처음보다 routDrop 이상) 떨어지거나 병력이 처음의 routRemain 미만이면 무너져 달아난다 */
+    routMorale: 25, routDrop: 30, routRemain: 0.4,
+    /** 전술마다 공격(s)·노출(e, 받는 피해) 배율 */
+    orders: {
+      assault: { s: 1, e: 1 },
+      charge: { s: 1.25, e: 1.2 },
+      chargeHorse: { s: 1.45, e: 1.3 },
+      chargeChariot: { s: 1.6, e: 1.4 },
+      hold: { s: 0.6, e: 0.62 },
+      volley: { s: 0.8, e: 0.75 },
+      fireOk: { s: 1.9, e: 0.7 }, fireFail: { s: 0.5, e: 0.9 },
+      nightOk: { s: 1.5, e: 0.9 }, nightFail: { s: 0.7, e: 1.2 },
+      feint: { s: 0.3, e: 0.5 }, feintFail: { s: 0.3, e: 1.1 },
+      flank: { s: 1.12, e: 1 }, flankAlone: { s: 0.8, e: 1.1 },
+      found: { s: 0.3, e: 1.4 },
+      reserve: { s: 0.2, e: 0.3 },
+    } as Record<string, { s: number; e: number }>,
+    /** 궁병 비·눈 사격 배율 */
+    volleyWet: 0.65,
+    /** 매복했다가 치는 기습: 공격 ×ambushSpring (골짜기 궁병 ×valleyArcher 더), 유인된 적에게는 ×lureBonus 더 */
+    ambushSpring: 1.7, valleyArcher: 1.25, lureBonus: 1.3,
+    /** 거짓 퇴각에 걸려 쫓아온 적: 받는 피해 ×lureExpose, 사기 −lureMorale */
+    lureExpose: 1.25, lureMorale: 5,
+    /** 매복이 들킬 확률 = base + (적 지력 − 내 지력)/div, 골짜기 −valley, 트인 평지 +open */
+    ambushFound: { base: 0.15, div: 150, valley: 0.1, open: 0.15, min: 0.03, max: 0.6 },
+    /** 거짓 퇴각 성공률 = base + (내 지력 − 적 지력)/div */
+    feintChance: { base: 0.55, div: 120, min: 0.15, max: 0.9 },
+    /** 상성: 돌격이 창병 방진에 막힘, 돌격이 사격하는 궁병을 덮침, 방진 옆구리를 치는 협공, 사격이 달려드는 말을 맞힘 */
+    pair: { chargeIntoPikes: 0.55, pikesImpale: 1.5, chargeOnArchers: 1.3, archersCaught: 1.4, chargeIntoHold: 0.85, flankHold: 1.25, volleyOnCharge: 1.15, vsFeint: 0.6 },
+    /** 사기 변화: 화공 성공 −, 매복 기습 −, 야습 성공 −, 거짓 퇴각 실패(내 쪽) − */
+    moraleHit: { fire: 8, ambush: 6, night: 6, feintFail: 5 },
+    /** 스스로 물러날 때 추격 손실 배율, 무너져 달아날 때 배율 */
+    retreatPursuit: 0.6, routPursuit: 1.15,
+    /** 출진 때 고른 계책(선제 계책)이 효과를 내는 단계 수 */
+    openingPhases: 5,
+  },
 } as const;

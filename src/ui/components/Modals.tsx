@@ -242,6 +242,16 @@ export function BattleReportView({ state, report }: { state: GameState; report: 
           {report.won && report.defenderSurvivors !== undefined && <li><b>③ 패잔병</b> 살아남은 수비병 {fmt(report.defenderSurvivors)}명 (일부는 이웃 성으로 달아나고 일부는 투항)</li>}
         </ol>
       )}
+      {report.tactical && report.tactical.length > 0 && (
+        <>
+          <h4>5단계 전투 기록</h4>
+          <ol className="battle-tactical">
+            {report.tactical.map((p) => (
+              <li key={p.phase}><b>{p.phase}/{BALANCE.tactical.phases}</b> 공격 {p.atk} · 수비 {p.def} → 손실 {fmt(p.atkLoss)} 대 {fmt(p.defLoss)}{p.events.map((e, i) => <div key={i} className="small muted">· {e}</div>)}</li>
+            ))}
+          </ol>
+        </>
+      )}
       {report.fates && report.fates.length > 0 && (
         <div className="fates">
           <h4>장수의 운명</h4>
@@ -302,6 +312,7 @@ export function SettingsModal({ state, onClose, onLoad, onNewGame }: { state: Ga
       </div>
       <h4>개발자 모드</h4>
       <label><input type="checkbox" defaultChecked={localStorage.getItem('hanbando.dev') === '1'} onChange={(e) => { localStorage.setItem('hanbando.dev', e.target.checked ? '1' : '0'); window.dispatchEvent(new Event('hanbando-dev')); }} /> AI 판단 근거 보기 버튼 표시 (화면 왼쪽 아래)</label>
+      <label><input type="checkbox" defaultChecked={localStorage.getItem('hanbando.tactical') !== '0'} onChange={(e) => localStorage.setItem('hanbando.tactical', e.target.checked ? '1' : '0')} /> 출진하면 전투를 5단계로 직접 지휘 (끄면 한 번에 결판)</label>
       <label><input type="checkbox" defaultChecked={localStorage.getItem('hanbando.eventCards') !== '0'} onChange={(e) => localStorage.setItem('hanbando.eventCards', e.target.checked ? '1' : '0')} /> 턴마다 중요한 사건을 그림 카드로 안내</label>
       {msg && <p className="hint">{msg}</p>}
     </Modal>
@@ -348,6 +359,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <li><b>도시 클릭</b> → 오른쪽 도시 패널에서 내정·군사·인재 명령. 장수 1명은 한 턴에 한 번 행동합니다.</li>
         <li><b>내정</b>: 농업(가을 수확 곡식) · 상업(매 계절 금) · 성벽(수비력). 정치가 높은 장수가 효과적.</li>
         <li><b>군사</b>: 징병(금·철 소모, 인구·민심 감소), 출진(인접 도시 공격, 군량 소모), 이동.</li>
+        <li><b>5단계 전투</b>: 출진하면 전투 창이 열립니다. 전투는 다섯 단계(1/5~5/5)로 나뉘고, 단계마다 병과(보병·창병·궁병·기병·전차병)별로 투입 병력과 전술(정면 공격·돌격·방진·일제 사격·화공·매복·거짓 퇴각·협공·야습)을 고릅니다. 예상 손실과 성공률이 바로 보입니다. 앞 단계가 다음 단계로 이어집니다: 매복한 병과는 다음 단계에 기습하고, 거짓 퇴각에 속아 쫓아온 적은 대열이 흐트러져 협공·기습에 크게 당합니다. 포위당한 성은 '직접 지휘'로 바로 맞설 수 있습니다. 설정에서 끄면 예전처럼 한 번에 결판납니다.</li>
         <li><b>지형</b>: 강을 건너는 도하 공격, 고개, 해로, 겨울 행군은 불리. 산성·산악 도시는 수비 유리.</li>
         <li><b>인재</b>: 재야 장수 등용(매력), 포상(충성 상승). 충성이 낮고 야망이 큰 장수는 떠날 수 있습니다.</li>
         <li><b>계략·첩보</b>: 우리 땅과 맞닿지 않은 적 도시의 병력은 보이지 않습니다(전장의 안개). 첩자를 보내 알아내되, 실패하면 적이 흘린 가짜 정보를 받을 수 있습니다. 유언비어로 적 도시의 민심·사기를, 이간으로 적 장수의 충성을 떨어뜨립니다.</li>

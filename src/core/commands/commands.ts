@@ -19,6 +19,8 @@ import type { City, EventKind, GameState, General, LogKind, Road } from '../stat
 import { refuseChance, remember } from '../systems/persona';
 import { developGain, gainExp, supplyMul, trainGain, type StatKey } from '../systems/stats';
 import { relationBetween } from '../query';
+import { autoTactical, recordCalib } from '../battle/phased';
+import { startTacticalMut } from '../systems/tactical';
 import { canAttack, pairKey, statusOf, tryProposal, type Proposal } from '../diplomacy/diplomacy';
 
 export type DevelopField = 'agriculture' | 'commerce' | 'wall';
@@ -27,7 +29,7 @@ export type Command =
   | { type: 'develop'; generalId: string; field: DevelopField }
   | { type: 'conscript'; generalId: string; amount: number }
   | { type: 'train'; generalId: string }
-  | { type: 'march'; generalId: string; toCityId: string; troops: number; tactic?: TacticKind; formation?: FormationKind; advisorId?: string; deputyId?: string }
+  | { type: 'march'; generalId: string; toCityId: string; troops: number; tactic?: TacticKind; formation?: FormationKind; advisorId?: string; deputyId?: string; /** v4.3 5단계 전술 전투 창으로 직접 지휘 (화면 설정, AI는 쓰지 않음) */ tactical?: boolean }
   | { type: 'transfer'; generalId: string; toCityId: string; troops: number }
   | { type: 'recruit'; generalId: string; targetId: string }
   | { type: 'reward'; generalId: string; targetId: string }
@@ -91,6 +93,7 @@ function executeCommandInner(s: GameState, factionId: string, cmd: Command): Com
   if (g.faction !== factionId) return { ok: false, error: '우리 세력 장수가 아닙니다.' };
   const free = cmd.type === 'captive'; // v4.0 행동을 쓰지 않는 명령
   if (g.acted && !free) return { ok: false, error: `${g.name}은(는) 이번 턴에 이미 행동했습니다.` };
+  if (s.tacBattle && !s.tacBattle.done) return { ok: false, error: '전투가 진행 중입니다. 전투 창에서 지휘를 마치세요.' };
   const city = s.cities[g.city];
   if (city.owner !== factionId) return { ok: false, error: '우리 도시에 있는 장수만 명령할 수 있습니다.' };
   const f = s.factions[factionId];
@@ -211,6 +214,11 @@ function executeCommandInner(s: GameState, factionId: string, cmd: Command): Com
       if (s.playerFactionId && to.owner === s.playerFactionId && factionId !== s.playerFactionId && BALANCE.siegeChoice) {
         beginSiege(s, factionId, g, city, to, troops, cmd.tactic, cmd.formation, deputy);
         return { ok: true, message: `${to.name}을(를) 포위했습니다.` };
+      }
+      // v4.3 플레이어가 직접 지휘하는 5단계 전술 전투: 결판은 전투 창에서 단계마다
+      if (cmd.tactical && factionId === s.playerFactionId && BALANCE.tactical.enabled) {
+        startTacticalMut(s, { factionId, generalId: g.id, fromCity: city.id, toCity: to.id, troops, tactic: cmd.tactic, formation: cmd.formation, deputyId: deputy?.id });
+        return { ok: true, message: `⚔️ ${to.name} 전투 시작 — 전투 창에서 단계마다 병과별 전술을 고르세요.${advised}` };
       }
       const res = finishAttack(s, factionId, g, city, to, troops, road, cmd.tactic, { battle: { formation: cmd.formation, attackerDeputy: deputy, bond: deputy ? relationBetween(s, g.id, deputy.id)?.type : undefined } });
       return res.ok && advised ? { ok: true, message: res.message + advised } : res;
@@ -556,7 +564,14 @@ export function finishAttack(s: GameState, factionId: string, g: General, city: 
   const f = s.factions[factionId];
   const defenderFaction = to.owner;
   const defenders = generalsIn(s, to.id).filter((x) => x.faction === defenderFaction);
-  const out = opt.outcome ?? resolveBattle(s, { ...marchInput(s, factionId, g, city, to, troops, road, tactic), ...opt.battle });
+  let out = opt.outcome;
+  if (!out) {
+    const input = { ...marchInput(s, factionId, g, city, to, troops, road, tactic), ...opt.battle };
+    const meta = { id: `tb${s.turn}_${g.id}`, turn: s.turn, playerSide: null, attackerFaction: factionId, defenderFaction, fromCity: city.id };
+    // v4.3 밸런스 확인 도구: 같은 입력으로 자동 전투와 5단계 자동 전투를 나란히 (게임 난수는 건드리지 않음)
+    if (BALANCE.tactical.compare) recordCalib(s, input, meta);
+    out = BALANCE.tactical.autoAll ? autoTactical(s, input, meta).outcome : resolveBattle(s, input);
+  }
   opt.after?.(out);
   const report = {
     turn: s.turn, attackerFaction: factionId, defenderFaction, fromCity: city.id, toCity: to.id, generalId: g.id,

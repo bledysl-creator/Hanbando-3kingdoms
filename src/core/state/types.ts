@@ -182,7 +182,12 @@ export interface BattleReport {
   defComp?: import('../battle/formation').Comp;
   fates?: GeneralFate[];
   fortune?: string;
+  /** v4.3 5단계 전술 전투 기록 */
+  tactical?: TacticalPhaseSummary[];
 }
+
+/** v4.3 5단계 전투 한 단계 요약 (전투 보고용) */
+export interface TacticalPhaseSummary { phase: number; atk: string; def: string; atkLoss: number; defLoss: number; events: string[] }
 
 export interface AiTraceEntry {
   turn: number;
@@ -239,6 +244,8 @@ export interface GameState {
   offers: DiplomaticOffer[]; // AI → 플레이어 제안 (플레이어 응답 대기)
   /** v3.6 플레이어 도시 포위: 다음 턴 시작에 플레이어가 고른 대응으로 결판난다 */
   sieges?: Siege[];
+  /** v4.3 플레이어가 지휘 중인 5단계 전술 전투 (끝날 때까지 다른 명령·턴 넘기기 불가) */
+  tacBattle?: import('../battle/phased').TacBattle;
   /** v4.0 플레이어가 처분을 정해야 하는 포로 */
   captives?: Captive[];
   /** v3.6.1 세력별 화친 재요청 금지 기한 (이 턴 전까지 거절) */

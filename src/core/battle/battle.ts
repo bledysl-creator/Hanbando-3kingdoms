@@ -75,6 +75,8 @@ export interface BattleOutcome {
   fortune?: string;
   /** v4.0 함락 때 수비 장수의 운명 (finishAttack이 채움) */
   fates?: import('../state/types').GeneralFate[];
+  /** v4.3 5단계 전술 전투 기록 */
+  tactical?: import('../state/types').TacticalPhaseSummary[];
 }
 
 /** v4.0 전장의 변수: 아무도 예상 못 한 일 (side: 누가 득을 보나) */
@@ -98,7 +100,14 @@ const commandFactor = (lead: number, war: number) => (0.5 + lead / 100) * (0.7 +
 /** 사기·훈련 배율 (둘 다 70·55 근처면 약 1) */
 export const qualityFactor = (morale: number, training: number) => moraleFactor(morale) * (0.78 + training / 250);
 
-export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
+/** v4.3 전투 기초 전력 (계책·편제 상성·일기토·전장의 변수·난수 전). 5단계 전투가 이것을 바탕으로 싸운다 */
+export interface BattleBase {
+  atk: number; def: number; reasons: string[];
+  g: General; dep: General | null; us: General['stats'];
+  rel: number; best: General | null; dLead: number; dWar: number; champ: General | null; ag: General;
+}
+
+export function battleBase(b: BattleInput): BattleBase {
   const reasons: string[] = [];
   const g = b.attackerGeneral;
   const dep = b.attackerDeputy && b.attackerDeputy.alive ? b.attackerDeputy : null;
@@ -154,27 +163,7 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
 
   if (b.attackMul !== undefined && b.attackMul !== 1) { atk *= b.attackMul; if (b.attackReason) reasons.push(b.attackReason); }
 
-  let tactic: BattleOutcome['tactic'];
-  if (b.tactic) {
-    const p = tacticChance(b.tactic, { general: dep ? { ...g, stats: us } : g, defenders: b.defenderGenerals, weather: b.weather, road: b.road, target: b.defenderCity });
-    const name = TACTICS.find((t) => t.id === b.tactic)!.name;
-    if (p > 0) {
-      const success = rand(rng) < p;
-      tactic = { kind: b.tactic, success, chance: p };
-      if (success) { atk *= BALANCE.tacticBonus[b.tactic]; reasons.push(`계책 「${name}」 성공! 공격력 +${Math.round((BALANCE.tacticBonus[b.tactic] - 1) * 100)}% (성공률 ${Math.round(p * 100)}%)`); }
-      else { atk *= BALANCE.tacticFailPenalty; reasons.push(`계책 「${name}」이(가) 간파당함 −${Math.round((1 - BALANCE.tacticFailPenalty) * 100)}% (성공률 ${Math.round(p * 100)}%)`); }
-    } else reasons.push(`계책 「${name}」은(는) 지금 쓸 수 없어 정공법으로 싸움`);
-  }
-
   const city = b.defenderCity;
-  // v3.9 병종 편성
-  // v4.1 군사 편제: 병종마다 지형·날씨·성벽 효과와 상대 편제와의 상성을 병력 비율로 섞는다
-  const aComp = normComp(b.attackerComp ?? compFromFormation(b.formation));
-  const dComp = normComp(b.defenderComp ?? compFromFormation(b.defForm));
-  const fe = compEffect(aComp, dComp, b.road, city, b.weather, !b.ignoreWalls && city.wall >= 50, b.cavalryTrait);
-  atk *= fe.attack;
-  reasons.push(`[편제] ${compText(aComp)} vs ${compText(dComp)} → ${fe.attack >= 1 ? '+' : '−'}${Math.round(Math.abs(fe.attack - 1) * 100)}%`);
-  for (const r of fe.reasons) reasons.push(`  · ${r}`);
   // v4.0 실측 지형: 험한 산골짜기에서는 대군이 한꺼번에 펼치지 못한다
   const rel = reliefOf(city);
   if (rel >= BALANCE.frontageFrom && b.attackerTroops > city.troops * 1.2) {
@@ -225,10 +214,16 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
     reasons.push(`땅이 얼마 남지 않은 수비군의 배수진 +${Math.round((b.lastStand - 1) * 100)}%`);
   }
 
-  // v3.9 일기토: 두 진영에 이름난 맹장이 있으면 진 앞에서 맞붙기도 한다. 이긴 쪽 사기가 오르고 진 쪽은 흔들린다.
-  let duel: DuelResult | undefined;
   const champ = b.defenderGenerals.reduce<General | null>((acc, x) => (!acc || x.stats.war > acc.stats.war ? x : acc), null);
   const ag = dep && dep.stats.war > g.stats.war ? dep : g; // 부장이 더 세면 부장이 나선다
+  return { atk, def, reasons, g, dep, us, rel, best, dLead, dWar, champ, ag };
+}
+
+/** v3.9 일기토 판정 (자동 전투·5단계 전투 공용). 배율을 돌려준다 */
+export function rollDuel(rng: RngHolder, b: BattleInput, B: Pick<BattleBase, 'champ' | 'ag'>, reasons: string[]): { duel?: DuelResult; atkMul: number; defMul: number } {
+  const { champ, ag } = B;
+  let atk = 1, def = 1;
+  let duel: DuelResult | undefined;
   if (!b.noDuel && champ && ag.stats.war >= BALANCE.duelMinWar && champ.stats.war >= BALANCE.duelMinWar) {
     const pDuel = Math.min(0.8, BALANCE.duelChance * (0.6 + (ag.persona.pride + champ.persona.pride) / 250));
     if (rand(rng) < pDuel) {
@@ -242,7 +237,14 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
     }
   }
 
-  // v4.0 전장의 변수
+  return { duel, atkMul: atk, defMul: def };
+}
+
+/** v4.0 전장의 변수 판정 (자동 전투·5단계 전투 공용) */
+export function rollFortune(rng: RngHolder, b: BattleInput, usIntellect: number, reasons: string[]): { fortune?: string; side?: 'atk' | 'def'; atkMul: number; defMul: number } {
+  const us = { intellect: usIntellect };
+  let atk = 1, def = 1;
+  let side: 'atk' | 'def' | undefined;
   let fortune: string | undefined;
   if (rand(rng) < BALANCE.fortuneChance) {
     const f = FORTUNES[Math.floor(rand(rng) * FORTUNES.length)];
@@ -253,9 +255,48 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
       reasons.push(`🧠 ${f.side === 'atk' ? '수비' : '공격'} 측이 미리 꿰뚫어 봄 — 「${f.text}」을(를) 막아냄 (지력 ${victimInt} 대 ${otherInt})`);
     } else {
       if (f.side === 'atk') atk *= f.mul; else def *= f.mul;
-      fortune = f.text;
+      fortune = f.text; side = f.side;
       reasons.push(`🎲 전장의 변수: ${f.text} (${f.side === 'atk' ? '공격' : '수비'} +${Math.round((f.mul - 1) * 100)}%)`);
     }
+  }
+
+  return { fortune, side, atkMul: atk, defMul: def };
+}
+
+export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
+  const B = battleBase(b);
+  const { reasons, g, dep, us, rel, dLead, champ } = B;
+  let { atk, def } = B;
+  let tactic: BattleOutcome['tactic'];
+  if (b.tactic) {
+    const p = tacticChance(b.tactic, { general: dep ? { ...g, stats: us } : g, defenders: b.defenderGenerals, weather: b.weather, road: b.road, target: b.defenderCity });
+    const name = TACTICS.find((t) => t.id === b.tactic)!.name;
+    if (p > 0) {
+      const success = rand(rng) < p;
+      tactic = { kind: b.tactic, success, chance: p };
+      if (success) { atk *= BALANCE.tacticBonus[b.tactic]; reasons.push(`계책 「${name}」 성공! 공격력 +${Math.round((BALANCE.tacticBonus[b.tactic] - 1) * 100)}% (성공률 ${Math.round(p * 100)}%)`); }
+      else { atk *= BALANCE.tacticFailPenalty; reasons.push(`계책 「${name}」이(가) 간파당함 −${Math.round((1 - BALANCE.tacticFailPenalty) * 100)}% (성공률 ${Math.round(p * 100)}%)`); }
+    } else reasons.push(`계책 「${name}」은(는) 지금 쓸 수 없어 정공법으로 싸움`);
+  }
+
+  const city = b.defenderCity;
+  // v3.9 병종 편성
+  // v4.1 군사 편제: 병종마다 지형·날씨·성벽 효과와 상대 편제와의 상성을 병력 비율로 섞는다
+  const aComp = normComp(b.attackerComp ?? compFromFormation(b.formation));
+  const dComp = normComp(b.defenderComp ?? compFromFormation(b.defForm));
+  const fe = compEffect(aComp, dComp, b.road, city, b.weather, !b.ignoreWalls && city.wall >= 50, b.cavalryTrait);
+  atk *= fe.attack;
+  reasons.push(`[편제] ${compText(aComp)} vs ${compText(dComp)} → ${fe.attack >= 1 ? '+' : '−'}${Math.round(Math.abs(fe.attack - 1) * 100)}%`);
+  for (const r of fe.reasons) reasons.push(`  · ${r}`);
+  let duel: DuelResult | undefined;
+  let fortune: string | undefined;
+  {
+    const d = rollDuel(rng, b, B, reasons);
+    duel = d.duel; atk *= d.atkMul; def *= d.defMul;
+  }
+  {
+    const f = rollFortune(rng, b, us.intellect, reasons);
+    fortune = f.fortune; atk *= f.atkMul; def *= f.defMul;
   }
 
   atk *= randRange(rng, 0.88, 1.12);

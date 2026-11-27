@@ -1,6 +1,9 @@
 // 관전 모드 일괄 시뮬레이션: 밸런스를 통계로 확인한다 (Game.md 5-7).
 // 사용: npx tsx tools/simulate.ts [판수=100] [최대턴=120] [all|-] [시나리오=197_sabun] [city|region]
-import { createGame, DATA, SCENARIOS } from '../src/core';
+import { BALANCE, createGame, DATA, SCENARIOS } from '../src/core';
+
+// v4.3 TACTICAL_ALL=1: 모든 전투를 5단계 전술 전투(양쪽 AI 지휘)로 — 5단계 전투가 판 전체 밸런스를 흔드는지 확인
+if (process.env.TACTICAL_ALL === '1') (BALANCE.tactical as { autoAll: boolean }).autoAll = true;
 import { endTurnMut } from '../src/core/systems/turn';
 
 const runs = Number(process.argv[2] ?? 100);
@@ -25,7 +28,7 @@ for (let i = 0; i < runs; i++) {
   rebelAlive += Object.values(s.factions).filter((f) => f.id.startsWith('reb') && f.alive).length;
   defects.push(s.log.filter((l) => l.text.includes('재야로 들어갔습니다')).length);
 }
-console.log(`관전 시뮬레이션 ${runs}판 (최대 ${maxTurns}턴, ${scId}, ${scale})`);
+console.log(`관전 시뮬레이션 ${runs}판 (최대 ${maxTurns}턴, ${scId}, ${scale})${BALANCE.tactical.autoAll ? ' — 모든 전투 5단계 전술 전투' : ''}`);
 for (const f of Object.keys(SCENARIOS[scId].factions)) {
   console.log(`  ${f.padEnd(4)} 통일 ${String(wins[f] ?? 0).padStart(3)}판  생존 ${String(survive[f] ?? 0).padStart(3)}판`);
 }

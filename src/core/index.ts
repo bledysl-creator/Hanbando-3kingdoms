@@ -32,3 +32,5 @@ export * from './systems/rebellion';
 export { setSiegeResponse, siegeForecast, siegesOf, SIEGE_LABEL, pincerSources, evacuateTargets, parleyGold, type SiegeForecast, type SiegeKind } from './systems/siege';
 export * from './systems/stats';
 export { delegate, delegateMut, DELEGATE_TYPES, type DelegateResult } from './ai/ai';
+export { TAC_ORDERS, orderBlocked, orderChance, cleanOrders, aiOrders, balanceOf, ordersText, sumT, other as otherSide, type TacBattle, type TacOrder, type SideOrders, type UnitOrder, type PhaseEval, type Side as TacSide } from './battle/phased';
+export { startSiegeTactical, previewTactical, orderTactical, autoTacticalRest, retreatTactical, closeTactical, tacticalReportIndex, tacticalMessage } from './systems/tactical';

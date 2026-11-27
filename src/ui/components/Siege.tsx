@@ -9,18 +9,18 @@ import { Portrait } from './Portrait';
 const KINDS: SiegeKind[] = ['hold', 'pincer', 'sortie', 'evacuate', 'parley'];
 const pct = (p: number) => `${Math.round(p * 100)}%`;
 
-export function SiegeModal({ state, sieges, onRespond, onClose }: {
-  state: GameState; sieges: Siege[]; onRespond: (id: string, r: SiegeResponse) => void; onClose: () => void;
+export function SiegeModal({ state, sieges, onRespond, onClose, onDirect }: {
+  state: GameState; sieges: Siege[]; onRespond: (id: string, r: SiegeResponse) => void; onClose: () => void; onDirect?: (id: string) => void;
 }) {
   return (
     <Modal title={`⚔️ 성이 포위당했습니다 (${sieges.length}곳)`} onClose={onClose} wide>
       <p className="muted small">적군이 성 밖에 진을 쳤습니다. 이번 계절에 대응을 고르면 <b>턴을 넘길 때</b> 결판이 납니다. 고르지 않으면 <b>농성</b>으로 싸웁니다. 그 사이 다른 명령(병력 이동·징병 등)도 그대로 할 수 있습니다.</p>
-      {sieges.map((sg) => <SiegeCard key={sg.id} state={state} sg={sg} onRespond={onRespond} />)}
+      {sieges.map((sg) => <SiegeCard key={sg.id} state={state} sg={sg} onRespond={onRespond} onDirect={onDirect} />)}
     </Modal>
   );
 }
 
-function SiegeCard({ state, sg, onRespond }: { state: GameState; sg: Siege; onRespond: (id: string, r: SiegeResponse) => void }) {
+function SiegeCard({ state, sg, onRespond, onDirect }: { state: GameState; sg: Siege; onRespond: (id: string, r: SiegeResponse) => void; onDirect?: (id: string) => void }) {
   const to = state.cities[sg.toCity];
   const g = state.generals[sg.generalId];
   const af = state.factions[sg.attackerFaction];
@@ -47,6 +47,12 @@ function SiegeCard({ state, sg, onRespond }: { state: GameState; sg: Siege; onRe
           <div className="muted small">출발: {state.cities[sg.fromCity].name}{sg.tactic ? ' · 계책을 준비한 듯함' : ''}</div>
         </div>
       </div>
+      {onDirect && (
+        <div className="siege-direct">
+          <button className="primary" onClick={() => onDirect(sg.id)}>⚔️ 직접 지휘 — 지금 성문 앞에서 5단계 전투</button>
+          <span className="small muted">턴을 넘기지 않고 바로 싸웁니다. 단계마다 병과별 전술을 직접 고릅니다 (농성 보너스 없음, 성벽은 그대로).</span>
+        </div>
+      )}
       <div className="siege-options">
         {KINDS.map((k, i) => {
           const fc = forecasts[i];

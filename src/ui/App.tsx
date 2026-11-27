@@ -1,12 +1,13 @@
 // 앱 루트: 타이틀 → 메인 지도 화면. 게임 상태는 core 함수로만 바꾼다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { delegate, fixJosa, BALANCE, canFound, applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, siegesOf, setSiegeResponse, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
+import { orderTactical, autoTacticalRest, retreatTactical, closeTactical, startSiegeTactical, tacticalReportIndex, delegate, fixJosa, BALANCE, canFound, applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, siegesOf, setSiegeResponse, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
 import { DEFAULT_LAYERS, KoreaMap, LAYER_LABELS, MAP_MODES, type MapLayers, type MapMode } from '../map/KoreaMap';
 import { indexedDbRepo } from '../save/saveRepository';
 import { VERSION } from '../version';
 import { CityPanel } from './components/CityPanel';
 import { EventCards, pickEvents, type EventCardItem } from './components/EventCard';
 import { SiegeModal } from './components/Siege';
+import { BattleWindow } from './components/BattleWindow';
 import { DiplomacyModal, OffersModal } from './components/Diplomacy';
 import { CommandBar, EventLog, MiniMap, RulerCard, SideMenu, TopBar, TurnButton, type BarKey, type MenuKey } from './components/Hud';
 import { CaptiveModal, CityTraitCard } from './components/Captives';
@@ -302,8 +303,16 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
 
       {toast && <div className={`toast ${toast.ok ? 'ok' : 'err'}`}>{toast.text}</div>}
 
-      {mySieges.length > 0 && !siegeHidden && events.length === 0 && !offersOpen && auto === false && (
+      {state.tacBattle && pf && (
+        <BattleWindow state={state}
+          onOrder={(o) => { const r = orderTactical(state, o); setState(r.state); flash(r.message, r.ok); }}
+          onAuto={() => setState(autoTacticalRest(state))}
+          onRetreat={() => setState(retreatTactical(state))}
+          onClose={() => { const i = tacticalReportIndex(state); setState(closeTactical(state)); if (i !== undefined) setReport(i); }} />
+      )}
+      {mySieges.length > 0 && !siegeHidden && events.length === 0 && !offersOpen && auto === false && !state.tacBattle && (
         <SiegeModal state={state} sieges={mySieges} onClose={() => setSiegeHidden(true)}
+          onDirect={(id) => { const r = startSiegeTactical(state, pf!, id); setState(r.state); flash(r.message, r.ok); }}
           onRespond={(id, r) => { const x = setSiegeResponse(state, pf!, id, r); setState(x.state); flash(x.result.ok ? x.result.message : x.result.error, x.result.ok); }} />
       )}
       {events.length > 0 && <EventCards key={state.turn} items={events} onClose={() => setEvents([])} />}

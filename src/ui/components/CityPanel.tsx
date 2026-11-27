@@ -22,6 +22,9 @@ interface Props {
   onDelegate?: (cityId: string) => void;
 }
 
+/** v4.3 5단계 전술 전투로 직접 지휘 (설정, 기본 켬) */
+const tacticalOn = () => { try { return localStorage.getItem('hanbando.tactical') !== '0'; } catch { return true; } };
+
 export function CityPanel({ state, cityId, tab, onTab, onCommand, onClose, onTargetHover, onDelegate }: Props) {
   const c = state.cities[cityId];
   const pf = state.playerFactionId;
@@ -364,8 +367,8 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
                 </div>
               );
             })()}
-            <button disabled={troops < least} onClick={() => onCommand({ type: 'march', generalId: actor.id, toCityId: target, troops, tactic: tactic || undefined, advisorId, deputyId: deputyId || undefined })}>⚔️ {troops < least ? `최소 ${least.toLocaleString()}명 필요` : `${troops.toLocaleString()}명 출진`}</button>
-            <p className="hint">군량 {Math.ceil(troops * BALANCE.foodPerTroop * supplyMul(state, city.id, pf)).toLocaleString()} 소모 (이 성 최고 정치 장수의 병참 반영). 도하·고개·겨울은 공격에 불리합니다. 출진 부대는 이 성의 군사 편제 비율 그대로 나갑니다.</p>
+            <button disabled={troops < least} onClick={() => onCommand({ type: 'march', generalId: actor.id, toCityId: target, troops, tactic: tactic || undefined, advisorId, deputyId: deputyId || undefined, tactical: tacticalOn() })}>⚔️ {troops < least ? `최소 ${least.toLocaleString()}명 필요` : `${troops.toLocaleString()}명 출진`}</button>
+            <p className="hint">군량 {Math.ceil(troops * BALANCE.foodPerTroop * supplyMul(state, city.id, pf)).toLocaleString()} 소모 (이 성 최고 정치 장수의 병참 반영). 도하·고개·겨울은 공격에 불리합니다. 출진 부대는 이 성의 군사 편제 비율 그대로 나갑니다.{tacticalOn() ? ' 출진하면 전투 창이 열려 5단계로 직접 지휘합니다 (설정에서 끌 수 있음).' : ''}</p>
           </>
         )}
       </div>
