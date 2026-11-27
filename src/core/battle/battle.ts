@@ -5,6 +5,7 @@ import { rand, randRange, type RngHolder } from '../rng/rng';
 import type { City, General, Road } from '../state/types';
 import { weatherAttackModifier } from '../systems/weather';
 import { tacticChance, TACTICS, type TacticKind } from './tactics';
+import { autoSkillMul } from './skills';
 import { landmarksOfCity, landmarksOnRoad } from '../data';
 import { commandCap, defenseCap, effectiveTroops, unitStats } from '../systems/stats';
 import { compEffect, compFromFormation, compText, normComp, reliefOf, type Comp, type FormationKind } from './formation';
@@ -288,6 +289,17 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   atk *= fe.attack;
   reasons.push(`[편제] ${compText(aComp)} vs ${compText(dComp)} → ${fe.attack >= 1 ? '+' : '−'}${Math.round(Math.abs(fe.attack - 1) * 100)}%`);
   for (const r of fe.reasons) reasons.push(`  · ${r}`);
+  // v4.4 장수 특기: 정면 싸움에 늘 쓰이는 특기만 발동 확률만큼 (계략 특기는 5단계 전투에서만)
+  if (BALANCE.skills.enabled && BALANCE.skills.auto) {
+    const walled = !b.ignoreWalls && city.wall >= 50;
+    const water = b.road.type === 'river' || b.road.type === 'sea', fog = b.weather === 'fog', rough = b.road.type === 'pass' || rel >= 45;
+    const dTop = [...b.defenderGenerals].sort((x, y) => y.stats.leadership - x.stats.leadership);
+    const dSecond = dTop.slice(1).sort((x, y) => Math.max(y.stats.war, y.stats.intellect, y.stats.leadership) - Math.max(x.stats.war, x.stats.intellect, x.stats.leadership))[0];
+    const am = autoSkillMul([{ g, deputy: false }, ...(dep ? [{ g: dep, deputy: true }] : [])], { atk: true, walled, outnumbered: b.attackerTroops < city.troops * 0.8, water, fog, rough });
+    const dm = autoSkillMul([...(dTop[0] ? [{ g: dTop[0], deputy: false }] : []), ...(dSecond ? [{ g: dSecond, deputy: true }] : [])], { atk: false, walled, outnumbered: city.troops < b.attackerTroops * 0.8, water, fog, rough });
+    if (am.mul > 1.005) { atk *= am.mul; reasons.push(`✨ 공격군 장수 특기${am.names.length ? ` ${am.names.join('·')}` : ''} +${Math.round((am.mul - 1) * 100)}%`); }
+    if (dm.mul > 1.005) { def *= dm.mul; reasons.push(`✨ 수비군 장수 특기${dm.names.length ? ` ${dm.names.join('·')}` : ''} +${Math.round((dm.mul - 1) * 100)}%`); }
+  }
   let duel: DuelResult | undefined;
   let fortune: string | undefined;
   {

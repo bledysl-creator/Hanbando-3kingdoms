@@ -1,7 +1,7 @@
 // 목록·보고서 창: 장수, 도시, 연표, 세력 정보, 전투 보고, 설정/저장, 도움말
 import { useEffect, useState, type ReactNode } from 'react';
 import type { BattleReport, GameState } from '../../core';
-import { fixJosa, BALANCE, compText, TACTICS, MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, STAT_KEYS, STAT_ROLE, statGrade, expNeed, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
+import { fixJosa, BALANCE, skillsOf, skillChance, STAT_LABEL, compText, TACTICS, MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, STAT_KEYS, STAT_ROLE, statGrade, expNeed, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
 import { exportJson, indexedDbRepo, migrate, type SaveMeta } from '../../save/saveRepository';
 import { Portrait } from './Portrait';
 
@@ -43,6 +43,16 @@ export function GeneralDetail({ state, id, onBack, onPickCity }: { state: GameSt
         <div><h4>능력 <small className="muted">{g.grown ? `· 공적으로 +${g.grown} 성장` : ''}</small></h4>{S.map(([k, v], i) => { const key = STAT_KEYS[i]; const e = g.exp?.[key] ?? 0; return <div key={k} className="gd-bar" title={`${STAT_ROLE[key]}\n다음 성장까지 경험 ${Math.round(e)}/${expNeed(v)}`}><span>{k} <b className={`grade g${statGrade(v)}`}>{statGrade(v)}</b></span><div className="bar"><div style={{ width: `${v}%` }} /><i className="exp" style={{ width: `${Math.min(100, (e / expNeed(v)) * 100)}%` }} /><em>{v}</em></div></div>; })}</div>
         <div><h4>성격</h4>{P.map(([k, v]) => <div key={k} className="gd-bar"><span>{k}</span><div className="bar persona"><div style={{ width: `${v}%` }} /><em>{v}</em></div></div>)}</div>
       </div>
+      <h4>전투 특기 <small className="muted">· 5단계 전투에서 단계마다 능력치만큼 발동</small></h4>
+      {skillsOf(g).length === 0 ? <p className="muted small">특기 없음 (능력치 70 이상이면 생김)</p> : (
+        <div className="gd-skills">{skillsOf(g).map((sk) => (
+          <div key={sk.id} className={`gd-skill ${sk.general ? 'unique' : ''}`} title={sk.story ? `${sk.story}\n출처: ${sk.source}` : `손자병법 ${sk.sun}`}>
+            <b>✨ {sk.name}<small>({sk.hanja})</small></b> <span className="muted small">{sk.general ? '고유' : `${STAT_LABEL[sk.stat]} ${sk.min}+`} · 발동 {Math.round(skillChance(sk, g) * 100)}%</span>
+            <div className="small">{sk.desc}</div>
+            <div className="small muted">{sk.story ? `📜 ${sk.story} — ${sk.source}` : `📘 손자병법 「${sk.sun}」`}</div>
+          </div>
+        ))}</div>
+      )}
       <h4>인간관계</h4>
       {rels.length === 0 ? <p className="muted small">특별한 관계 없음</p> : <p>{rels.map((r) => { const o = r.a === id ? r.b : r.a; return <span key={o} className={`rel ${r.type}`}>{state.generals[o]?.name} ({REL[r.type]})</span>; })}</p>}
       <h4>기억</h4>

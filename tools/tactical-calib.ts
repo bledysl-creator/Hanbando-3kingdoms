@@ -19,4 +19,4 @@ console.log(`  공격군 손실 자동 ${pct(C.autoAL)}  5단계 ${pct(C.tacAL)}
 console.log(`  수비군 손실 자동 ${pct(C.autoDL)}  5단계 ${pct(C.tacDL)}`);
 console.log(`  중간 붕괴 ${pct(C.routs)}  평균 ${(C.phases / C.n).toFixed(2)}단계 (공격군 붕괴 ${pct(C.routA)}, 수비군 붕괴 ${pct(C.routD)})`);
 const tot = Object.values(C.uses).reduce((a, b) => a + b, 0);
-console.log('  전술 사용: ' + Object.entries(C.uses).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${((v / tot) * 100).toFixed(1)}%`).join(' · '));
+console.log('  전술 사용: ' + Object.entries(C.uses).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${((v / tot) * 100).toFixed(2)}%`).join(' · '));

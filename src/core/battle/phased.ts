@@ -10,15 +10,18 @@ import type { General } from '../state/types';
 import { battleBase, moraleFactor, resolveBattle, rollDuel, rollFortune, type BattleInput, type BattleOutcome, type DuelResult } from './battle';
 import { compEffect, compText, counterMul, formationEffect, normComp, reliefOf, unitName, UNIT_KINDS, type Comp, type UnitKind } from './formation';
 import { tacticChance, TACTICS, type TacticKind } from './tactics';
+import { SKILLS, sideSkills, unlocks, type ActiveSkill, type SkillCond, type SkillDef } from './skills';
 
-export type TacOrder = 'assault' | 'charge' | 'hold' | 'volley' | 'fire' | 'ambush' | 'feint' | 'flank' | 'night';
+export type TacOrder = 'assault' | 'charge' | 'hold' | 'volley' | 'fire' | 'ambush' | 'feint' | 'flank' | 'night'
+  // v4.4 손자병법 전술
+  | 'decoy' | 'rest' | 'flood' | 'raid' | 'encircle' | 'provoke' | 'halfcross';
 export type Side = 'atk' | 'def';
 export type Troops = Partial<Record<UnitKind, number>>;
 export interface UnitOrder { troops: number; tactic: TacOrder }
 export type SideOrders = Partial<Record<UnitKind, UnitOrder>>;
 
 const ALL: UnitKind[] = ['infantry', 'spear', 'archer', 'cavalry', 'chariot'];
-export const TAC_ORDERS: Record<TacOrder, { name: string; icon: string; desc: string; kinds: UnitKind[] }> = {
+export const TAC_ORDERS: Record<TacOrder, { name: string; icon: string; desc: string; kinds: UnitKind[]; sun?: string; hanja?: string }> = {
   assault: { name: '정면 공격', icon: '⚔️', desc: '정면으로 맞붙는다. 이점도 약점도 없다.', kinds: ALL },
   charge: { name: '돌격', icon: '🐎', desc: '힘껏 들이친다. 기병·전차는 평지에서 매섭다. 창병 방진에 막히면 크게 다친다. 사격하는 궁병은 덮친다.', kinds: ['infantry', 'spear', 'cavalry', 'chariot'] },
   hold: { name: '방진', icon: '🛡️', desc: '방패와 창을 세우고 버틴다. 피해가 줄고 공격도 준다. 창병 방진은 돌격을 꺾는다. 협공에는 옆구리가 약하다.', kinds: ['infantry', 'spear', 'archer'] },
@@ -27,9 +30,20 @@ export const TAC_ORDERS: Record<TacOrder, { name: string; icon: string; desc: st
   ambush: { name: '매복', icon: '🌲', desc: '이번 단계에 숨어 싸우지 않는다. 다음 단계에 기습하면 공격 ×1.7 (골짜기 궁병은 더). 적 지력이 높거나 트인 평지면 들킨다.', kinds: ['infantry', 'spear', 'archer', 'cavalry'] },
   feint: { name: '거짓 퇴각', icon: '🏳️', desc: '지는 척 물러난다. 쫓아온 적(정면 공격·돌격·협공)은 다음 단계에 대열이 흐트러져 매복·협공에 크게 당한다.', kinds: ['infantry', 'cavalry'] },
   flank: { name: '협공', icon: '↪️', desc: '다른 병과가 정면을 붙잡는 동안 옆과 뒤를 친다. 방진·유인된 적에게 강하다. 혼자서는 약하다.', kinds: ['infantry', 'spear', 'cavalry', 'chariot'] },
-  night: { name: '야습', icon: '🌙', desc: '첫 단계에만. 밤에 기습한다. 무력 65 이상, 안개 낀 날 더 좋다.', kinds: ALL },
+  night: { name: '야습', icon: '🌙', desc: '첫 단계에만. 밤에 기습한다. 무력 65 이상, 안개 낀 날 더 좋다.', kinds: ALL, sun: '攻其無備 出其不意 (計)' },
+  // ---- v4.4 손자병법에서 가져온 전술 ----
+  decoy: { name: '의병', hanja: '疑兵', icon: '🚩', desc: '깃발을 늘어세우고 먼지를 일으켜 대군이 있는 듯 꾸민다. 성공하면 이번 단계 적 전체 공격 −25%. 내 병력이 적을수록 잘 통한다. 지력 55 이상.', kinds: ['infantry', 'cavalry'], sun: '能而示之不能… 虛張聲勢 (計·虛實)' },
+  rest: { name: '이일대로', hanja: '以逸待勞', icon: '⛺', desc: '이번 단계는 진을 지키며 쉰다(피해 적음). 다음 단계 공격 +25%, 이번 단계 쳐들어온 적은 지쳐 다음 단계 피해 +10%.', kinds: ['infantry', 'spear', 'archer', 'cavalry'], sun: '以近待遠 以佚待勞 以飽待飢 (軍爭)' },
+  flood: { name: '수공', hanja: '水攻', icon: '🌊', desc: '둑을 막았다 터뜨려 적진을 물에 잠근다. 강 길이나 비·눈일 때만, 지력 75 이상, 한 전투에 한 번. 성공하면 큰 피해와 사기 −10.', kinds: ['infantry'], sun: '以水佐攻者强 (火攻)' },
+  raid: { name: '습량', hanja: '襲糧', icon: '🌾', desc: '적의 군량·치중을 기습해 태운다. 이번 단계 싸움은 약하지만, 성공하면 적 사기 −8에 남은 단계 적 공격 −8%(굶주림). 4단계까지, 한 전투에 한 번.', kinds: ['cavalry', 'infantry'], sun: '火積 火輜 / 以飽待飢 (火攻·軍爭)' },
+  encircle: { name: '포위', hanja: '圍', icon: '⭕', desc: '내 병력이 적의 2배 이상일 때 둘러싼다. 공격 +25%, 적 사기 −4. 다만 갇힌 적은 사지(死地)라 공격이 10% 오른다.', kinds: ['infantry', 'spear', 'cavalry', 'chariot'], sun: '十則圍之 / 圍師必闕 (謀攻·軍爭)' },
+  provoke: { name: '도발', hanja: '挑發', icon: '😤', desc: '적장을 욕보여 성나게 한다. 성공하면 다음 단계 적은 방진·매복·쉬기·거짓 퇴각을 못 하고 대열이 흐트러진다. 자존심 센 적장에게 잘 통함. 지력 60 이상.', kinds: ['infantry', 'cavalry'], sun: '忿速可侮 / 怒而撓之 (九變·計)' },
+  halfcross: { name: '반도격', hanja: '半濟而擊', icon: '🌉', desc: '강을 반쯤 건너온 적을 친다. 수비 쪽, 강을 건너오는 싸움의 1~2단계에만. 공격 +60%, 피해 −20%.', kinds: ['archer', 'cavalry', 'infantry'], sun: '客絶水而來 令半濟而擊之利 (行軍)' },
 };
-const FRONT: TacOrder[] = ['assault', 'charge', 'hold', 'volley', 'fire', 'night'];
+/** 확률이 걸린 전술 (특기 성공률 보정 대상) */
+export const CHANCE_ORDERS: TacOrder[] = ['fire', 'night', 'feint', 'ambush', 'decoy', 'flood', 'raid', 'provoke'];
+const ATTACKS: TacOrder[] = ['assault', 'charge', 'flank', 'night', 'encircle'];
+const FRONT: TacOrder[] = ['assault', 'charge', 'hold', 'volley', 'fire', 'night', 'encircle', 'halfcross', 'flood'];
 const PURSUERS: TacOrder[] = ['assault', 'charge', 'flank'];
 const WET = ['rain', 'storm', 'typhoon', 'snow', 'blizzard'];
 
@@ -49,6 +63,20 @@ export interface TacSide {
   /** 적의 거짓 퇴각에 속아 쫓아옴 → 이번 단계 대열이 흐트러짐 */
   lured: boolean;
   fireUsed: boolean;
+  /** v4.4 장수 특기 (발동 확률 포함) */
+  skills?: ActiveSkill[];
+  /** 대표 장수 자존심 (도발이 잘 걸리는 정도) */
+  pride?: number;
+  /** 지난 단계에 쉰 병과 (이일대로) */
+  rested?: UnitKind[];
+  /** 지난 단계에 쳐들어가다 지침 */
+  tired?: boolean;
+  /** 도발에 걸려 격분 */
+  provoked?: boolean;
+  /** 군량을 잃어 굶주림 */
+  starved?: boolean;
+  floodUsed?: boolean;
+  raidUsed?: boolean;
   /** 접전에서 잃은 병력 합계 */
   clashLoss: number;
   /** 형세 계산용 손실: 성벽 공성 손실 가산·성벽 보호를 뺀 값 (성벽은 이미 수비 전력에 들어 있어 두 번 세지 않는다) */
@@ -62,6 +90,8 @@ export interface TacPhase {
   ratio: number;
   morale: Record<Side, number>;
   events: string[];
+  /** v4.4 이번 단계에 발동한 특기 */
+  skills?: { side: Side; id: string; owner: string }[];
 }
 
 export interface TacBattle {
@@ -158,16 +188,22 @@ export function createTacBattle(rng: RngHolder, b: BattleInput, meta: { id: stri
   atkMul *= randRange(rng, 0.88, 1.12);
   defMul *= randRange(rng, 0.88, 1.12);
   const dBest = b.defenderGenerals.reduce<General | null>((a, x) => (!a || x.stats.leadership > a.stats.leadership ? x : a), null);
+  // 수비 쪽 특기는 대표 장수와, 그다음으로 뛰어난 장수 한 명 (부장 몫)
+  const dSecond = b.defenderGenerals.filter((x) => x.id !== dBest?.id).sort((x, y) => Math.max(y.stats.war, y.stats.intellect, y.stats.leadership) - Math.max(x.stats.war, x.stats.intellect, x.stats.leadership))[0];
+  const skillsOn = BALANCE.skills.enabled;
+  const aSkills = skillsOn ? sideSkills([{ g: B.g, deputy: false }, ...(B.dep ? [{ g: B.dep, deputy: true }] : [])]) : [];
+  const dSkills = skillsOn ? sideSkills([...(dBest ? [{ g: dBest, deputy: false }] : []), ...(dSecond ? [{ g: dSecond, deputy: true }] : [])]) : [];
   const dInt = Math.max(BALANCE.neutralLeadership, ...b.defenderGenerals.map((x) => x.stats.intellect));
-  const side = (faction: string | null, units: Troops, morale: number, per: number, int: number, war: number, lead: number, leaderId?: string, deputyId?: string): TacSide => ({
+  const side = (faction: string | null, units: Troops, morale: number, per: number, int: number, war: number, lead: number, leaderId: string | undefined, deputyId: string | undefined, skills: ActiveSkill[], pride: number): TacSide => ({
     faction, leaderId, deputyId, units: { ...units }, init: { ...units }, morale, morale0: morale, per, int, war, lead, hidden: [], lured: false, fireUsed: false, clashLoss: 0,
+    skills, pride, rested: [], tired: false, provoked: false, starved: false, floodUsed: false, raidUsed: false,
   });
   return {
     id: meta.id, turn: meta.turn, playerSide: meta.playerSide, attackerFaction: meta.attackerFaction, defenderFaction: meta.defenderFaction,
     generalId: B.g.id, deputyId: B.dep?.id, fromCity: meta.fromCity, toCity: city.id, troops: b.attackerTroops, defTroops: Math.max(0, city.troops),
     phase: 0,
-    atk: side(meta.attackerFaction, atkUnits, b.attackerMorale ?? 70, (B.atk / Math.max(1, b.attackerTroops)) * atkMul, B.us.intellect, B.us.war, B.g.stats.leadership, B.g.id, B.dep?.id),
-    def: side(meta.defenderFaction, defUnits, city.morale ?? 70, (B.def / Math.max(1, city.troops)) * defMul, dInt, B.dWar, B.dLead, dBest?.id),
+    atk: side(meta.attackerFaction, atkUnits, b.attackerMorale ?? 70, (B.atk / Math.max(1, b.attackerTroops)) * atkMul, B.us.intellect, B.us.war, B.g.stats.leadership, B.g.id, B.dep?.id, aSkills, B.g.persona?.pride ?? 50),
+    def: side(meta.defenderFaction, defUnits, city.morale ?? 70, (B.def / Math.max(1, city.troops)) * defMul, dInt, B.dWar, B.dLead, dBest?.id, dSecond?.id, dSkills, dBest?.persona?.pride ?? 50),
     terrain: {
       walled, wall: b.ignoreWalls ? 0 : city.wall, valley: rel >= 45 || b.road.type === 'pass', open: rel < BALANCE.reliefCavalryFrom && b.road.type === 'land',
       wet: !!b.weather && WET.includes(b.weather), fog: b.weather === 'fog', drought: b.weather === 'drought', road: b.road.type, relief: rel, rough: b.road.type === 'pass' || rel >= 45,
@@ -182,33 +218,72 @@ export function createTacBattle(rng: RngHolder, b: BattleInput, meta: { id: stri
 export function orderBlocked(tb: TacBattle, side: Side, k: UnitKind, t: TacOrder): string | null {
   const o = TAC_ORDERS[t];
   if (!o.kinds.includes(k)) return `${unitName(k).name}은(는) 쓸 수 없음`;
-  const me = tb[side];
+  const me = tb[side], foe = tb[other(side)];
+  const C = T();
+  const un = (x: TacOrder) => unlocks(me.skills, x);
+  if (me.provoked && ['hold', 'ambush', 'rest', 'feint', 'decoy'].includes(t)) return '장수가 도발에 격분해 버티거나 숨지 못함';
   if (t === 'fire') {
     if (me.fireUsed) return '이번 전투에 이미 씀';
     if (tb.terrain.wet) return '비·눈에는 불이 붙지 않음';
-    if (me.int < 60) return '지력 60 이상 장수가 필요';
+    if (me.int < 60 && !un(t)) return '지력 60 이상 장수가 필요';
   }
   if (t === 'night') {
     if (tb.phase !== 0) return '첫 단계에만';
-    if (me.war < 65) return '무력 65 이상 장수가 필요';
+    if (me.war < 65 && !un(t)) return '무력 65 이상 장수가 필요';
   }
-  if (t === 'ambush' && tb.phase >= T().phases - 1) return '마지막 단계에는 숨을 틈이 없음';
+  if (t === 'ambush' && tb.phase >= C.phases - 1) return '마지막 단계에는 숨을 틈이 없음';
+  if (t === 'decoy' && me.int < C.decoy.minInt && !un(t)) return `지력 ${C.decoy.minInt} 이상 장수가 필요`;
+  if (t === 'rest' && tb.phase >= C.phases - 1) return '마지막 단계에는 쉴 틈이 없음';
+  if (t === 'flood') {
+    if (me.floodUsed) return '이번 전투에 이미 씀';
+    if (tb.terrain.drought) return '가뭄에 물이 모자람';
+    if (tb.terrain.road !== 'river' && !tb.terrain.wet) return '강을 낀 길이거나 비·눈이 와야 함';
+    if (me.int < C.flood.minInt && !un(t)) return `지력 ${C.flood.minInt} 이상 장수가 필요`;
+  }
+  if (t === 'raid') {
+    if (me.raidUsed) return '이번 전투에 이미 씀';
+    if (tb.phase >= C.phases - 1) return '4단계까지만';
+    if (me.int < C.raid.minInt && !un(t)) return `지력 ${C.raid.minInt} 이상 장수가 필요`;
+  }
+  if (t === 'encircle' && sumT(me.units) < sumT(foe.units) * C.encircle.ratio) return `병력이 적의 ${C.encircle.ratio}배 이상이어야 함`;
+  if (t === 'provoke' && me.int < C.provoke.minInt && !un(t)) return `지력 ${C.provoke.minInt} 이상 장수가 필요`;
+  if (t === 'halfcross') {
+    if (side !== 'def') return '지키는 쪽만';
+    if (tb.terrain.road !== 'river') return '적이 강을 건너올 때만';
+    if (tb.phase >= C.halfcrossPhases) return `${C.halfcrossPhases}단계까지만 (적이 다 건너옴)`;
+  }
   return null;
 }
 
-/** 확률이 걸린 전술의 성공률 (매복은 '들키지 않을' 확률) */
-export function orderChance(tb: TacBattle, side: Side, k: UnitKind, t: TacOrder): number | null {
+/** 특기 발동값: 실제로 굴린 값(0/1) 또는 기대값(확률). 키는 skills 배열 순서 */
+export type SkillAct = Record<Side, number[]>;
+const expectedAct = (tb: TacBattle): SkillAct => ({ atk: (tb.atk.skills ?? []).map((a) => a.p), def: (tb.def.skills ?? []).map((a) => a.p) });
+
+/** 특기가 이번 전술 성공률에 더하고 빼는 값 */
+function skillChanceAdj(tb: TacBattle, side: Side, t: TacOrder, act: SkillAct): number {
+  let d = 0;
+  (tb[side].skills ?? []).forEach((a, i) => {
+    const e = SKILLS[a.id]?.effect;
+    if (e?.chance && (!e.orders || e.orders.includes(t))) d += act[side][i] * e.chance;
+  });
+  const fs = other(side);
+  (tb[fs].skills ?? []).forEach((a, i) => {
+    const e = SKILLS[a.id]?.effect;
+    if (e?.foeChance && (!e.foeOrders || e.foeOrders.includes(t))) d -= act[fs][i] * e.foeChance;
+  });
+  return d;
+}
+
+/** 특기 보정 전 기본 성공률 */
+function baseChance(tb: TacBattle, side: Side, k: UnitKind, t: TacOrder): number | null {
   const me = tb[side], foe = tb[other(side)];
   const C = T();
+  const outnum = sumT(me.units) < sumT(foe.units) * 0.8;
   if (t === 'fire') {
-    if (orderBlocked(tb, side, k, t)) return 0;
     const counter = Math.max(0, foe.int - 60) / 200;
     return Math.max(0.05, Math.min(0.9, (me.int - 50) / 60 + (tb.terrain.drought ? 0.2 : 0) + (tb.terrain.road === 'river' ? -0.1 : 0) - counter));
   }
-  if (t === 'night') {
-    if (orderBlocked(tb, side, k, t)) return 0;
-    return Math.max(0.05, Math.min(0.9, (me.war - 40) / 90 + (tb.terrain.fog ? 0.2 : 0) - Math.max(0, foe.int - 60) / 200));
-  }
+  if (t === 'night') return Math.max(0.05, Math.min(0.9, (me.war - 40) / 90 + (tb.terrain.fog ? 0.2 : 0) - Math.max(0, foe.int - 60) / 200));
   if (t === 'feint') {
     const f = C.feintChance;
     return Math.max(f.min, Math.min(f.max, f.base + (me.int - foe.int) / f.div));
@@ -218,7 +293,65 @@ export function orderChance(tb: TacBattle, side: Side, k: UnitKind, t: TacOrder)
     const found = Math.max(a.min, Math.min(a.max, a.base + (foe.int - me.int) / a.div - (tb.terrain.valley ? a.valley : 0) + (tb.terrain.open ? a.open : 0) + (k === 'cavalry' ? 0.08 : 0)));
     return 1 - found;
   }
+  if (t === 'decoy') {
+    const d = C.decoy;
+    return Math.max(d.min, Math.min(d.max, d.base + (me.int - foe.int) / d.div + (outnum ? d.few : 0) + (tb.terrain.valley || tb.terrain.fog ? 0.05 : 0)));
+  }
+  if (t === 'flood') {
+    const f = C.flood;
+    return Math.max(f.min, Math.min(f.max, f.base + (me.int - 60) / f.div + (tb.terrain.wet ? f.wet : 0) + (tb.terrain.valley ? 0.05 : 0) - Math.max(0, foe.int - 60) / 200));
+  }
+  if (t === 'raid') {
+    const r = C.raid;
+    return Math.max(r.min, Math.min(r.max, r.base + (me.int + me.war - 120) / r.div - Math.max(0, foe.int - 60) / 200 + (tb.terrain.fog ? 0.1 : 0)));
+  }
+  if (t === 'provoke') {
+    const v = C.provoke;
+    return Math.max(v.min, Math.min(v.max, v.base + (me.int - foe.int) / v.div + ((foe.pride ?? 50) - 60) / v.prideDiv));
+  }
   return null;
+}
+
+/** 확률이 걸린 전술의 성공률 (매복은 '들키지 않을' 확률). act가 없으면 특기는 발동 확률만큼 기대값으로 */
+export function orderChance(tb: TacBattle, side: Side, k: UnitKind, t: TacOrder, act?: SkillAct): number | null {
+  const base = baseChance(tb, side, k, t);
+  if (base === null) return null;
+  if (orderBlocked(tb, side, k, t)) return 0;
+  const C = T();
+  let p = base + skillChanceAdj(tb, side, t, act ?? expectedAct(tb));
+  // 佯北勿從: 지혜로운 적장은 지는 척·욕보이기에 잘 넘어가지 않는다
+  if ((t === 'feint' || t === 'provoke') && tb[other(side)].int >= C.wiseCap.int) p = Math.min(p, C.wiseCap.cap);
+  return Math.max(0.03, Math.min(0.95, p));
+}
+
+/** 특기 하나가 지금 조건에 맞나 */
+export function skillCondOk(tb: TacBattle, side: Side, when: SkillCond[] | undefined): boolean {
+  if (!when) return true;
+  const me = tb[side], foe = tb[other(side)];
+  const ph = tb.phase + 1;
+  const last = tb.phases[tb.phases.length - 1];
+  return when.every((c) => {
+    switch (c) {
+      case 'early': return ph <= 2;
+      case 'late': return ph >= 4;
+      case 'outnumbered': return sumT(me.units) < sumT(foe.units) * 0.8;
+      case 'walled': return side === 'def' && tb.terrain.walled;
+      case 'water': return tb.terrain.road === 'river' || tb.terrain.road === 'sea';
+      case 'atk': return side === 'atk';
+      case 'def': return side === 'def';
+      case 'fog': return tb.terrain.fog;
+      case 'rough': return tb.terrain.rough;
+      case 'losing': return !!last && (side === 'atk' ? last.ratio < 1 : last.ratio > 1);
+    }
+    return true;
+  });
+}
+
+/** 특기가 이 병과·전술에 걸리나 */
+function skillHits(e: SkillDef['effect'], kind: UnitKind, tactic: TacOrder, springs: boolean): boolean {
+  if (e.kinds && !e.kinds.includes(kind)) return false;
+  if (e.orders && !e.orders.includes(tactic) && !(springs && e.orders.includes('ambush'))) return false;
+  return true;
 }
 
 /** 주문을 정리: 병력 범위 안으로, 못 쓰는 전술은 정면 공격으로 */
@@ -246,13 +379,20 @@ export interface PhaseEval {
   morale: Record<Side, number>;
   events: string[];
   /** 다음 단계 상태 */
-  next: Record<Side, { hidden: UnitKind[]; lured: boolean; fireUsed: boolean }>;
+  next: Record<Side, NextState>;
   /** 확률 전술 결과 (예상 모드에서는 확률만) */
   rolls: { side: Side; kind: UnitKind; tactic: TacOrder; chance: number; ok?: boolean }[];
   power: Record<Side, number>;
   /** 성벽 배율을 뺀 손실 (형세 계산용) */
   plainLoss: Record<Side, number>;
+  /** v4.4 이번 단계에 발동한 특기 (예상 모드는 발동 확률) */
+  skills: { side: Side; id: string; owner: string; name: string; hanja: string; a: number }[];
+  /** 무너지는 사기 기준을 낮추는 값 (특기·사지) */
+  rally: Record<Side, number>;
+  /** 정리된 이번 단계 명령 (기록용: 단계를 치른 뒤에는 화공 등 한 번 쓰는 전술이 막혀 다시 정리하면 달라진다) */
+  orders: Record<Side, SideOrders>;
 }
+interface NextState { hidden: UnitKind[]; lured: boolean; fireUsed: boolean; rested: UnitKind[]; tired: boolean; provoked: boolean; starved: boolean; floodUsed: boolean; raidUsed: boolean }
 
 type Roll = (p: number) => number; // 성공이면 1, 실패면 0 (예상 모드는 p를 돌려 기대값을 섞는다)
 
@@ -264,10 +404,61 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
   const rolls: PhaseEval['rolls'] = [];
   const events: string[] = [];
   const name = (side: Side) => (side === 'atk' ? '공격군' : '수비군');
-  const next: PhaseEval['next'] = { atk: { hidden: [], lured: false, fireUsed: tb.atk.fireUsed }, def: { hidden: [], lured: false, fireUsed: tb.def.fireUsed } };
+  const nextOf = (x: TacSide): NextState => ({ hidden: [], lured: false, fireUsed: x.fireUsed, rested: [], tired: false, provoked: false, starved: !!x.starved, floodUsed: !!x.floodUsed, raidUsed: !!x.raidUsed });
+  const next: PhaseEval['next'] = { atk: nextOf(tb.atk), def: nextOf(tb.def) };
   const moraleD: Record<Side, number> = { atk: 0, def: 0 };
+  const rally: Record<Side, number> = { atk: 0, def: 0 };
+  const foeStrike: Record<Side, number> = { atk: 1, def: 1 }; // 이 쪽 공격에 곱하는 적 특기·의병 효과
   const ev: Record<Side, UnitEval[]> = { atk: [], def: [] };
   const blend = (p: number, a: { s: number; e: number }, b: { s: number; e: number }) => ({ s: p * a.s + (1 - p) * b.s, e: p * a.e + (1 - p) * b.e });
+
+  // 0) 장수 특기 발동: 조건이 맞고 쓰는 전술이 걸리는 특기만 능력치 확률로 굴린다
+  const act: SkillAct = { atk: [], def: [] };
+  const skillRes: PhaseEval['skills'] = [];
+  for (const side of ['atk', 'def'] as Side[]) {
+    const me = tb[side];
+    (me.skills ?? []).forEach((sk, i) => {
+      const def = SKILLS[sk.id];
+      const e = def?.effect;
+      let a = 0;
+      if (e && skillCondOk(tb, side, e.when)) {
+        const used = kindsOf(me.units).some((k) => {
+          const o = orders[side][k];
+          return !!o && o.troops > 0 && skillHits({ ...e, kinds: undefined }, k, o.tactic, me.hidden.includes(k) && o.tactic !== 'ambush');
+        });
+        if (!e.orders || used) a = roll(sk.p);
+      }
+      act[side][i] = a;
+      if (a > 0 && def) {
+        skillRes.push({ side, id: sk.id, owner: sk.owner, name: def.name, hanja: def.hanja, a });
+        if (e!.foeStrike) foeStrike[other(side)] *= 1 + a * (e!.foeStrike - 1);
+        if (e!.morale) moraleD[other(side)] -= a * e!.morale;
+        if (e!.rally) rally[side] += a * e!.rally;
+        if (rng && !def.passive) events.push(`✨ ${name(side)} ${sk.owner}의 특기 「${def.name}(${def.hanja})」 발동!`);
+      }
+    });
+  }
+  const skillMul = (side: Side, kind: UnitKind, tactic: TacOrder, springs: boolean) => {
+    let sm = 1, em = 1;
+    (tb[side].skills ?? []).forEach((sk, i) => {
+      const a = act[side][i];
+      const e = SKILLS[sk.id]?.effect;
+      if (!a || !e || !skillHits(e, kind, tactic, springs)) return;
+      if (e.strike) sm *= 1 + a * (e.strike - 1);
+      if (e.expose) em *= 1 + a * (e.expose - 1);
+    });
+    return { sm, em };
+  };
+  const fireWeak = (side: Side) => (tb[side].skills ?? []).reduce((m, sk, i) => m * (SKILLS[sk.id]?.effect.fireWeak && act[side][i] ? SKILLS[sk.id].effect.fireWeak! : 1), 1);
+  // 사지(死地則戰): 적에게 크게 몰린 쪽은 덜 무너지고 더 사납게 싸운다
+  const dg: Record<Side, boolean> = { atk: false, def: false };
+  for (const side of ['atk', 'def'] as Side[]) {
+    if (sumT(tb[side].units) <= sumT(tb[other(side)].units) * C.deathGround.ratio) {
+      dg[side] = true;
+      rally[side] += C.deathGround.rally;
+      if (rng && !tb.phases.some((p) => p.events.some((x) => x.includes(`${name(side)}이 사지`)))) events.push(`☠️ ${name(side)}이 사지(死地)에 몰려 결사적으로 싸움 — 덜 무너지고 공격 +${Math.round((C.deathGround.strike - 1) * 100)}%`);
+    }
+  }
 
   // 1) 병과마다 전술의 기본 배율
   for (const side of ['atk', 'def'] as Side[]) {
@@ -278,19 +469,30 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
       const t = o.tactic;
       let hidden = false;
       const springs = me.hidden.includes(k) && t !== 'ambush';
-      if (t === 'charge') ({ s, e } = O(k === 'cavalry' ? 'chargeHorse' : k === 'chariot' ? 'chargeChariot' : 'charge'));
-      else if (t === 'hold') ({ s, e } = O('hold'));
-      else if (t === 'volley') { ({ s, e } = O('volley')); if (tb.terrain.wet) s *= C.volleyWet; }
+      const chance = () => orderChance(tb, side, k, t, act)!;
+      const okEvent = (ok: number, p: number, extra = '') => {
+        if (rng) events.push(ok ? `${TAC_ORDERS[t].icon} ${name(side)} ${unitName(k).name}의 ${TAC_ORDERS[t].name} 성공!${extra} (성공률 ${Math.round(p * 100)}%)` : `${TAC_ORDERS[t].icon} ${name(side)} ${unitName(k).name}의 ${TAC_ORDERS[t].name}이(가) 실패 (성공률 ${Math.round(p * 100)}%)`);
+      };
+      if (t === 'charge') {
+        ({ s, e } = O(k === 'cavalry' ? 'chargeHorse' : k === 'chariot' ? 'chargeChariot' : 'charge'));
+        if (side === 'atk' && tb.terrain.rough) s *= C.narrowCharge;
+        if (side === 'atk' && tb.terrain.walled && tb.terrain.relief >= C.uphillRelief) s *= C.uphillCharge;
+      } else if (t === 'hold') {
+        ({ s, e } = O('hold'));
+        if (side === 'def' && tb.terrain.rough) { s *= C.narrowHold.s; e *= C.narrowHold.e; }
+      } else if (t === 'volley') { ({ s, e } = O('volley')); if (tb.terrain.wet) s *= C.volleyWet; }
       else if (t === 'fire' || t === 'night') {
-        const p = orderChance(tb, side, k, t)!;
+        const p = chance();
         const ok = roll(p);
         rolls.push({ side, kind: k, tactic: t, chance: p, ok: rng ? ok === 1 : undefined });
         ({ s, e } = blend(ok, O(t === 'fire' ? 'fireOk' : 'nightOk'), O(t === 'fire' ? 'fireFail' : 'nightFail')));
+        const weak = t === 'fire' ? fireWeak(other(side)) : 1;
+        if (weak > 1) s *= 1 + ok * (weak - 1);
         moraleD[other(side)] -= ok * C.moraleHit[t];
         if (t === 'fire') next[side].fireUsed = true;
-        if (rng) events.push(ok ? `${TAC_ORDERS[t].icon} ${name(side)} ${unitName(k).name}의 ${TAC_ORDERS[t].name} 성공! (성공률 ${Math.round(p * 100)}%)` : `${TAC_ORDERS[t].icon} ${name(side)} ${unitName(k).name}의 ${TAC_ORDERS[t].name}이(가) 실패 (성공률 ${Math.round(p * 100)}%)`);
+        okEvent(ok, p, weak > 1 ? ' — 기름 먹인 등갑에 불이 옮겨붙음' : '');
       } else if (t === 'ambush') {
-        const p = orderChance(tb, side, k, t)!; // 들키지 않을 확률
+        const p = chance(); // 들키지 않을 확률
         const safe = roll(p);
         rolls.push({ side, kind: k, tactic: t, chance: p, ok: rng ? safe === 1 : undefined });
         // 숨은 병력은 싸우지 않는다. 들키면 숨은 채로 몰려 맞는다
@@ -299,7 +501,7 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
         if (rng && safe) next[side].hidden.push(k);
         if (rng && !safe) { events.push(`👁️ ${name(side)} ${unitName(k).name}의 매복이 ${name(other(side))}에게 들킴! (지력 ${foe.int} 대 ${me.int})`); moraleD[side] -= 4; }
       } else if (t === 'feint') {
-        const p = orderChance(tb, side, k, t)!;
+        const p = chance();
         const ok = roll(p);
         rolls.push({ side, kind: k, tactic: t, chance: p, ok: rng ? ok === 1 : undefined });
         ({ s, e } = blend(ok, O('feint'), O('feintFail')));
@@ -308,16 +510,80 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
         const anchor = kindsOf(me.units).some((j) => j !== k && FRONT.includes(orders[side][j]!.tactic) && orders[side][j]!.troops > 0);
         ({ s, e } = O(anchor ? 'flank' : 'flankAlone'));
         if (foe.lured) s *= C.lureBonus;
+      } else if (t === 'decoy') {
+        const p = chance();
+        const ok = roll(p);
+        rolls.push({ side, kind: k, tactic: t, chance: p, ok: rng ? ok === 1 : undefined });
+        ({ s, e } = blend(ok, O('decoyOk'), O('decoyFail')));
+        foeStrike[other(side)] *= 1 - ok * C.decoy.cut;
+        moraleD[side] -= (1 - ok) * 4;
+        if (rng) events.push(ok ? `🚩 ${name(side)}의 의병(疑兵) — 깃발과 먼지에 ${name(other(side))}이(가) 복병을 의심해 주춤함 (공격 −${Math.round(C.decoy.cut * 100)}%, 성공률 ${Math.round(p * 100)}%)` : `🚩 ${name(side)}의 의병을 ${name(other(side))}이(가) 허세로 꿰뚫어 봄 (성공률 ${Math.round(p * 100)}%)`);
+      } else if (t === 'rest') {
+        ({ s, e } = O('rest'));
+        next[side].rested.push(k);
+      } else if (t === 'flood') {
+        const p = chance();
+        const ok = roll(p);
+        rolls.push({ side, kind: k, tactic: t, chance: p, ok: rng ? ok === 1 : undefined });
+        ({ s, e } = blend(ok, O('floodOk'), O('floodFail')));
+        moraleD[other(side)] -= ok * C.flood.morale;
+        next[side].floodUsed = true;
+        okEvent(ok, p, ' 둑을 터뜨려 적진이 물바다가 됨');
+      } else if (t === 'raid') {
+        const p = chance();
+        const ok = roll(p);
+        rolls.push({ side, kind: k, tactic: t, chance: p, ok: rng ? ok === 1 : undefined });
+        ({ s, e } = blend(ok, O('raidOk'), O('raidFail')));
+        moraleD[other(side)] -= ok * C.raid.morale;
+        next[side].raidUsed = true;
+        if (rng && ok) next[other(side)].starved = true;
+        okEvent(ok, p, ` ${name(other(side))}의 군량이 불타 굶주리기 시작함`);
+      } else if (t === 'encircle') {
+        ({ s, e } = O('encircle'));
+      } else if (t === 'provoke') {
+        const p = chance();
+        const ok = roll(p);
+        rolls.push({ side, kind: k, tactic: t, chance: p, ok: rng ? ok === 1 : undefined });
+        ({ s, e } = blend(ok, O('provokeOk'), O('provokeFail')));
+        if (rng && ok) next[other(side)].provoked = true;
+        okEvent(ok, p, ` 성난 ${name(other(side))} 장수가 다음 단계에 앞뒤 없이 달려듦`);
+      } else if (t === 'halfcross') {
+        ({ s, e } = O('halfcross'));
       }
       if (springs) {
         s *= C.ambushSpring * (k === 'archer' && tb.terrain.valley ? C.valleyArcher : 1) * (foe.lured ? C.lureBonus : 1);
         moraleD[other(side)] -= C.moraleHit.ambush;
         if (rng) events.push(`🌲 매복해 있던 ${name(side)} ${unitName(k).name}이(가) 뛰쳐나와 기습!${k === 'archer' && tb.terrain.valley ? ' (골짜기 양쪽에서 화살비)' : ''}${foe.lured ? ' — 쫓아온 적이 한가운데 갇힘' : ''}`);
       }
+      // 이일대로: 지난 단계에 쉰 병과가 지친 적을 친다
+      if ((me.rested ?? []).includes(k) && t !== 'rest' && ATTACKS.concat(['volley', 'halfcross']).includes(t)) {
+        s *= C.restBonus;
+        if (rng) events.push(`⛺ 쉬고 있던 ${name(side)} ${unitName(k).name}이(가) 힘을 모아 침 (以逸待勞)`);
+      }
       if (me.lured && PURSUERS.includes(t)) e *= C.lureExpose;
+      if (me.provoked) e *= C.lureExpose;
+      if (me.tired) e *= C.tiredExpose;
       if (k === 'archer' && t !== 'ambush') e *= BALANCE.formation.archerOwnLoss;
+      // 특기
+      const sk = skillMul(side, k, t, springs);
+      s *= sk.sm; e *= sk.em;
       ev[side].push({ kind: k, troops: o.troops, reserve: me.units[k]! - o.troops, tactic: t, s, e, strike: 0, expo: 0, hidden, springs });
     }
+  }
+  // 포위당한 쪽은 사지라 더 사납게 싸운다 (圍師必闕을 어긴 대가)
+  for (const side of ['atk', 'def'] as Side[]) {
+    if (ev[side].some((u) => u.tactic === 'encircle' && u.troops > 0)) {
+      moraleD[other(side)] -= C.encircle.morale;
+      if (!dg[other(side)]) rally[other(side)] += C.deathGround.rally / 2;
+      dg[other(side)] = true;
+      if (rng) events.push(`⭕ ${name(side)}이(가) ${name(other(side))}을(를) 에워쌈 — 갇힌 적은 사지에서 결사적으로 싸움`);
+    }
+  }
+  // 이일대로: 쉬는 적에게 쳐들어간 쪽은 다음 단계 지친다
+  for (const side of ['atk', 'def'] as Side[]) {
+    const foeRests = ev[other(side)].some((u) => u.tactic === 'rest' && u.troops > 0);
+    const myAtk = ev[side].filter((u) => ATTACKS.includes(u.tactic)).reduce((a, u) => a + u.troops, 0);
+    if (foeRests && myAtk > sumT(tb[side].units) * 0.4) next[side].tired = true;
   }
 
   // 2) 상대 전술과의 상성 + 병종 상성(공격군만, 자동 전투와 같음)
@@ -335,6 +601,11 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
     const morale = moraleFactor(me.morale) / Math.max(0.01, moraleFactor(me.morale0));
     const open = tb.opening && side === 'atk' && tb.phase < C.openingPhases ? tb.opening.mul : 1;
     const fort = tb.fortune && tb.fortune.side === side && tb.phase + 1 >= tb.fortune.phase ? tb.fortune.mul : 1;
+    // 기세(朝氣銳 晝氣惰 暮氣歸): 공격군은 처음에 날카롭고 갈수록 무뎌진다
+    const spirit = side === 'atk' ? C.spirit[Math.min(C.spirit.length - 1, tb.phase)] ?? 1 : 1;
+    const starve = me.starved ? C.raid.starve : 1;
+    const death = dg[side] ? C.deathGround.strike : 1;
+    const env = morale * open * fort * spirit * starve * death * foeStrike[side];
     for (const u of ev[side]) {
       let sm = 1, em = 1;
       if (engTot > 0) {
@@ -358,7 +629,7 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
         for (const f of foeVis) cm += ((f.troops + f.reserve) / visTot) * counterMul(u.kind, f.kind, tb.terrain.walled).mul;
       }
       const base = tb.mul[side][u.kind] ?? 1;
-      u.strike = (u.troops * u.s * sm + u.reserve * O('reserve').s) * cm * base * me.per * morale * open * fort;
+      u.strike = (u.troops * u.s * sm + u.reserve * O('reserve').s) * cm * base * me.per * env;
       const vis = !(u.tactic === 'ambush' && u.hidden);
       u.expo = (u.troops * u.e * em + u.reserve * O('reserve').e);
       power[side] += u.strike;
@@ -426,7 +697,7 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
     const n = sumT(tb[side].units) || 1;
     morale[side] = Math.max(0, Math.min(100, morale[side] - (Math.min(sumT(loss[side]), plainLoss[side]) / n) * C.moraleLoss + moraleD[side] + ((side === 'atk') === atkWins ? C.winMorale : 0)));
   }
-  return { ratio, loss, dealt, morale, events, next, rolls, power: { atk: pA, def: pD }, plainLoss };
+  return { ratio, loss, dealt, morale, events, next, rolls, power: { atk: pA, def: pD }, plainLoss, skills: skillRes, rally, orders };
 }
 
 // ---------------------------------------------------------------- 단계 진행·끝
@@ -450,14 +721,21 @@ export function playPhase(tb: TacBattle, rng: RngHolder, oA: SideOrders, oD: Sid
     me.clashLoss += sumT(ev.loss[side]);
     me.scoreLoss = (me.scoreLoss ?? 0) + Math.min(ev.plainLoss[side], sumT(ev.loss[side]) * 3);
     me.morale = ev.morale[side];
-    me.hidden = ev.next[side].hidden;
-    me.lured = ev.next[side].lured;
-    me.fireUsed = ev.next[side].fireUsed;
+    const nx = ev.next[side];
+    me.hidden = nx.hidden;
+    me.lured = nx.lured;
+    me.fireUsed = nx.fireUsed;
+    me.rested = nx.rested;
+    me.tired = nx.tired;
+    me.provoked = nx.provoked;
+    me.starved = nx.starved;
+    me.floodUsed = nx.floodUsed;
+    me.raidUsed = nx.raidUsed;
   }
-  tb.phases.push({ phase: ph, orders: { atk: cleanOrders(tb, 'atk', oA), def: cleanOrders(tb, 'def', oD) }, loss: ev.loss, ratio: ev.ratio, morale: { atk: Math.round(tb.atk.morale), def: Math.round(tb.def.morale) }, events: ev.events.map(fixJosa) });
+  tb.phases.push({ phase: ph, orders: ev.orders, skills: ev.skills.filter((x) => x.a > 0).map((x) => ({ side: x.side, id: x.id, owner: x.owner })), loss: ev.loss, ratio: ev.ratio, morale: { atk: Math.round(tb.atk.morale), def: Math.round(tb.def.morale) }, events: ev.events.map(fixJosa) });
   tb.phase = ph;
   const C = T();
-  const broken = (s: Side) => tb[s].morale < Math.min(C.routMorale, tb[s].morale0 - C.routDrop) || sumT(tb[s].units) < sumT(tb[s].init) * C.routRemain;
+  const broken = (s: Side) => tb[s].morale < Math.min(C.routMorale, tb[s].morale0 - C.routDrop) - ev.rally[s] || sumT(tb[s].units) < sumT(tb[s].init) * (C.routRemain - ev.rally[s] / 200);
   const bA = broken('atk'), bD = broken('def');
   if (bA || bD) {
     tb.routed = bA && bD ? (tb.atk.morale <= tb.def.morale ? 'atk' : 'def') : bA ? 'atk' : 'def';
@@ -533,46 +811,74 @@ export function ordersText(o: SideOrders): string {
 
 /**
  * AI의 전술 선택. rng가 없으면 무작위 갈래 없이 가장 그럴듯한 선택 (플레이어 화면의 '척후 보고'용).
- * 지력이 높으면 기병 거짓 퇴각 + 보병·궁병 매복의 연계를 노리고, 화공이 잘 될 때 쓰고, 적 기병이 많으면 창병 방진을 세운다.
+ * 지력이 높으면 기병 거짓 퇴각 + 보병·궁병 매복의 연계를 노리고, 화공·수공이 잘 될 때 쓰고, 적 기병이 많으면 창병 방진을 세운다.
+ * v4.4: 손자병법 전술 — 강을 건너오는 적은 반도격, 병력이 적으면 의병, 두 배 넘으면 포위, 자존심 센 적장은 도발,
+ * 장수 특기가 밀어 주는 전술(장비 의병·관우 수공·조조 습량·사마의 이일대로 …)은 더 자주 고른다.
  */
 export function aiOrders(tb: TacBattle, side: Side, rng?: RngHolder): SideOrders {
   const me = tb[side], foe = tb[other(side)];
+  const C = T();
   const r = () => (rng ? rand(rng) : 1);
   const ph = tb.phase + 1;
   const has = (k: UnitKind) => (me.units[k] ?? 0) > 0;
-  const foeTot = sumT(foe.units) || 1;
+  const foeTot = sumT(foe.units) || 1, myTot = sumT(me.units);
   const foeHorse = ((foe.units.cavalry ?? 0) + (foe.units.chariot ?? 0)) / foeTot;
   const foeSpear = (foe.units.spear ?? 0) / foeTot;
   const lastFoe = tb.phases[tb.phases.length - 1]?.orders[other(side)];
   const foeHeldPikes = lastFoe?.spear?.tactic === 'hold';
-  const last = ph >= T().phases;
-  const canHide = !last && me.hidden.length === 0 && !foe.lured;
-  const combo = canHide && ph <= 3 && me.int >= 68 && has('cavalry') && (has('infantry') || has('archer')) && r() < 0.2 + (me.int - 68) / 80;
-  const valleyAmbush = canHide && !combo && tb.terrain.valley && ph <= 3 && me.int >= 62 && has('archer') && r() < 0.3;
+  const last = ph >= C.phases;
+  const canHide = !last && me.hidden.length === 0 && !foe.lured && !me.provoked;
+  const ok = (k: UnitKind, t: TacOrder) => !orderBlocked(tb, side, k, t) && !TAC_CALIB.ban.includes(t);
+  const ch = (k: UnitKind, t: TacOrder) => (ok(k, t) ? orderChance(tb, side, k, t) ?? 0 : 0);
+  /** 내 특기가 이 전술을 밀어 주나 */
+  const favored = (t: TacOrder) => (me.skills ?? []).some((a) => { const e = SKILLS[a.id]?.effect; return !!e?.orders?.includes(t) && (!!e.strike && e.strike > 1 || !!e.chance || !!e.unlock) && skillCondOk(tb, side, e.when); });
+  const combo = canHide && ph <= 3 && me.int >= 68 && has('cavalry') && (has('infantry') || has('archer')) && r() < 0.2 + (me.int - 68) / 80 + (favored('ambush') || favored('feint') ? 0.15 : 0);
+  const valleyAmbush = canHide && !combo && tb.terrain.valley && ph <= 3 && me.int >= 62 && has('archer') && r() < 0.3 + (favored('ambush') ? 0.2 : 0);
+  // 한 전투에 한 번 쓰는 큰 계략: 수공 > 습량
+  const floodK: UnitKind | null = has('infantry') && ph <= 3 && ch('infantry', 'flood') >= (favored('flood') ? 0.35 : 0.5) ? 'infantry' : null;
+  const raidK: UnitKind | null = !floodK && !combo && ph <= 3 && ((has('cavalry') && ch('cavalry', 'raid') >= 0.4) || (favored('raid') && has('cavalry') && ch('cavalry', 'raid') >= 0.3)) && (favored('raid') || r() < 0.35) ? 'cavalry' : null;
+  const outnumbered = myTot < foeTot * 0.7;
+  const decoyK: UnitKind | null = !floodK && ph <= 3 && (outnumbered || favored('decoy')) && has('infantry') && ch('infantry', 'decoy') >= 0.45 && (favored('decoy') || r() < 0.5) ? 'infantry' : null;
+  const provokeK: UnitKind | null = !floodK && !decoyK && ph <= 2 && has('infantry') && ch('infantry', 'provoke') >= (favored('provoke') ? 0.4 : 0.5) && (foe.pride ?? 50) >= 70 && (favored('provoke') || r() < 0.4) ? 'infantry' : null;
+  // 이일대로: 수비가 지력이 높거나 특기가 있으면 첫 단계에 쉬며 적이 지치기를 기다린다
+  const restK = !last && ph <= 2 && !combo && (favored('rest') || (side === 'def' && me.int >= 75 && r() < 0.25)) ? true : false;
+  const encircleOk = myTot >= foeTot * C.encircle.ratio;
   const o: SideOrders = {};
   for (const k of kindsOf(me.units)) {
     let t: TacOrder = 'assault';
     const horse = k === 'cavalry' || k === 'chariot';
     if (me.hidden.includes(k)) t = k === 'archer' ? 'volley' : horse ? 'charge' : 'assault';
+    else if (k === floodK) t = 'flood';
+    else if (k === decoyK) t = 'decoy';
+    else if (k === provokeK) t = 'provoke';
     else if (foe.lured && (k === 'cavalry' || k === 'infantry' || k === 'spear' || k === 'chariot')) t = 'flank';
+    else if (ok(k, 'halfcross') && k !== 'cavalry') t = 'halfcross';
     else if (k === 'archer') {
-      const pf = orderChance(tb, side, k, 'fire') ?? 0;
-      if (!me.fireUsed && pf >= 0.5 && ph <= 3 && !orderBlocked(tb, side, k, 'fire')) t = 'fire';
+      const pf = ch(k, 'fire');
+      if (!me.fireUsed && pf >= (favored('fire') ? 0.4 : 0.5) && ph <= 3) t = 'fire';
       else if (combo || valleyAmbush) t = 'ambush';
+      else if (restK && (me.rested ?? []).length === 0 && ph === 1) t = 'rest';
       else t = 'volley';
     } else if (k === 'cavalry') {
       if (combo) t = 'feint';
+      else if (k === raidK) t = 'raid';
+      else if (ok(k, 'halfcross')) t = 'halfcross';
       else if (foeHeldPikes || foeSpear > 0.3) t = 'flank';
-      else t = tb.terrain.open ? 'charge' : 'assault';
+      else if (encircleOk && ok(k, 'encircle') && !tb.terrain.rough) t = 'encircle';
+      else if (ph === 1 && me.war >= 80 && ok(k, 'night') && (favored('night') ? r() < 0.6 : r() < 0.1)) t = 'night';
+      else t = tb.terrain.open || favored('charge') ? 'charge' : 'assault';
     } else if (k === 'chariot') t = tb.terrain.open && !foeHeldPikes ? 'charge' : 'flank';
-    else if (k === 'spear') t = foeHorse > 0.2 ? 'hold' : 'assault';
+    else if (k === 'spear') t = foeHorse > 0.2 ? 'hold' : encircleOk && ok(k, 'encircle') ? 'encircle' : restK && ph === 1 ? 'rest' : 'assault';
     else if (k === 'infantry') {
       if (combo) t = 'ambush';
-      else if (ph === 1 && me.war >= 80 && r() < 0.15 && !orderBlocked(tb, side, k, 'night')) t = 'night';
-      else if (side === 'def' && tb.terrain.walled && foeHorse > 0.3) t = 'hold';
+      else if (ph === 1 && me.war >= 80 && r() < 0.15 + (favored('night') ? 0.3 : 0) && ok(k, 'night')) t = 'night';
+      else if (restK && ph === 1) t = 'rest';
+      else if (side === 'def' && (tb.terrain.walled || tb.terrain.rough) && (foeHorse > 0.3 || favored('hold'))) t = 'hold';
+      else if (encircleOk && ok(k, 'encircle')) t = 'encircle';
       else t = 'assault';
     }
-    if (orderBlocked(tb, side, k, t) || TAC_CALIB.ban.includes(t)) t = 'assault';
+    if (me.provoked && horse && t !== 'flank') t = 'charge';
+    if (!ok(k, t)) t = 'assault';
     o[k] = { troops: me.units[k]!, tactic: t };
   }
   // 협공은 정면을 붙잡는 병과가 있어야 한다
