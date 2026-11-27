@@ -1,7 +1,7 @@
 // 목록·보고서 창: 장수, 도시, 연표, 세력 정보, 전투 보고, 설정/저장, 도움말
 import { useEffect, useState, type ReactNode } from 'react';
 import type { BattleReport, GameState } from '../../core';
-import { BALANCE, compText, TACTICS, MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, STAT_KEYS, STAT_ROLE, statGrade, expNeed, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
+import { fixJosa, BALANCE, compText, TACTICS, MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, STAT_KEYS, STAT_ROLE, statGrade, expNeed, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
 import { exportJson, indexedDbRepo, migrate, type SaveMeta } from '../../save/saveRepository';
 import { Portrait } from './Portrait';
 
@@ -247,7 +247,7 @@ export function BattleReportView({ state, report }: { state: GameState; report: 
           <h4>장수의 운명</h4>
           {report.fates.map((x) => (
             <div key={x.generalId} className={`fate ${x.fate}`}>
-              {x.fate === 'escaped' ? '🏃' : x.fate === 'captured' ? '⛓️' : x.fate === 'slain' ? '💀' : '🌫️'} <b>{state.generals[x.generalId]?.name}</b> — {x.fate === 'escaped' ? `${x.troops ? `패잔병 ${fmt(x.troops)}명을 이끌고 ` : ''}${state.cities[x.to!]?.name}(으)로 탈출` : x.fate === 'captured' ? '사로잡힘' : x.fate === 'slain' ? '전사' : '홀로 달아나 몸을 숨김'}
+              {x.fate === 'escaped' ? '🏃' : x.fate === 'captured' ? '⛓️' : x.fate === 'slain' ? '💀' : '🌫️'} <b>{state.generals[x.generalId]?.name}</b> — {x.fate === 'escaped' ? `${x.troops ? `패잔병 ${fmt(x.troops)}명을 이끌고 ` : ''}${fixJosa(`${state.cities[x.to!]?.name}(으)로`)} 탈출` : x.fate === 'captured' ? '사로잡힘' : x.fate === 'slain' ? '전사' : '홀로 달아나 몸을 숨김'}
               <small className="muted"> (탈출 {Math.round(x.chance.escape * 100)}% · 포로 {Math.round(x.chance.captured * 100)}% · 전사 {Math.round(x.chance.slain * 100)}%)</small>
             </div>
           ))}
@@ -357,7 +357,9 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <li><b>날씨</b>: 계절과 지역에 따라 도시마다 날씨가 바뀝니다. 폭우·태풍·폭설인 도시를 공격하면 불리하고(특히 강을 건널 때), 태풍은 농업·성벽, 가뭄은 가을 수확, 한파·폭설은 병력을 깎습니다. 지력 높은 장수는 안개를 기습에 씁니다.</li>
         <li><b>군량</b>: 병사는 매 계절 곡식을 먹습니다. 부족하면 탈영이 일어납니다.</li>
         <li><b>외교</b>: 사신과 예물로 휴전(2년)·동맹을 제안합니다. 맹약 중인 세력은 공격할 수 없고, 파기하면 의리 높은 장수가 실망합니다.</li>
-        <li>지도는 마우스 휠로 확대, 드래그로 이동합니다. 부대·계책은 준비 중입니다.</li>
+        <li><b>빠른 진행</b>: 오른쪽 아래 <b>다음 도시 ▶</b>(단축키 <kbd>N</kbd>)는 행동이 남은 장수가 있는 도시로 차례로 옮겨 갑니다. <b>🤖 맡기기</b>는 남은 장수에게 내정·인사(개발·구휼·등용·포상·훈련·태수·군량 매입 등)를 알아서 시키고, 출진·병력 이동·징병·귀농·편제·계략은 하지 않습니다. 도시 패널의 맡기기는 그 도시만, 아래의 모두 맡기기는 모든 도시에 적용됩니다.</li>
+        <li><b>도시 패널</b>: 내 도시는 명령이 먼저 보이도록 수치를 한 줄로 접어 둡니다. 줄을 누르면 펼쳐집니다(마지막 선택을 기억).</li>
+        <li>지도는 마우스 휠로 확대, 드래그로 이동합니다. 창은 <kbd>Esc</kbd>로 닫습니다.</li>
       </ul>
     </Modal>
   );

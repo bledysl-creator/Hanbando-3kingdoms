@@ -1,3 +1,4 @@
+import { fixJosa } from '../josa';
 // v3.6 포위와 대응: AI가 플레이어 도시를 치면 바로 싸우지 않고 한 계절 포위한다.
 // 플레이어는 그 사이 농성·협공·출성 요격·청야 철수·화친 요청 중 하나를 고르고,
 // 다음 "턴 진행" 때 고른 대응으로 결판이 난다 (고르지 않으면 농성).
@@ -43,12 +44,13 @@ export function setSiegeResponseMut(s: GameState, factionId: string, siegeId: st
   const why = unavailable(s, sg, response);
   if (why) return { ok: false, error: why };
   sg.response = response;
-  return { ok: true, message: `${s.cities[sg.toCity].name}: 「${SIEGE_LABEL[response.kind].name}」으로 대응합니다. 턴을 넘기면 결판이 납니다.` };
+  return { ok: true, message: `${s.cities[sg.toCity].name}: 「${SIEGE_LABEL[response.kind].name}」 대응을 골랐습니다. 턴을 넘기면 결판이 납니다.` };
 }
 
 export function setSiegeResponse(state: GameState, factionId: string, siegeId: string, response: SiegeResponse) {
   const draft = structuredClone(state);
-  const r = setSiegeResponseMut(draft, factionId, siegeId, response);
+  const raw = setSiegeResponseMut(draft, factionId, siegeId, response);
+  const r = raw.ok ? { ok: true as const, message: fixJosa(raw.message) } : { ok: false as const, error: fixJosa(raw.error) };
   return { state: r.ok ? draft : state, result: r };
 }
 
@@ -143,7 +145,13 @@ export interface SiegeForecast {
 }
 
 /** 대응별 예상 결과 — 같은 전투 식을 시드 고정 난수로 여러 번 돌려 평균을 낸다 (상태 불변) */
+/** v4.2.1 예상 문구에도 조사 교정 ("광주은(는)" → "광주는") */
 export function siegeForecast(s: GameState, siegeId: string, r: SiegeResponse): SiegeForecast {
+  const f = siegeForecastRaw(s, siegeId, r);
+  return { ...f, notes: f.notes.map(fixJosa), unavailable: f.unavailable && fixJosa(f.unavailable) };
+}
+
+function siegeForecastRaw(s: GameState, siegeId: string, r: SiegeResponse): SiegeForecast {
   const sg = (s.sieges ?? []).find((x) => x.id === siegeId)!;
   const to = s.cities[sg.toCity];
   const why = unavailable(s, sg, r);
@@ -275,7 +283,7 @@ export function resolveSieges(s: GameState) {
         const adj = adjustSortie(r, o, sg.troops);
         o.attackerLoss = adj.attackerLoss; o.defenderLoss = adj.defenderLoss;
         o.reasons.push(`우리의 대응: ${label.icon} ${label.name}`);
-        if (!o.won) log(s, `${label.icon} ${label.name}으로 ${to.name}을(를) 지켜 냈습니다! (적 손실 ${o.attackerLoss.toLocaleString()})`, 'good', pf);
+        if (!o.won) log(s, `${label.icon} ${label.name}(으)로 ${to.name}을(를) 지켜 냈습니다! (적 손실 ${o.attackerLoss.toLocaleString()})`, 'good', pf);
       },
       ...back,
     });

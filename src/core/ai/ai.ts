@@ -363,3 +363,42 @@ function bestTactic(s: GameState, g: General, to: City, road: Road): TacticKind 
   }
   return best?.t;
 }
+
+/** v4.2.1 위임: 플레이어가 맡긴 장수는 AI가 고르는 명령 중 내정·인사만 한다 (출진·병력 이동·징병·귀농·편제·계략은 직접). */
+export const DELEGATE_TYPES: ReadonlySet<Command['type']> = new Set(['develop', 'relief', 'extinguish', 'recruit', 'reward', 'train', 'appoint', 'trade', 'breedHorses', 'study', 'buildShips']);
+
+const FOOD_ONLY: ReadonlySet<Command['type']> = new Set(['relief', 'train', 'appoint']);
+
+export interface DelegateResult { acted: number; idle: number; lines: string[] }
+
+/** 행동이 남은 장수(cityId를 주면 그 도시만)에게 AI가 내정·인사 명령을 골라 실행한다. 군량 매입 외 거래(말 매입)는 하지 않는다. */
+export function delegateMut(s: GameState, fid: string, cityId?: string): DelegateResult {
+  const out: DelegateResult = { acted: 0, idle: 0, lines: [] };
+  clearMemo();
+  const gens = Object.values(s.generals)
+    .filter((g) => g.alive && g.faction === fid && !g.acted && s.cities[g.city].owner === fid && (!cityId || g.city === cityId))
+    .sort((a, b) => b.stats.politics - a.stats.politics);
+  for (const g of gens) {
+    if (g.acted || g.faction !== fid || s.cities[g.city].owner !== fid) continue;
+    const opts = optionsFor(s, fid, g)
+      .filter((o) => DELEGATE_TYPES.has(o.cmd.type) && !(o.cmd.type === 'trade' && o.cmd.action !== 'buyFood'))
+      .sort((a, b) => b.score - a.score);
+    let done = false;
+    for (const o of opts) {
+      // 금을 쓰는 명령은 비상금(BALANCE.delegateGoldKeep)을 남길 수 있을 때만 — 맡겼더니 금고가 비는 일 방지
+      if (!FOOD_ONLY.has(o.cmd.type) && s.factions[fid].gold < BALANCE.delegateGoldKeep) continue;
+      const r = executeCommand(s, fid, o.cmd);
+      clearMemo();
+      if (r.ok) { out.acted++; out.lines.push(`${g.name}: ${o.why}`); done = true; break; }
+    }
+    if (!done) out.idle++;
+  }
+  return out;
+}
+
+/** 불변 버전 (UI용) */
+export function delegate(state: GameState, fid: string, cityId?: string): { state: GameState; result: DelegateResult } {
+  const draft = structuredClone(state);
+  const result = delegateMut(draft, fid, cityId);
+  return { state: result.acted > 0 ? draft : state, result };
+}

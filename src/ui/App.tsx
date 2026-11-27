@@ -1,6 +1,6 @@
 // 앱 루트: 타이틀 → 메인 지도 화면. 게임 상태는 core 함수로만 바꾼다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BALANCE, canFound, applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, siegesOf, setSiegeResponse, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
+import { delegate, fixJosa, BALANCE, canFound, applyCommand, attemptUprising, canRise, uprisingChance, respondOffer, siegesOf, setSiegeResponse, createGame, DATA, endTurn, SCENARIOS, citiesOf, type Command, type GameState } from '../core';
 import { DEFAULT_LAYERS, KoreaMap, LAYER_LABELS, MAP_MODES, type MapLayers, type MapMode } from '../map/KoreaMap';
 import { indexedDbRepo } from '../save/saveRepository';
 import { VERSION } from '../version';
@@ -112,6 +112,13 @@ function TitleScreen({ onStart }: { onStart: (s: GameState) => void }) {
   );
 }
 
+/** 맡긴 결과 요약: "농업 개발 3 · 등용 1" */
+function summarize(lines: string[]): string {
+  const n: Record<string, number> = {};
+  for (const l of lines) { const k = l.split(': ')[1] ?? l; n[k] = (n[k] ?? 0) + 1; }
+  return Object.entries(n).map(([k, v]) => `${k} ${v}`).join(' · ');
+}
+
 function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (s: GameState) => void; onQuit: () => void }) {
   const pf = state.playerFactionId;
   const [selected, setSelected] = useState<string | null>(pf ? state.generals[state.factions[pf].rulerId].city : null);
@@ -181,6 +188,33 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
     else if (k === '외교') setModal('diplomacy');
   };
 
+  // v4.2.1 남은 장수 맡기기 (내정·인사만) — 도시 하나 또는 전체
+  const onDelegate = (cityId?: string) => {
+    if (!pf) return;
+    const { state: next, result } = delegate(state, pf, cityId);
+    setState(next);
+    if (result.acted === 0) flash('맡길 만한 내정·인사가 없습니다 (금·곡식이 부족하거나 할 일이 없음).', false);
+    else flash(`🤖 ${result.acted}명에게 맡겼습니다${result.idle ? ` · ${result.idle}명은 할 일이 없어 대기` : ''} — ${summarize(result.lines)}`);
+  };
+  // v4.2.1 행동이 남은 장수가 있는 다음 도시로 이동 (N 키)
+  const idleCities = pf ? citiesOf(state, pf).filter((c) => Object.values(state.generals).some((g) => g.alive && g.faction === pf && !g.acted && g.city === c.id)).map((c) => c.id) : [];
+  const nextIdleCity = () => {
+    if (idleCities.length === 0) return;
+    const i = selected ? idleCities.indexOf(selected) : -1;
+    setSelected(idleCities[(i + 1) % idleCities.length]);
+  };
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+      if ((e.key === 'n' || e.key === 'N' || e.key === 'ㅜ') && !e.ctrlKey && !e.metaKey) nextIdleCity();
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  });
+
+  // v4.2.1 창이 겹치지 않게: 사건 카드 → 사신(제안) → 포위 대응 순서로 하나씩
+  const offersOpen = !!pf && state.offers.some((o) => o.to === pf) && !offersHidden && events.length === 0;
   const myCaptives = pf ? (state.captives ?? []).filter((c) => c.captor === pf).length : 0;
   const idle = pf ? Object.values(state.generals).filter((g) => g.alive && g.faction === pf && !g.acted && state.cities[g.city].owner === pf).length : 0;
 
@@ -217,7 +251,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
         </div>
         <MissionPanel state={state} />
         {selected && (
-          <CityPanel state={state} cityId={selected} tab={tab} onTab={setTab} onCommand={onCommand} onClose={() => setSelected(null)} onTargetHover={setHover} />
+          <CityPanel state={state} cityId={selected} tab={tab} onTab={setTab} onCommand={onCommand} onClose={() => setSelected(null)} onTargetHover={setHover} onDelegate={onDelegate} />
         )}
       </div>
 
@@ -230,15 +264,28 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
         ) : (
           <TurnButton onClick={() => setAuto((a) => !a)} label={auto ? '일시정지' : '자동 진행'} disabled={state.outcome !== 'playing'} />
         )}
-        {pf && <div className="idle-hint">대기 장수 {idle}명</div>}
-        {myCaptives > 0 && <button className="siege-alert captive-alert" onClick={() => setModal('captives')}>⛓️ 포로 {myCaptives}명 — 처분 정하기</button>}
-        {mySieges.length > 0 && <button className="siege-alert" onClick={() => setSiegeHidden(false)}>⚔️ 포위된 성 {mySieges.length}곳 — 대응 정하기</button>}
       </div>
+      {/* v4.2.1 턴 알림: 대기 장수(다음 도시·모두 맡기기)·포로·포위를 명령바 위에 모아 보여준다 */}
+      {pf && state.outcome === 'playing' && (
+        <div className="turn-notices">
+          {mySieges.length > 0 && <button className="siege-alert" onClick={() => setSiegeHidden(false)}>⚔️ 포위된 성 {mySieges.length}곳 — 대응 정하기</button>}
+          {myCaptives > 0 && <button className="siege-alert captive-alert" onClick={() => setModal('captives')}>⛓️ 포로 {myCaptives}명 — 처분 정하기</button>}
+          {idle > 0 ? (
+            <div className="idle-bar panel">
+              <span>대기 장수 <b>{idle}</b>명 · {idleCities.length}개 도시</span>
+              <button onClick={nextIdleCity} title="행동이 남은 장수가 있는 다음 도시로 (단축키 N)">다음 도시 ▶</button>
+              <button onClick={() => onDelegate()} title="모든 도시의 남은 장수에게 내정·인사를 맡깁니다. 출진·병력 이동·징병·계략은 하지 않습니다.">🤖 모두 맡기기</button>
+            </div>
+          ) : (
+            <div className="idle-bar panel done"><span>✔ 모든 장수가 행동을 마쳤습니다</span></div>
+          )}
+        </div>
+      )}
 
       {pf && canRise(state, pf) && state.outcome === 'playing' && (
         <div className="uprising panel">
           <h3>세력이 무너졌습니다</h3>
-          <p>{state.generals[state.factions[pf].rulerId].name}은(는) {state.cities[state.generals[state.factions[pf].rulerId].city].name}에 몸을 숨기고 있습니다. 군주가 살아 있는 한 끝이 아닙니다.</p>
+          <p>{fixJosa(`${state.generals[state.factions[pf].rulerId].name}은(는)`)} {state.cities[state.generals[state.factions[pf].rulerId].city].name}에 몸을 숨기고 있습니다. 군주가 살아 있는 한 끝이 아닙니다.</p>
           <p className="muted small">거병 성공률 {Math.round(uprisingChance(state, pf) * 100)}% (수비 {state.cities[state.generals[state.factions[pf].rulerId].city].troops.toLocaleString()} 이하 9,000일 때 가능, 매력·민심 영향). 실패해도 턴을 넘겨 다시 노릴 수 있습니다.</p>
           <div className="actions row">
             <button className="primary" disabled={uprisingChance(state, pf) <= 0} onClick={() => { const d = structuredClone(state); const r = attemptUprising(d, pf); setState(d); flash(r.message, r.ok); }}>의병을 일으킨다</button>
@@ -251,7 +298,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
 
       {toast && <div className={`toast ${toast.ok ? 'ok' : 'err'}`}>{toast.text}</div>}
 
-      {mySieges.length > 0 && !siegeHidden && events.length === 0 && auto === false && (
+      {mySieges.length > 0 && !siegeHidden && events.length === 0 && !offersOpen && auto === false && (
         <SiegeModal state={state} sieges={mySieges} onClose={() => setSiegeHidden(true)}
           onRespond={(id, r) => { const x = setSiegeResponse(state, pf!, id, r); setState(x.state); flash(x.result.ok ? x.result.message : x.result.error, x.result.ok); }} />
       )}
@@ -270,7 +317,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
       {modal === 'battles' && <BattlesModal state={state} onClose={() => setModal(null)} />}
       {modal === 'captives' && <CaptiveModal state={state} onClose={() => setModal(null)} onCommand={onCommand} />}
       {modal === 'diplomacy' && pf && <DiplomacyModal state={state} onClose={() => setModal(null)} onCommand={onCommand} />}
-      {pf && state.offers.some((o) => o.to === pf) && !offersHidden && (
+      {offersOpen && (
         <OffersModal state={state} onClose={() => setOffersHidden(true)} onRespond={(i, a) => { const r = respondOffer(state, pf, i, a); setState(r.state); flash(r.result.ok ? r.result.message : r.result.error, r.result.ok); }} />
       )}
       {modal === 'help' && <HelpModal onClose={() => setModal(null)} />}
@@ -281,7 +328,7 @@ function GameScreen({ state, setState, onQuit }: { state: GameState; setState: (
       {state.outcome !== 'playing' && (
         <Modal title={state.outcome === 'won' ? '천하통일!' : state.outcome === 'lost' ? '패배' : '통일 완료'} onClose={onQuit}>
           <p>
-            {state.winner ? `${state.factions[state.winner].name}(${state.factions[state.winner].hanja})이(가) ${state.year}년 한반도를 통일했습니다.` : '우리 세력이 멸망했습니다.'}
+            {state.winner ? fixJosa(`${state.factions[state.winner].name}(${state.factions[state.winner].hanja})이(가) ${state.year}년 한반도를 통일했습니다.`) : '우리 세력이 멸망했습니다.'}
           </p>
           <div className="actions row">
             <button onClick={() => setModal('chronicle')}>연표 보기</button>
