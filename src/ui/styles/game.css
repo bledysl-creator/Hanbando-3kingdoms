@@ -488,3 +488,78 @@ button.urgent { border-color: #ff6b5b !important; color: #ffd0c8; }
 @media (max-width: 1200px) {
   .dock-closed .city-panel { right: 14px; bottom: 160px; }
 }
+
+/* v4.3 5단계 전술 전투 창 */
+.tb-back { position: fixed; inset: 0; z-index: 40; background: #000b; display: flex; align-items: center; justify-content: center; }
+.tb-window { width: min(1180px, 97vw); max-height: 95vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px 14px 12px; }
+.tb-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid #6e5a33; padding-bottom: 8px; }
+.tb-head h2 { margin: 0; font-size: 21px; }
+.tb-head h2 small { font-size: 13px; font-weight: 400; margin-left: 6px; }
+.tb-steps { display: flex; gap: 6px; margin-left: auto; }
+.tb-step { width: 64px; text-align: center; border: 1px solid #3a3f48; border-radius: 5px; padding: 3px 0; background: #141a21; display: flex; flex-direction: column; line-height: 1.2; }
+.tb-step b { font-size: 15px; } .tb-step small { font-size: 11px; color: var(--muted); }
+.tb-step.now { border-color: var(--gold-hi); box-shadow: 0 0 0 1px var(--gold-hi) inset, 0 0 10px #f0d68e55; }
+.tb-step.won { border-color: #3f9a4a; background: #1b2a1d; } .tb-step.won small { color: #b8e6b0; }
+.tb-step.lost { border-color: #9a3f3f; background: #2a1b1b; } .tb-step.lost small { color: #ffb4aa; }
+.tb-terrain { display: flex; flex-wrap: wrap; gap: 6px; }
+.tb-terrain span, .chip { padding: 1px 8px; border-radius: 10px; border: 1px solid #4a4536; background: #1a1d22; font-size: 12px; }
+.chip.good { border-color: #3f9a4a; color: #b8e6b0; } .chip.bad { border-color: #9a3f3f; color: #ffb4aa; }
+.tb-sides { display: grid; grid-template-columns: 1fr 170px 1fr; gap: 10px; align-items: stretch; }
+.tb-side { border: 1px solid; border-left-width: 4px; border-radius: 6px; padding: 8px 10px; background: linear-gradient(#1d242e, #141a21); display: flex; flex-direction: column; gap: 4px; }
+.tb-side.mine { box-shadow: 0 0 0 1px #f0d68e44 inset; }
+.tb-side-head { display: flex; gap: 8px; align-items: center; }
+.tb-you { margin-left: 6px; font-size: 11px; padding: 0 6px; border-radius: 8px; background: #6b5221; }
+.tb-meter { display: grid; grid-template-columns: 34px 1fr; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.tb-meter .bar { position: relative; height: 14px; }
+.tb-meter .bar em { position: absolute; right: 6px; top: -1px; font-style: normal; font-size: 11px; color: #fff7e0; text-shadow: 0 0 3px #000; }
+.tb-meter .bar.morale div { background: linear-gradient(90deg, #2e5f8b, #8ec6f0); }
+.tb-meter .bar.morale.low div { background: linear-gradient(90deg, #8b2e2e, #f08e8e); }
+.tb-units { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+.tb-units .hid { color: #b8e6b0; }
+.tb-chips { display: flex; flex-wrap: wrap; gap: 4px; min-height: 4px; }
+.tb-balance { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; font-size: 13px; }
+.tb-tug { width: 100%; height: 12px; border-radius: 6px; background: #5a2a26; border: 1px solid #6e5a33; overflow: hidden; }
+.tb-tug div { height: 100%; background: linear-gradient(90deg, #8b6d2e, var(--gold-hi)); }
+.tb-main { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 10px; }
+.tb-orders, .tb-forecast { border: 1px solid #3a3f48; border-radius: 6px; padding: 8px 10px; background: rgba(0, 0, 0, 0.25); }
+.tb-orders h3, .tb-forecast h3 { margin: 0 0 6px; font-size: 16px; color: var(--gold-hi); }
+.tb-forecast h4 { margin: 10px 0 2px; font-size: 13px; color: var(--gold-hi); }
+.tb-forecast p { margin: 2px 0; }
+.tb-presets { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.tb-presets button, .tb-tactics button { background: #141a21; color: var(--hanji); border: 1px solid #4a4536; border-radius: 4px; padding: 3px 7px; font-size: 12px; font-family: inherit; cursor: pointer; }
+.tb-presets button:hover:not(:disabled), .tb-tactics button:hover:not(:disabled) { border-color: var(--gold-hi); }
+.tb-presets button:disabled, .tb-tactics button:disabled { opacity: 0.38; cursor: not-allowed; }
+.tb-tactics button.active { background: linear-gradient(#6b5221, #3d2e12); border-color: var(--gold-hi); color: #fff7e0; }
+.tb-tactics button small { color: var(--gold-hi); }
+.tb-unit { border-top: 1px solid #ffffff14; padding: 6px 0; display: flex; flex-direction: column; gap: 4px; }
+.tb-unit-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tb-unit-head > .muted { margin-left: auto; }
+.tb-unit input[type=range] { width: 100%; accent-color: var(--gold); }
+.tb-tactics { display: flex; flex-wrap: wrap; gap: 4px; }
+.tb-unit-fc { color: #d9ccae; }
+.tb-fc-big { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.tb-fc-row { display: grid; grid-template-columns: 90px auto 1fr; gap: 8px; align-items: baseline; font-size: 14px; }
+.tb-help summary { cursor: pointer; color: var(--gold); font-size: 13px; margin-top: 8px; }
+.tb-help ul { margin: 4px 0 0; padding-left: 16px; }
+.tb-result { text-align: center; padding: 14px; border: 1px solid #6e5a33; border-radius: 6px; background: rgba(0, 0, 0, 0.3); }
+.tb-result h3 { margin: 0 0 6px; font-size: 22px; } .tb-result.won h3 { color: var(--gold-hi); } .tb-result.lost h3 { color: #ffb4aa; }
+.tb-log { border: 1px solid #3a3f48; border-radius: 6px; padding: 6px 10px; max-height: 170px; overflow-y: auto; background: rgba(0, 0, 0, 0.2); }
+.tb-log-row { padding: 3px 0; border-bottom: 1px solid #ffffff10; }
+.tb-log-row.latest { color: #fff7e0; }
+.tb-ev { color: #d9ccae; padding-left: 10px; }
+.tb-foot { display: flex; gap: 8px; justify-content: flex-end; }
+.tb-foot button { background: #141a21; color: var(--hanji); border: 1px solid #6e5a33; border-radius: 4px; padding: 7px 14px; font-family: inherit; font-size: 14px; cursor: pointer; }
+.tb-foot button.primary { background: linear-gradient(#6b5221, #3d2e12); border-color: var(--gold-hi); font-weight: 700; }
+.tb-foot button:hover { border-color: var(--gold-hi); }
+.battle-tactical { margin: 6px 0; padding-left: 18px; font-size: 13px; }
+@media (max-width: 760px) {
+  .tb-sides, .tb-main { grid-template-columns: 1fr; }
+  .tb-steps { margin-left: 0; }
+  .tb-step { width: 52px; }
+}
+.siege-direct { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
+.siege-direct button { background: linear-gradient(#6b5221, #3d2e12); color: #fff7e0; border: 1px solid var(--gold-hi); border-radius: 4px; padding: 6px 12px; font-family: inherit; font-weight: 700; cursor: pointer; }
+.tb-window > * { flex-shrink: 0; }
+.tb-foot { position: sticky; bottom: -12px; padding: 8px 0 4px; background: linear-gradient(transparent, rgba(16, 21, 28, 0.97) 30%); }
+.tb-foot button { white-space: nowrap; }
+@media (max-width: 760px) { .tb-foot button { font-size: 12px; padding: 6px 8px; } }

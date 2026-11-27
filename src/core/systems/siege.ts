@@ -89,6 +89,12 @@ function unavailable(s: GameState, sg: Siege, r: SiegeResponse): string | null {
   return null;
 }
 
+/** v4.3 직접 지휘(5단계 전투)용 포위 전투 입력: 농성 보너스 없이 플레이어가 단계마다 싸운다 */
+export function siegeTacticalInput(s: GameState, sg: Siege): BattleInput {
+  const { input } = siegeBattle(s, sg, { kind: 'sortie' });
+  return { ...input, ignoreWalls: false, defenseMul: undefined, defenseReason: undefined };
+}
+
 /** 전투 입력 만들기 — 상태를 바꾸지 않는다 (예상 결과와 실제 결판이 같은 식을 쓴다) */
 function siegeBattle(s: GameState, sg: Siege, r: SiegeResponse, parleyFailed = false): { input: BattleInput; city: City; pincer?: { cityId: string; troops: number; leader: General } } {
   const to = s.cities[sg.toCity];
@@ -208,7 +214,7 @@ function adjustSortie(r: SiegeResponse, o: BattleOutcome, attackerTroops: number
 }
 
 /** 포위군이 물러날 곳: 출발 도시가 아직 자기 땅이면 그곳, 아니면 이웃한 자기 도시, 없으면 흩어진다 */
-function returnArmy(s: GameState, sg: Siege, n: number) {
+export function returnArmy(s: GameState, sg: Siege, n: number) {
   const from = s.cities[sg.fromCity];
   if (from.owner === sg.attackerFaction) { addToCity(from, n, sg.comp); from.troops += n; return; }
   const alt = neighbors(s, sg.toCity).map((x) => x.city).find((c) => c.owner === sg.attackerFaction);

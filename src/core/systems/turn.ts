@@ -1,4 +1,5 @@
 // 턴 진행: AI 행동 → 계절 처리 → 충성/이탈 → 임무/승패 → 다음 계절 (Game.md 3, 5)
+import { settleTacticalMut } from './tactical';
 import { BALANCE, SEASONS } from '../config';
 import { runFactionAI } from '../ai/ai';
 import { log } from '../commands/commands';
@@ -116,6 +117,8 @@ export function checkOutcome(s: GameState) {
 export function endTurnMut(s: GameState) {
   if (s.outcome !== 'playing') return;
   s.aiTrace = [];
+  // v4.3 지휘하다 만 전투는 AI가 마무리
+  settleTacticalMut(s);
   // v3.6 지난 계절 포위된 플레이어 도시: 고른 대응으로 결판
   resolveSieges(s);
   expireCaptives(s);
