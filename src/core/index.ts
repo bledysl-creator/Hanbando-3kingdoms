@@ -32,5 +32,7 @@ export * from './systems/rebellion';
 export { setSiegeResponse, siegeForecast, siegesOf, SIEGE_LABEL, pincerSources, evacuateTargets, parleyGold, type SiegeForecast, type SiegeKind } from './systems/siege';
 export * from './systems/stats';
 export { delegate, delegateMut, DELEGATE_TYPES, type DelegateResult } from './ai/ai';
-export { TAC_ORDERS, orderBlocked, orderChance, cleanOrders, aiOrders, balanceOf, ordersText, sumT, other as otherSide, type TacBattle, type TacOrder, type SideOrders, type UnitOrder, type PhaseEval, type Side as TacSide } from './battle/phased';
+export { TAC_ORDERS, CHANCE_ORDERS, orderBlocked, orderChance, cleanOrders, aiOrders, balanceOf, ordersText, sumT, techOptions, type TechOption, isRiver, isUphill, other as otherSide, type TacBattle, type TacOrder, type SideOrders, type UnitOrder, type PhaseEval, type Side as TacSide } from './battle/phased';
 export { startSiegeTactical, previewTactical, orderTactical, autoTacticalRest, retreatTactical, closeTactical, tacticalReportIndex, tacticalMessage } from './systems/tactical';
+export { SKILLS, GENERIC_SKILLS, UNIQUE_SKILLS, STAT_LABEL, skillsOf, skillChance, techChance, skillRuleLines, skillEffectLines, techLines, type SkillDef, type ActiveSkill, type TechDef } from './battle/skills';
+export { ROUTE_LABEL, routeProfile, routeText, routeAttackMul, groundOf, climbText, attackFrom, type RouteTerrain, type RouteLabel, type Ground } from './battle/ground';

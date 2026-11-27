@@ -5,9 +5,11 @@ import { rand, randRange, type RngHolder } from '../rng/rng';
 import type { City, General, Road } from '../state/types';
 import { weatherAttackModifier } from '../systems/weather';
 import { tacticChance, TACTICS, type TacticKind } from './tactics';
+import { autoSkillMul } from './skills';
 import { landmarksOfCity, landmarksOnRoad } from '../data';
 import { commandCap, defenseCap, effectiveTroops, unitStats } from '../systems/stats';
-import { compEffect, compFromFormation, compText, normComp, reliefOf, type Comp, type FormationKind } from './formation';
+import { compEffect, compFromFormation, compText, normComp, type Comp, type FormationKind } from './formation';
+import { climbText, groundOf, routeAttackMul, ROUTE_LABEL, type Ground } from './ground';
 
 export interface BattleInput {
   attackerMorale?: number;
@@ -104,7 +106,7 @@ export const qualityFactor = (morale: number, training: number) => moraleFactor(
 export interface BattleBase {
   atk: number; def: number; reasons: string[];
   g: General; dep: General | null; us: General['stats'];
-  rel: number; best: General | null; dLead: number; dWar: number; champ: General | null; ag: General;
+  rel: number; ground: Ground; best: General | null; dLead: number; dWar: number; champ: General | null; ag: General;
 }
 
 export function battleBase(b: BattleInput): BattleBase {
@@ -141,6 +143,17 @@ export function battleBase(b: BattleInput): BattleBase {
     reasons.push(`${label}으로 공격력 ${Math.round((1 - roadMod) * 100)}% 감소`);
   }
   atk *= roadMod;
+  // v4.4.1 길별·방향별 지형: 같은 길도 어느 쪽에서 치느냐에 따라 들판으로 내려오거나 골짜기를 오른다
+  const ground = groundOf(b.road, b.defenderCity);
+  {
+    const rm = routeAttackMul(ground);
+    if (rm.text) {
+      const ct = climbText(ground.climb);
+      const pct = Math.round((rm.mul - 1) * 100);
+      reasons.push(`🗺 싸울 땅 (${ROUTE_LABEL[ground.label].icon}${ROUTE_LABEL[ground.label].name}): ${rm.text}${ct ? ` · ${ct}` : ''}${pct !== 0 ? ` → 공격 ${pct > 0 ? '+' : '−'}${Math.abs(pct)}%` : ''}`);
+      atk *= rm.mul;
+    }
+  }
   if (b.traitAttack) { atk *= 1 + b.traitAttack; reasons.push(`세력 특성(무용) 공격 +${Math.round(b.traitAttack * 100)}%`); }
   if (b.road.type === 'sea') {
     const sb = Math.min(BALANCE.shipAttackCap, (b.attackerShips ?? 0) * BALANCE.shipAttackPer) + (b.navalTrait ? BALANCE.navalTraitBonus : 0);
@@ -164,12 +177,13 @@ export function battleBase(b: BattleInput): BattleBase {
   if (b.attackMul !== undefined && b.attackMul !== 1) { atk *= b.attackMul; if (b.attackReason) reasons.push(b.attackReason); }
 
   const city = b.defenderCity;
-  // v4.0 실측 지형: 험한 산골짜기에서는 대군이 한꺼번에 펼치지 못한다
-  const rel = reliefOf(city);
-  if (rel >= BALANCE.frontageFrom && b.attackerTroops > city.troops * 1.2) {
-    const fm = Math.pow(city.troops / b.attackerTroops, rel / BALANCE.frontageDiv);
+  // v4.0 실측 지형: 험한 산골짜기에서는 대군이 한꺼번에 펼치지 못한다 (v4.4.1 길의 계곡 비율만큼 더 좁다)
+  const rel = ground.rel;
+  const narrow = rel + Math.round((ground.route?.valley ?? 0) * 20);
+  if (narrow >= BALANCE.frontageFrom && b.attackerTroops > city.troops * 1.2) {
+    const fm = Math.pow(city.troops / b.attackerTroops, narrow / BALANCE.frontageDiv);
     atk *= fm;
-    reasons.push(`산악도 ${rel}의 좁은 골짜기라 대군이 한꺼번에 싸우지 못함 −${Math.round((1 - fm) * 100)}%`);
+    reasons.push(`산악도 ${narrow}의 좁은 땅이라 대군이 한꺼번에 싸우지 못함 −${Math.round((1 - fm) * 100)}%`);
   }
   const best = b.defenderGenerals.reduce<General | null>(
     (acc, x) => (!acc || x.stats.leadership + x.stats.war > acc.stats.leadership + acc.stats.war ? x : acc),
@@ -216,7 +230,7 @@ export function battleBase(b: BattleInput): BattleBase {
 
   const champ = b.defenderGenerals.reduce<General | null>((acc, x) => (!acc || x.stats.war > acc.stats.war ? x : acc), null);
   const ag = dep && dep.stats.war > g.stats.war ? dep : g; // 부장이 더 세면 부장이 나선다
-  return { atk, def, reasons, g, dep, us, rel, best, dLead, dWar, champ, ag };
+  return { atk, def, reasons, g, dep, us, rel, ground, best, dLead, dWar, champ, ag };
 }
 
 /** v3.9 일기토 판정 (자동 전투·5단계 전투 공용). 배율을 돌려준다 */
@@ -265,7 +279,7 @@ export function rollFortune(rng: RngHolder, b: BattleInput, usIntellect: number,
 
 export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   const B = battleBase(b);
-  const { reasons, g, dep, us, rel, dLead, champ } = B;
+  const { reasons, g, dep, us, dLead, champ } = B;
   let { atk, def } = B;
   let tactic: BattleOutcome['tactic'];
   if (b.tactic) {
@@ -288,6 +302,17 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   atk *= fe.attack;
   reasons.push(`[편제] ${compText(aComp)} vs ${compText(dComp)} → ${fe.attack >= 1 ? '+' : '−'}${Math.round(Math.abs(fe.attack - 1) * 100)}%`);
   for (const r of fe.reasons) reasons.push(`  · ${r}`);
+  // v4.4 장수 특기: 정면 싸움에 늘 쓰이는 특기만 발동 확률만큼 (계략 특기는 5단계 전투에서만)
+  if (BALANCE.skills.enabled && BALANCE.skills.auto) {
+    const walled = !b.ignoreWalls && city.wall >= 50;
+    const water = B.ground.river || b.road.type === 'sea', fog = b.weather === 'fog', rough = B.ground.rough, wet = !!b.weather && ['rain', 'storm', 'typhoon', 'snow', 'blizzard'].includes(b.weather);
+    const dTop = [...b.defenderGenerals].sort((x, y) => y.stats.leadership - x.stats.leadership);
+    const dSecond = dTop.slice(1).sort((x, y) => Math.max(y.stats.war, y.stats.intellect, y.stats.leadership) - Math.max(x.stats.war, x.stats.intellect, x.stats.leadership))[0];
+    const am = autoSkillMul([{ g, deputy: false }, ...(dep ? [{ g: dep, deputy: true }] : [])], { atk: true, walled, outnumbered: b.attackerTroops < city.troops * 0.8, water, fog, rough, wet });
+    const dm = autoSkillMul([...(dTop[0] ? [{ g: dTop[0], deputy: false }] : []), ...(dSecond ? [{ g: dSecond, deputy: true }] : [])], { atk: false, walled, outnumbered: city.troops < b.attackerTroops * 0.8, water, fog, rough, wet });
+    if (am.mul > 1.005) { atk *= am.mul; reasons.push(`✨ 공격군 장수 특기${am.names.length ? ` ${am.names.join('·')}` : ''} +${Math.round((am.mul - 1) * 100)}%`); }
+    if (dm.mul > 1.005) { def *= dm.mul; reasons.push(`✨ 수비군 장수 특기${dm.names.length ? ` ${dm.names.join('·')}` : ''} +${Math.round((dm.mul - 1) * 100)}%`); }
+  }
   let duel: DuelResult | undefined;
   let fortune: string | undefined;
   {
@@ -307,7 +332,7 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   const ratio = atk / Math.max(1, def);
   const won = ratio > 1;
   const q = won ? ratio : 1 / Math.max(0.01, ratio);
-  const rough = b.road.type === 'pass' || rel >= 45 ? BALANCE.pursuitRoughMul : 1;
+  const rough = B.ground.rough ? BALANCE.pursuitRoughMul : 1;
   const winnerRate = Math.max(BALANCE.clashWinnerMin, BALANCE.clashLoss / q);
   // v4.2 무력(칼끝)은 진 쪽 접전 손실을 키우고, 진 쪽 통솔(질서 있는 후퇴)은 줄인다. 추격은 쫓는 쪽 무력이 좌우
   const dChampWar = champ?.stats.war ?? BALANCE.neutralWar;

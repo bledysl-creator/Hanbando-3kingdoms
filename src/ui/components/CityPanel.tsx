@@ -1,7 +1,7 @@
 // 도시 패널: 선택한 도시의 정보와 명령(내정·군사·인재)
 import { useEffect, useMemo, useState } from 'react';
 import type { Advice, Command, Comp, UnitKind, GameState, General, StudyStat, TacticKind } from '../../core';
-import { BALANCE, DATA, STUDY_LABEL, council, compEffect, compOf, compText, horsePrice, breedYield, RANCH_LABEL, isBigCity, organizeCost, UNIT_KINDS, duelPreview, foodPrice, governorOf, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, STAT_KEYS, STAT_NAME, developGain, trainGain, supplyMul, unitStats, commandCap, statGrade, relationBetween, minGarrison, minMarch, disbandPreview, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
+import { BALANCE, DATA, STUDY_LABEL, council, compEffect, compOf, compText, horsePrice, breedYield, RANCH_LABEL, isBigCity, organizeCost, UNIT_KINDS, duelPreview, foodPrice, governorOf, reliefFood, TACTICS, tacticChance, discordChance, rumorChance, scoutChance, visibleTroops, withinTwo, WEATHER_ICON, WEATHER_LABEL, estimateRatio, landmarksOfCity, routeProfile, routeText, ROUTE_LABEL, climbText, STAT_KEYS, STAT_NAME, developGain, trainGain, supplyMul, unitStats, commandCap, statGrade, relationBetween, minGarrison, minMarch, disbandPreview, freeGeneralsIn, generalsIn, isConnectedToCapital, marchOpinions, neighbors, obedience, statusOf, supplyRatio } from '../../core';
 import type { MenuKey } from './Hud';
 import { Portrait } from './Portrait';
 import { REGIONS } from '../../map/geo';
@@ -265,10 +265,21 @@ function MilitaryTab({ state, actor, cityTroops, population, neighbors: ns, onCo
             <select value={target} onChange={(e) => setTarget(e.target.value)}>
               {enemies.map((n) => (
                 <option key={n.city.id} value={n.city.id}>
-                  {n.city.name} ({n.city.owner ? state.factions[n.city.owner].name : '중립'} · 병력 {n.city.troops.toLocaleString()} · {ROAD[n.road.type]})
+                  {n.city.name} ({n.city.owner ? state.factions[n.city.owner].name : '중립'} · 병력 {n.city.troops.toLocaleString()} · {ROAD[n.road.type]}{(() => { const rp = routeProfile(actor.city, n.city.id); return rp ? `·${ROUTE_LABEL[rp.label].name}` : ''; })()})
                 </option>
               ))}
             </select>
+            {(() => {
+              // v4.4.1 길별·방향별 전투 지형: 이 길로 쳐들어가면 어떤 땅에서 싸우나 (반대 방향과 다르다)
+              const rp = routeProfile(actor.city, target), back = routeProfile(target, actor.city);
+              if (!rp) return null;
+              const ct = climbText(rp.climb);
+              return (
+                <p className="small route-line" title={back ? `반대로 ${state.cities[target]?.name}에서 쳐들어오면: ${ROUTE_LABEL[back.label].name}길 — ${routeText(back)}` : undefined}>
+                  🗺 싸울 땅 {ROUTE_LABEL[rp.label].icon}<b>{ROUTE_LABEL[rp.label].name}</b> — {routeText(rp)}{ct ? ` · ${ct}` : ''}
+                </p>
+              );
+            })()}
             <TroopSlider value={troops} max={maxOut} step={step} total={cityTroops} keep={keep} onChange={setTroops} />
             {(() => {
               // v4.2 부장: 같은 성의 행동 전 장수 1명을 붙인다. 무력·지력은 둘 중 높은 쪽, 지휘 한도에 부장 통솔이 더해진다
