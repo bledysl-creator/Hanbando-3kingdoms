@@ -5,6 +5,9 @@ import { endTurnMut } from '../src/core/systems/turn';
 import { TAC_CALIB as C } from '../src/core/battle/phased';
 
 (BALANCE.tactical as { compare: boolean }).compare = true;
+if (process.env.NOGROUND) (BALANCE.ground as { enabled: boolean }).enabled = false; // v4.4.1 길 지형 끄고 비교
+if (process.env.TECHMORALE) (BALANCE.skills as { techMoraleMul: number }).techMoraleMul = Number(process.env.TECHMORALE);
+if (process.env.NOTECH) (BALANCE.skills as { tech: boolean }).tech = false; // v4.4.1 고유 기술 끄고 비교
 if (process.argv[4]) C.assaultOnly = process.argv[4] as typeof C.assaultOnly; // both | atk | def: 그쪽은 정면 공격만
 if (process.argv[5]) C.ban = process.argv[5].split(',');
 const runs = Number(process.argv[2] ?? 20), maxTurns = Number(process.argv[3] ?? 160);

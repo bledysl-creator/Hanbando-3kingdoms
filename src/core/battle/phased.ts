@@ -8,9 +8,10 @@ import { fixJosa } from '../josa';
 import { rand, randRange, type RngHolder } from '../rng/rng';
 import type { General } from '../state/types';
 import { battleBase, moraleFactor, resolveBattle, rollDuel, rollFortune, type BattleInput, type BattleOutcome, type DuelResult } from './battle';
-import { compEffect, compText, counterMul, formationEffect, normComp, reliefOf, unitName, UNIT_KINDS, type Comp, type UnitKind } from './formation';
+import { compEffect, compText, counterMul, formationEffect, normComp, unitName, UNIT_KINDS, type Comp, type UnitKind } from './formation';
 import { tacticChance, TACTICS, type TacticKind } from './tactics';
-import { SKILLS, sideSkills, unlocks, type ActiveSkill, type SkillCond, type SkillDef } from './skills';
+import { SKILLS, sideSkills, techChance, unlocks, type ActiveSkill, type SkillCond, type SkillDef, type TechDef } from './skills';
+import type { RouteLabel, RouteTerrain } from './ground';
 
 export type TacOrder = 'assault' | 'charge' | 'hold' | 'volley' | 'fire' | 'ambush' | 'feint' | 'flank' | 'night'
   // v4.4 손자병법 전술
@@ -18,7 +19,8 @@ export type TacOrder = 'assault' | 'charge' | 'hold' | 'volley' | 'fire' | 'ambu
 export type Side = 'atk' | 'def';
 export type Troops = Partial<Record<UnitKind, number>>;
 export interface UnitOrder { troops: number; tactic: TacOrder }
-export type SideOrders = Partial<Record<UnitKind, UnitOrder>>;
+/** 병과별 명령 + (v4.4.1) 이번 단계에 쓸 고유 기술 (고유 특기 id) */
+export type SideOrders = Partial<Record<UnitKind, UnitOrder>> & { tech?: string };
 
 const ALL: UnitKind[] = ['infantry', 'spear', 'archer', 'cavalry', 'chariot'];
 export const TAC_ORDERS: Record<TacOrder, { name: string; icon: string; desc: string; kinds: UnitKind[]; sun?: string; hanja?: string }> = {
@@ -77,6 +79,9 @@ export interface TacSide {
   starved?: boolean;
   floodUsed?: boolean;
   raidUsed?: boolean;
+  /** v4.4.1 이미 쓴 고유 기술 (특기 id) / 대복병: 다음 단계 기습 배율 */
+  techUsed?: string[];
+  springMul?: number;
   /** 접전에서 잃은 병력 합계 */
   clashLoss: number;
   /** 형세 계산용 손실: 성벽 공성 손실 가산·성벽 보호를 뺀 값 (성벽은 이미 수비 전력에 들어 있어 두 번 세지 않는다) */
@@ -92,6 +97,8 @@ export interface TacPhase {
   events: string[];
   /** v4.4 이번 단계에 발동한 특기 */
   skills?: { side: Side; id: string; owner: string }[];
+  /** v4.4.1 이번 단계에 쓴 고유 기술 */
+  techs?: { side: Side; id: string; owner: string; ok: boolean; chance: number }[];
 }
 
 export interface TacBattle {
@@ -111,7 +118,11 @@ export interface TacBattle {
   phase: number;
   atk: TacSide;
   def: TacSide;
-  terrain: { walled: boolean; wall: number; valley: boolean; open: boolean; wet: boolean; fog: boolean; drought: boolean; road: string; relief: number; rough: boolean };
+  terrain: {
+    walled: boolean; wall: number; valley: boolean; open: boolean; wet: boolean; fog: boolean; drought: boolean; road: string; relief: number; rough: boolean;
+    /** v4.4.1 길별·방향별 지형: 강을 낀 싸움, 공격군이 올려 치는 높이(m), 길의 지형 비율 */
+    river?: boolean; climb?: number; route?: RouteTerrain; label?: RouteLabel;
+  };
   /** 병과별 지형·날씨·성벽 배율 (공격군은 자동 전투의 병종 효과와 같다) */
   mul: Record<Side, Troops>;
   cavalryTrait: boolean;
@@ -127,6 +138,10 @@ export interface TacBattle {
   done?: boolean;
 }
 
+/** v4.4.1 강을 낀 싸움 (도하 길이거나 강변 비율이 높은 길) */
+export const isRiver = (tb: Pick<TacBattle, 'terrain'>) => tb.terrain.river ?? tb.terrain.road === 'river';
+/** 올려 치는 싸움: 높은 산성이거나, 목표가 길보다 크게 높다 (高陵勿向) */
+export const isUphill = (tb: Pick<TacBattle, 'terrain'>) => (tb.terrain.walled && tb.terrain.relief >= BALANCE.tactical.uphillRelief) || (tb.terrain.climb ?? 0) >= BALANCE.tactical.uphillClimb;
 export const other = (s: Side): Side => (s === 'atk' ? 'def' : 'atk');
 export const sumT = (t: Troops) => UNIT_KINDS.reduce((a, k) => a + (t[k] ?? 0), 0);
 const kindsOf = (t: Troops) => UNIT_KINDS.filter((k) => (t[k] ?? 0) > 0);
@@ -154,7 +169,8 @@ export function createTacBattle(rng: RngHolder, b: BattleInput, meta: { id: stri
   const aComp = normComp(b.attackerComp);
   const dComp = normComp(b.defenderComp);
   const walled = !b.ignoreWalls && city.wall >= 50;
-  const rel = reliefOf(city);
+  const gr = B.ground;
+  const rel = gr.rel;
   const atkUnits = split(b.attackerTroops, aComp);
   const defUnits = split(Math.max(0, city.troops), dComp);
   const mul: Record<Side, Troops> = { atk: {}, def: {} };
@@ -166,7 +182,7 @@ export function createTacBattle(rng: RngHolder, b: BattleInput, meta: { id: stri
     let d = 1;
     if (walled && k === 'archer') d *= 1.05;
     if (walled && (k === 'cavalry' || k === 'chariot')) d *= 0.9;
-    if (!walled && rel < BALANCE.reliefCavalryFrom && (k === 'cavalry' || k === 'chariot')) d *= 1.05;
+    if (!walled && gr.open && (k === 'cavalry' || k === 'chariot')) d *= 1.05;
     if (k === 'archer' && b.weather && WET.includes(b.weather)) d *= BALANCE.formation.archerWet;
     mul.def[k] = d;
   }
@@ -205,8 +221,9 @@ export function createTacBattle(rng: RngHolder, b: BattleInput, meta: { id: stri
     atk: side(meta.attackerFaction, atkUnits, b.attackerMorale ?? 70, (B.atk / Math.max(1, b.attackerTroops)) * atkMul, B.us.intellect, B.us.war, B.g.stats.leadership, B.g.id, B.dep?.id, aSkills, B.g.persona?.pride ?? 50),
     def: side(meta.defenderFaction, defUnits, city.morale ?? 70, (B.def / Math.max(1, city.troops)) * defMul, dInt, B.dWar, B.dLead, dBest?.id, dSecond?.id, dSkills, dBest?.persona?.pride ?? 50),
     terrain: {
-      walled, wall: b.ignoreWalls ? 0 : city.wall, valley: rel >= 45 || b.road.type === 'pass', open: rel < BALANCE.reliefCavalryFrom && b.road.type === 'land',
-      wet: !!b.weather && WET.includes(b.weather), fog: b.weather === 'fog', drought: b.weather === 'drought', road: b.road.type, relief: rel, rough: b.road.type === 'pass' || rel >= 45,
+      walled, wall: b.ignoreWalls ? 0 : city.wall, valley: gr.valley, open: gr.open,
+      wet: !!b.weather && WET.includes(b.weather), fog: b.weather === 'fog', drought: b.weather === 'drought', road: b.road.type, relief: rel, rough: gr.rough,
+      river: gr.river, climb: gr.climb, route: gr.route ?? undefined, label: gr.label,
     },
     mul, cavalryTrait: !!b.cavalryTrait, reasons, phases: [], duel: d.duel, opening, siegeId: meta.siegeId,
   };
@@ -237,7 +254,7 @@ export function orderBlocked(tb: TacBattle, side: Side, k: UnitKind, t: TacOrder
   if (t === 'flood') {
     if (me.floodUsed) return '이번 전투에 이미 씀';
     if (tb.terrain.drought) return '가뭄에 물이 모자람';
-    if (tb.terrain.road !== 'river' && !tb.terrain.wet) return '강을 낀 길이거나 비·눈이 와야 함';
+    if (!isRiver(tb) && !tb.terrain.wet) return '강을 낀 길이거나 비·눈이 와야 함';
     if (me.int < C.flood.minInt && !un(t)) return `지력 ${C.flood.minInt} 이상 장수가 필요`;
   }
   if (t === 'raid') {
@@ -249,7 +266,7 @@ export function orderBlocked(tb: TacBattle, side: Side, k: UnitKind, t: TacOrder
   if (t === 'provoke' && me.int < C.provoke.minInt && !un(t)) return `지력 ${C.provoke.minInt} 이상 장수가 필요`;
   if (t === 'halfcross') {
     if (side !== 'def') return '지키는 쪽만';
-    if (tb.terrain.road !== 'river') return '적이 강을 건너올 때만';
+    if (!isRiver(tb)) return '적이 강을 건너올 때만';
     if (tb.phase >= C.halfcrossPhases) return `${C.halfcrossPhases}단계까지만 (적이 다 건너옴)`;
   }
   return null;
@@ -281,7 +298,7 @@ function baseChance(tb: TacBattle, side: Side, k: UnitKind, t: TacOrder): number
   const outnum = sumT(me.units) < sumT(foe.units) * 0.8;
   if (t === 'fire') {
     const counter = Math.max(0, foe.int - 60) / 200;
-    return Math.max(0.05, Math.min(0.9, (me.int - 50) / 60 + (tb.terrain.drought ? 0.2 : 0) + (tb.terrain.road === 'river' ? -0.1 : 0) - counter));
+    return Math.max(0.05, Math.min(0.9, (me.int - 50) / 60 + (tb.terrain.drought ? 0.2 : 0) + (isRiver(tb) ? -0.1 : 0) - counter));
   }
   if (t === 'night') return Math.max(0.05, Math.min(0.9, (me.war - 40) / 90 + (tb.terrain.fog ? 0.2 : 0) - Math.max(0, foe.int - 60) / 200));
   if (t === 'feint') {
@@ -336,7 +353,7 @@ export function skillCondOk(tb: TacBattle, side: Side, when: SkillCond[] | undef
       case 'late': return ph >= 4;
       case 'outnumbered': return sumT(me.units) < sumT(foe.units) * 0.8;
       case 'walled': return side === 'def' && tb.terrain.walled;
-      case 'water': return tb.terrain.road === 'river' || tb.terrain.road === 'sea';
+      case 'water': return isRiver(tb) || tb.terrain.road === 'sea';
       case 'atk': return side === 'atk';
       case 'def': return side === 'def';
       case 'fog': return tb.terrain.fog;
@@ -365,7 +382,51 @@ export function cleanOrders(tb: TacBattle, side: Side, o: SideOrders | undefined
     if (orderBlocked(tb, side, k, t)) t = 'assault';
     out[k] = { troops: n, tactic: t };
   }
+  if (o?.tech) {
+    const opt = techOptions(tb, side).find((x) => x.id === o.tech);
+    if (opt && !opt.blocked) out.tech = o.tech;
+  }
   return out;
+}
+
+// ---------------------------------------------------------------- v4.4.1 고유 기술
+
+interface TechRun { t: TechDef; a: number; p: number; owner: string; id: string }
+export interface TechOption { id: string; owner: string; ownerId: string; tech: TechDef; p: number; blocked: string | null }
+
+/** 이 쪽 장수들의 고유 기술과 지금 쓸 수 있는지 */
+export function techOptions(tb: TacBattle, side: Side): TechOption[] {
+  if (!BALANCE.skills.tech) return [];
+  const me = tb[side], foe = tb[other(side)];
+  const out: TechOption[] = [];
+  for (const sk of me.skills ?? []) {
+    const def = SKILLS[sk.id];
+    const t = def?.tech;
+    if (!t) continue;
+    const p = techChance(t, sk.v ?? BALANCE.skills.uniqueRef, !!sk.deputy, foe.int);
+    out.push({ id: sk.id, owner: sk.owner, ownerId: sk.ownerId, tech: t, p, blocked: techBlocked(tb, side, sk.id, t) });
+  }
+  return out;
+}
+
+export function techBlocked(tb: TacBattle, side: Side, id: string, t: TechDef): string | null {
+  const me = tb[side];
+  if ((me.techUsed ?? []).includes(id)) return '이번 전투에 이미 씀';
+  if (sumT(me.units) <= 0) return '병력이 없음';
+  const ph = tb.phase + 1;
+  const last = tb.phases[tb.phases.length - 1];
+  for (const n of t.need ?? []) {
+    if (n === 'dry' && tb.terrain.wet) return '비·눈에는 불이 붙지 않음';
+    if (n === 'wet' && !isRiver(tb) && tb.terrain.road !== 'sea' && !tb.terrain.wet) return '강을 낀 길이거나 비·눈이 와야 함';
+    if (n === 'atk' && side !== 'atk') return '공격할 때만';
+    if (n === 'def' && side !== 'def') return '지킬 때만';
+    if (n === 'walled' && !(side === 'def' && tb.terrain.walled)) return '성벽 위에서 지킬 때만';
+    if (n === 'rough' && !tb.terrain.rough) return '험한 길에서만';
+    if (n === 'losing' && !(last && (side === 'atk' ? last.ratio < 1 : last.ratio > 1))) return '형세가 불리할 때만';
+    if (n === 'notLast' && ph >= T().phases) return '마지막 단계에는 못 씀';
+    if (n === 'midLate' && ph < 3) return '3단계부터';
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------- 한 단계 계산
@@ -389,10 +450,12 @@ export interface PhaseEval {
   skills: { side: Side; id: string; owner: string; name: string; hanja: string; a: number }[];
   /** 무너지는 사기 기준을 낮추는 값 (특기·사지) */
   rally: Record<Side, number>;
+  /** v4.4.1 이번 단계 고유 기술 (예상 모드는 ok=false, chance만) */
+  techs?: { side: Side; id: string; owner: string; ok: boolean; chance: number }[];
   /** 정리된 이번 단계 명령 (기록용: 단계를 치른 뒤에는 화공 등 한 번 쓰는 전술이 막혀 다시 정리하면 달라진다) */
   orders: Record<Side, SideOrders>;
 }
-interface NextState { hidden: UnitKind[]; lured: boolean; fireUsed: boolean; rested: UnitKind[]; tired: boolean; provoked: boolean; starved: boolean; floodUsed: boolean; raidUsed: boolean }
+interface NextState { hidden: UnitKind[]; lured: boolean; fireUsed: boolean; rested: UnitKind[]; tired: boolean; provoked: boolean; starved: boolean; floodUsed: boolean; raidUsed: boolean; techUsed: string[]; springMul: number }
 
 type Roll = (p: number) => number; // 성공이면 1, 실패면 0 (예상 모드는 p를 돌려 기대값을 섞는다)
 
@@ -404,7 +467,7 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
   const rolls: PhaseEval['rolls'] = [];
   const events: string[] = [];
   const name = (side: Side) => (side === 'atk' ? '공격군' : '수비군');
-  const nextOf = (x: TacSide): NextState => ({ hidden: [], lured: false, fireUsed: x.fireUsed, rested: [], tired: false, provoked: false, starved: !!x.starved, floodUsed: !!x.floodUsed, raidUsed: !!x.raidUsed });
+  const nextOf = (x: TacSide): NextState => ({ hidden: [], lured: false, fireUsed: x.fireUsed, rested: [], tired: false, provoked: false, starved: !!x.starved, floodUsed: !!x.floodUsed, raidUsed: !!x.raidUsed, techUsed: [...(x.techUsed ?? [])], springMul: 1 });
   const next: PhaseEval['next'] = { atk: nextOf(tb.atk), def: nextOf(tb.def) };
   const moraleD: Record<Side, number> = { atk: 0, def: 0 };
   const rally: Record<Side, number> = { atk: 0, def: 0 };
@@ -412,7 +475,51 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
   const ev: Record<Side, UnitEval[]> = { atk: [], def: [] };
   const blend = (p: number, a: { s: number; e: number }, b: { s: number; e: number }) => ({ s: p * a.s + (1 - p) * b.s, e: p * a.e + (1 - p) * b.e });
 
-  // 0) 장수 특기 발동: 조건이 맞고 쓰는 전술이 걸리는 특기만 능력치 확률로 굴린다
+  // 0) v4.4.1 고유 기술: 명령에 든 기술을 능력치 확률로 굴린다 (전투당 한 번)
+  const tech: Record<Side, TechRun | null> = { atk: null, def: null };
+  const techRes: NonNullable<PhaseEval['techs']> = [];
+  for (const side of ['atk', 'def'] as Side[]) {
+    const id = orders[side].tech;
+    if (!id) continue;
+    const opt = techOptions(tb, side).find((x) => x.id === id);
+    if (!opt || opt.blocked) continue;
+    const a = roll(opt.p);
+    tech[side] = { t: opt.tech, a, p: opt.p, owner: opt.owner, id };
+    next[side].techUsed.push(id);
+    techRes.push({ side, id, owner: opt.owner, ok: rng ? a === 1 : false, chance: opt.p });
+    if (rng) events.push(a ? `⭐ ${name(side)} ${opt.owner}의 고유 기술 「${opt.tech.name}(${opt.tech.hanja})」 성공! (성공률 ${Math.round(opt.p * 100)}%)` : `⭐ ${name(side)} ${opt.owner}의 고유 기술 「${opt.tech.name}」이(가) 실패 (성공률 ${Math.round(opt.p * 100)}%)`);
+  }
+  /** 계중계: 이 쪽의 특기·계략이 막히는 정도 (0~1) */
+  const nullified: Record<Side, number> = { atk: 0, def: 0 };
+  for (const side of ['atk', 'def'] as Side[]) {
+    const r = tech[side];
+    if (!r) continue;
+    const { t, a } = r;
+    if (t.nullify) nullified[other(side)] = a;
+    if (t.foeStrike) foeStrike[other(side)] *= 1 + a * (t.foeStrike - 1);
+    if (t.morale) moraleD[other(side)] -= a * t.morale * BALANCE.skills.techMoraleMul;
+    if (t.heal) moraleD[side] += a * t.heal * BALANCE.skills.techMoraleMul;
+    if (t.rally) rally[side] += a * t.rally;
+    moraleD[side] -= (1 - a) * (t.failMorale ?? BALANCE.skills.techFailMorale);
+    if (rng && a) {
+      if (t.lure) { next[other(side)].lured = true; moraleD[other(side)] -= C.lureMorale; }
+      if (t.starve) next[other(side)].starved = true;
+      if (t.tire) next[other(side)].tired = true;
+      if (t.hideAll) { next[side].hidden = kindsOf(tb[side].units); next[side].springMul = t.springMul ?? 1; }
+    }
+  }
+  const techMul = (side: Side, kind: UnitKind) => {
+    let sm = 1, em = 1;
+    const mine = tech[side], foe = tech[other(side)];
+    if (mine) {
+      if (mine.t.strike && (!mine.t.kinds || mine.t.kinds.includes(kind))) sm *= 1 + mine.a * (mine.t.strike - 1);
+      if (mine.t.expose) em *= 1 + mine.a * (mine.t.expose - 1);
+    }
+    if (foe?.t.foeExpose) em *= 1 + foe.a * (foe.t.foeExpose - 1);
+    return { sm, em };
+  };
+
+  // 0-1) 장수 특기 발동: 조건이 맞고 쓰는 전술이 걸리는 특기만 능력치 확률로 굴린다 (계중계에 걸리면 막힘)
   const act: SkillAct = { atk: [], def: [] };
   const skillRes: PhaseEval['skills'] = [];
   for (const side of ['atk', 'def'] as Side[]) {
@@ -426,7 +533,7 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
           const o = orders[side][k];
           return !!o && o.troops > 0 && skillHits({ ...e, kinds: undefined }, k, o.tactic, me.hidden.includes(k) && o.tactic !== 'ambush');
         });
-        if (!e.orders || used) a = roll(sk.p);
+        if (!e.orders || used) a = roll(sk.p * (1 - nullified[side]));
       }
       act[side][i] = a;
       if (a > 0 && def) {
@@ -469,14 +576,14 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
       const t = o.tactic;
       let hidden = false;
       const springs = me.hidden.includes(k) && t !== 'ambush';
-      const chance = () => orderChance(tb, side, k, t, act)!;
+      const chance = () => orderChance(tb, side, k, t, act)! * (1 - nullified[side]);
       const okEvent = (ok: number, p: number, extra = '') => {
         if (rng) events.push(ok ? `${TAC_ORDERS[t].icon} ${name(side)} ${unitName(k).name}의 ${TAC_ORDERS[t].name} 성공!${extra} (성공률 ${Math.round(p * 100)}%)` : `${TAC_ORDERS[t].icon} ${name(side)} ${unitName(k).name}의 ${TAC_ORDERS[t].name}이(가) 실패 (성공률 ${Math.round(p * 100)}%)`);
       };
       if (t === 'charge') {
         ({ s, e } = O(k === 'cavalry' ? 'chargeHorse' : k === 'chariot' ? 'chargeChariot' : 'charge'));
         if (side === 'atk' && tb.terrain.rough) s *= C.narrowCharge;
-        if (side === 'atk' && tb.terrain.walled && tb.terrain.relief >= C.uphillRelief) s *= C.uphillCharge;
+        if (side === 'atk' && isUphill(tb)) s *= C.uphillCharge;
       } else if (t === 'hold') {
         ({ s, e } = O('hold'));
         if (side === 'def' && tb.terrain.rough) { s *= C.narrowHold.s; e *= C.narrowHold.e; }
@@ -551,7 +658,7 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
         ({ s, e } = O('halfcross'));
       }
       if (springs) {
-        s *= C.ambushSpring * (k === 'archer' && tb.terrain.valley ? C.valleyArcher : 1) * (foe.lured ? C.lureBonus : 1);
+        s *= C.ambushSpring * (k === 'archer' && tb.terrain.valley ? C.valleyArcher : 1) * (foe.lured ? C.lureBonus : 1) * (me.springMul ?? 1);
         moraleD[other(side)] -= C.moraleHit.ambush;
         if (rng) events.push(`🌲 매복해 있던 ${name(side)} ${unitName(k).name}이(가) 뛰쳐나와 기습!${k === 'archer' && tb.terrain.valley ? ' (골짜기 양쪽에서 화살비)' : ''}${foe.lured ? ' — 쫓아온 적이 한가운데 갇힘' : ''}`);
       }
@@ -567,6 +674,11 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
       // 특기
       const sk = skillMul(side, k, t, springs);
       s *= sk.sm; e *= sk.em;
+      // 고유 기술
+      const tm = techMul(side, k);
+      s *= tm.sm; e *= tm.em;
+      const hideAll = tech[side]?.t.hideAll ? tech[side]!.a : 0;
+      if (hideAll > 0) { s *= 1 - hideAll; e = e * (1 - hideAll) + hideAll * C.techHideExpose; hidden = hidden || !rng || hideAll === 1; }
       ev[side].push({ kind: k, troops: o.troops, reserve: me.units[k]! - o.troops, tactic: t, s, e, strike: 0, expo: 0, hidden, springs });
     }
   }
@@ -588,7 +700,7 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
 
   // 2) 상대 전술과의 상성 + 병종 상성(공격군만, 자동 전투와 같음)
   const P = C.pair;
-  const visible = (side: Side) => ev[side].filter((u) => !(u.tactic === 'ambush' && u.hidden));
+  const visible = (side: Side) => ev[side].filter((u) => !u.hidden);
   const power: Record<Side, number> = { atk: 0, def: 0 };
   const expoSum: Record<Side, number> = { atk: 0, def: 0 };
   const visSum: Record<Side, number> = { atk: 0, def: 0 };
@@ -630,7 +742,7 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
       }
       const base = tb.mul[side][u.kind] ?? 1;
       u.strike = (u.troops * u.s * sm + u.reserve * O('reserve').s) * cm * base * me.per * env;
-      const vis = !(u.tactic === 'ambush' && u.hidden);
+      const vis = !u.hidden;
       u.expo = (u.troops * u.e * em + u.reserve * O('reserve').e);
       power[side] += u.strike;
       expoSum[side] += u.expo;
@@ -676,6 +788,26 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
     const pw = power[side] || 1;
     for (const u of ev[side]) dealt[side][u.kind] = Math.round((tot * u.strike) / pw);
   }
+  // 3-1) 고유 기술의 큰 피해 (대화공·수엄·겁영 등): 적 병력을 곧바로 없앤다
+  for (const side of ['atk', 'def'] as Side[]) {
+    const r = tech[side];
+    if (!r?.t.kill || !r.a) continue;
+    const foeSide = other(side);
+    const water = isRiver(tb) || tb.terrain.road === 'sea';
+    const fire = r.t.need?.includes('dry') ? fireWeak(foeSide) : 1;
+    const rate = Math.min(C.techKillCap, r.t.kill * (water && r.t.waterMul ? r.t.waterMul : 1) * fire) * r.a;
+    let killed = 0;
+    for (const k of kindsOf(tb[foeSide].units)) {
+      const have = (tb[foeSide].units[k] ?? 0) - (loss[foeSide][k] ?? 0);
+      const n = Math.max(0, Math.min(have, Math.round((tb[foeSide].units[k] ?? 0) * rate)));
+      loss[foeSide][k] = (loss[foeSide][k] ?? 0) + n;
+      killed += n;
+    }
+    plainLoss[foeSide] += killed;
+    const top = ev[side].filter((u) => u.troops > 0).sort((a, b) => b.troops - a.troops)[0];
+    if (top) dealt[side][top.kind] = (dealt[side][top.kind] ?? 0) + killed;
+    if (rng && killed) events.push(`💥 「${r.t.name}」에 ${name(foeSide)} ${killed.toLocaleString()}명이 한꺼번에 쓰러짐${water && r.t.waterMul ? ' (물 위라 더 크게 번짐)' : ''}${fire > 1 ? ' — 등갑에 불이 옮겨붙음' : ''}`);
+  }
   // 4) 유인: 거짓 퇴각에 성공했는데 상대가 (정면 공격·돌격·협공으로) 쫓아왔으면 다음 단계 상대 대열이 흐트러진다
   for (const side of ['atk', 'def'] as Side[]) {
     const foeSide = other(side);
@@ -697,7 +829,7 @@ export function evalPhase(tb: TacBattle, oA: SideOrders, oD: SideOrders, rng?: R
     const n = sumT(tb[side].units) || 1;
     morale[side] = Math.max(0, Math.min(100, morale[side] - (Math.min(sumT(loss[side]), plainLoss[side]) / n) * C.moraleLoss + moraleD[side] + ((side === 'atk') === atkWins ? C.winMorale : 0)));
   }
-  return { ratio, loss, dealt, morale, events, next, rolls, power: { atk: pA, def: pD }, plainLoss, skills: skillRes, rally, orders };
+  return { ratio, loss, dealt, morale, events, next, rolls, power: { atk: pA, def: pD }, plainLoss, skills: skillRes, rally, orders, techs: techRes };
 }
 
 // ---------------------------------------------------------------- 단계 진행·끝
@@ -731,8 +863,10 @@ export function playPhase(tb: TacBattle, rng: RngHolder, oA: SideOrders, oD: Sid
     me.starved = nx.starved;
     me.floodUsed = nx.floodUsed;
     me.raidUsed = nx.raidUsed;
+    me.techUsed = nx.techUsed;
+    me.springMul = nx.springMul;
   }
-  tb.phases.push({ phase: ph, orders: ev.orders, skills: ev.skills.filter((x) => x.a > 0).map((x) => ({ side: x.side, id: x.id, owner: x.owner })), loss: ev.loss, ratio: ev.ratio, morale: { atk: Math.round(tb.atk.morale), def: Math.round(tb.def.morale) }, events: ev.events.map(fixJosa) });
+  tb.phases.push({ phase: ph, orders: ev.orders, techs: ev.techs?.length ? ev.techs : undefined, skills: ev.skills.filter((x) => x.a > 0).map((x) => ({ side: x.side, id: x.id, owner: x.owner })), loss: ev.loss, ratio: ev.ratio, morale: { atk: Math.round(tb.atk.morale), def: Math.round(tb.def.morale) }, events: ev.events.map(fixJosa) });
   tb.phase = ph;
   const C = T();
   const broken = (s: Side) => tb[s].morale < Math.min(C.routMorale, tb[s].morale0 - C.routDrop) - ev.rally[s] || sumT(tb[s].units) < sumT(tb[s].init) * (C.routRemain - ev.rally[s] / 200);
@@ -790,7 +924,7 @@ export function tacOutcome(tb: TacBattle, b: BattleInput): BattleOutcome {
     for (const e of p.events) reasons.push(`  · ${e}`);
   }
   if (pursuit > 0) reasons.push(won ? `무너진 수비군을 추격해 ${pursuit.toLocaleString()}명을 더 쓰러뜨림` : `물러나는 공격군을 수비군이 뒤쫓아 ${pursuit.toLocaleString()}명을 더 쓰러뜨림`);
-  const fireOk = tb.phases.some((p) => p.events.some((e) => e.includes('화공 성공')) && Object.values(p.orders.atk).some((o) => o?.tactic === 'fire'));
+  const fireOk = tb.phases.some((p) => p.events.some((e) => e.includes('화공 성공')) && Object.values(p.orders.atk).some((o) => typeof o === 'object' && o?.tactic === 'fire'));
   const tactic = tb.opening ? { kind: tb.opening.kind, success: tb.opening.success, chance: tb.opening.chance } : fireOk ? { kind: 'fire' as TacticKind, success: true, chance: 1 } : undefined;
   return {
     attackerPower: Math.round(sumT(tb.atk.init) * tb.atk.per), defenderPower: Math.round(sumT(tb.def.init) * tb.def.per),
@@ -804,7 +938,8 @@ export function tacOutcome(tb: TacBattle, b: BattleInput): BattleOutcome {
 
 export function ordersText(o: SideOrders): string {
   const parts = UNIT_KINDS.filter((k) => o[k] && o[k]!.troops > 0).map((k) => `${unitName(k).icon}${TAC_ORDERS[o[k]!.tactic].name}`);
-  return parts.join(' ') || '대기';
+  const t = o.tech ? SKILLS[o.tech]?.tech : undefined;
+  return (t ? `⭐${t.name} ` : '') + (parts.join(' ') || '대기');
 }
 
 // ---------------------------------------------------------------- AI 지휘
@@ -887,7 +1022,34 @@ export function aiOrders(tb: TacBattle, side: Side, rng?: RngHolder): SideOrders
     const big = ks.filter((k) => o[k]!.tactic === 'flank').sort((a, b) => (me.units[b] ?? 0) - (me.units[a] ?? 0))[0];
     if (big) o[big] = { troops: me.units[big]!, tactic: 'assault' };
   }
+  const tk = aiTech(tb, side, r);
+  if (tk) o.tech = tk;
   return o;
+}
+
+/** v4.4.1 AI 고유 기술: 큰 피해 기술은 바로, 숨기·유인·계중계는 앞 단계에, 버티기 기술은 불리할 때, 공격 기술은 2단계부터 */
+function aiTech(tb: TacBattle, side: Side, r: () => number): string | undefined {
+  if (TAC_CALIB.ban.includes('tech') || TAC_CALIB.ban.includes(`tech-${side}`)) return undefined;
+  const opts = techOptions(tb, side).filter((x) => !x.blocked && x.p >= 0.35);
+  if (!opts.length) return undefined;
+  const ph = tb.phase + 1;
+  const last = tb.phases[tb.phases.length - 1];
+  const losing = !!last && (side === 'atk' ? last.ratio < 1 : last.ratio > 1);
+  const me = tb[side], foe = tb[other(side)];
+  const outnum = sumT(me.units) < sumT(foe.units) * 0.8;
+  let best: TechOption | null = null, score = 0;
+  for (const o of opts) {
+    const t = o.tech;
+    let w: number;
+    if (t.kill) w = 1;
+    else if (t.hideAll || t.lure || t.nullify || t.starve) w = ph <= 3 ? 0.9 : 0.2;
+    else if (!t.strike && (t.expose ?? 1) < 1) w = losing ? 0.9 : ph >= 3 ? 0.6 : outnum ? 0.3 : 0.15;
+    else if (!t.strike && (t.heal || t.rally)) w = losing ? 0.9 : ph >= 4 ? 0.5 : 0.1;
+    else w = ph >= 2 || losing || outnum ? 0.75 : 0.35;
+    w *= o.p;
+    if (w > score) { score = w; best = o; }
+  }
+  return best && r() < Math.min(1, score * 1.4 + (ph >= T().phases ? 0.5 : 0)) ? best.id : undefined;
 }
 
 /** 양쪽 AI로 끝까지 (밸런스 확인·관전 autoAll·플레이어 '맡기기') */
@@ -912,5 +1074,5 @@ export function recordCalib(s: { rng: number }, b: BattleInput, meta: Parameters
   C.n++; C.autoWin += +a.won; C.tacWin += +t.won; C.agree += +(a.won === t.won);
   C.autoAL += a.attackerLoss / at; C.autoDL += a.defenderLoss / dt; C.tacAL += t.attackerLoss / at; C.tacDL += t.defenderLoss / dt;
   C.routs += +!!tb.routed; C.routA += +(tb.routed === 'atk'); C.routD += +(tb.routed === 'def'); C.phases += tb.phase;
-  for (const p of tb.phases) for (const side of ['atk', 'def'] as Side[]) for (const o of Object.values(p.orders[side])) if (o) C.uses[o.tactic] = (C.uses[o.tactic] ?? 0) + 1;
+  for (const p of tb.phases) for (const side of ['atk', 'def'] as Side[]) { for (const o of Object.values(p.orders[side])) if (o && typeof o === 'object') C.uses[o.tactic] = (C.uses[o.tactic] ?? 0) + 1; if (p.orders[side].tech) C.uses['⭐' + p.orders[side].tech] = (C.uses['⭐' + p.orders[side].tech] ?? 0) + 1; }
 }

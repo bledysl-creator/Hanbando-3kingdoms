@@ -5,6 +5,7 @@
 // 기병·전차병은 말이 있어야 꾸린다 — 말은 말 산지와 도시 마창(대·중·소)에서 기른다.
 import { BALANCE } from '../config';
 import type { City, GameState, General, Road, WeatherKind } from '../state/types';
+import { groundOf } from './ground';
 
 export type UnitKind = 'infantry' | 'spear' | 'archer' | 'cavalry' | 'chariot';
 /** 옛 편성 이름 (v3.9): balanced = 처음 편제 그대로 */
@@ -76,9 +77,9 @@ export function formationEffect(f: FormationKind | undefined, road: Road, target
   const F = BALANCE.formation;
   const e: FormationEffect = { attack: 1, ownLoss: 1, pursuit: 1, reasons: [] };
   const walled = target.wall >= F.wallHigh || target.fortress;
-  const rel = reliefOf(target);
-  const open = rel < BALANCE.reliefCavalryFrom && road.type === 'land';
-  const rough = road.type === 'pass' || rel >= 45;
+  // v4.4.1 길별·방향별 지형 (공격 방향으로 본 길의 평지·산악·계곡·강 비율)
+  const gr = groundOf(road, target);
+  const rel = gr.rel, open = gr.open, rough = gr.rough;
   const add = (m: number, why: string) => { e.attack *= m; e.reasons.push(`${why} ${m >= 1 ? '+' : '−'}${Math.round(Math.abs(m - 1) * 100)}%`); };
   if (!f || f === 'balanced') return e;
   if (f === 'infantry') {
@@ -89,14 +90,14 @@ export function formationEffect(f: FormationKind | undefined, road: Road, target
     if (rough) add(F.spearRough, '창병은 좁은 길목을 막기 좋음');
     e.pursuit = F.spearPursuit;
   } else if (f === 'archer') {
-    if (road.type === 'river' || road.type === 'sea') add(F.archerRiver, '쇠뇌 사격이 도하를 엄호');
+    if (gr.river || road.type === 'sea') add(F.archerRiver, road.type === 'land' ? '강변 길에서 쇠뇌 사격이 엄호' : '쇠뇌 사격이 도하를 엄호');
     if (weather && WET.includes(weather)) add(F.archerWet, '비·눈에 활시위가 눅어 사격이 약함');
     if (walled) add(F.archerWall, '성벽 뒤 적에게는 화살이 잘 닿지 않음');
     e.ownLoss = F.archerOwnLoss;
     e.pursuit = F.archerPursuit;
   } else if (f === 'cavalry') {
     if (open) add(F.cavalryOpen, '평지에서 기병 돌격');
-    if (road.type === 'pass') add(F.cavalryRough, '기병이 고갯길에서 힘을 못 씀');
+    if (road.type === 'pass' || gr.valley) add(F.cavalryRough, road.type === 'pass' ? '기병이 고갯길에서 힘을 못 씀' : '기병이 골짜기에서 힘을 못 씀');
     else if (rel > BALANCE.reliefCavalryFrom) add(Math.max(0.6, 1 - (rel - BALANCE.reliefCavalryFrom) * BALANCE.reliefCavalryPer), `산악도 ${rel}의 험한 땅이라 말이 달리지 못함`);
     if (road.type === 'river' || road.type === 'sea') add(F.cavalryRiver, '말을 끌고 물을 건너기 어려움');
     if (walled) add(F.cavalryWall, '기병은 성벽을 넘지 못함');

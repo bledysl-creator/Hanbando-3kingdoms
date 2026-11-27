@@ -169,7 +169,7 @@ describe('5단계 전술 전투 (v4.3)', () => {
     while (!tb.done) {
       for (const side of ['atk', 'def'] as const) {
         const o = aiOrders(tb, side, h);
-        for (const [k, u] of Object.entries(o)) expect(orderBlocked(tb, side, k as never, u!.tactic)).toBeNull();
+        for (const [k, u] of Object.entries(o)) if (typeof u === 'object') expect(orderBlocked(tb, side, k as never, u!.tactic)).toBeNull();
       }
       playPhase(tb, h, aiOrders(tb, 'atk', h), aiOrders(tb, 'def', h), b);
     }

@@ -5,6 +5,7 @@ import type { City, GameState, General } from '../state/types';
 import { weatherAttackModifier } from '../systems/weather';
 import { qualityFactor } from './battle';
 import { compEffect, compOf } from './formation';
+import { groundOf, routeAttackMul } from './ground';
 import { landmarksOfCity, landmarksOnRoad } from '../data';
 import { commandCap, defenseCap, effectiveTroops } from '../systems/stats';
 
@@ -15,6 +16,7 @@ export function estimateRatio(s: GameState, g: General, from: City, to: City, tr
   const wm = weatherAttackModifier(s.weather[to.id], road?.type ?? 'land').mul;
   let terrainMod = 1;
   if (road) {
+    terrainMod *= routeAttackMul(groundOf(road, to)).mul; // v4.4.1 길별·방향별 지형
     for (const lm of landmarksOnRoad(road.from, road.to)) terrainMod *= lm.type === 'pass' ? BALANCE.namedPassPenalty : lm.type === 'ford' ? BALANCE.fordEase : 1;
     if (road.type === 'sea') {
       const f = from.owner ? s.factions[from.owner] : null;

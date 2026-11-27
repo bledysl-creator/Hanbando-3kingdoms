@@ -2,14 +2,15 @@
 // 왼쪽 사이드바 = 병과별 지휘, 오른쪽 = 이번 단계 예상 결과와 척후 보고, 아래 = 지난 단계 기록.
 import { useEffect, useMemo, useState } from 'react';
 import type { GameState, SideOrders, TacOrder, TacBattle, UnitKind } from '../../core';
-import { BALANCE, SKILLS, STAT_LABEL, TAC_ORDERS, UNIT_KINDS, WEATHER_ICON, WEATHER_LABEL, balanceOf, fixJosa, orderBlocked, orderChance, ordersText, otherSide, previewTactical, sumT, tacticalReportIndex, unitName } from '../../core';
+import { BALANCE, SKILLS, TAC_ORDERS, UNIT_KINDS, WEATHER_ICON, WEATHER_LABEL, balanceOf, climbText, fixJosa, isRiver, isUphill, ROUTE_LABEL, routeText, orderBlocked, orderChance, ordersText, otherSide, previewTactical, sumT, tacticalReportIndex, techOptions, unitName } from '../../core';
 import { Portrait } from './Portrait';
+import { SkillTipBody, Tip } from './SkillTip';
 
 const fmt = (n: number) => Math.round(n).toLocaleString('ko-KR');
 const pct = (p: number) => `${Math.round(p * 100)}%`;
 const ORDER_LIST: TacOrder[] = ['assault', 'charge', 'hold', 'volley', 'flank', 'encircle', 'halfcross', 'ambush', 'feint', 'decoy', 'provoke', 'rest', 'fire', 'flood', 'raid', 'night'];
 /** 이 전투에서 아예 쓸 수 없는 전술은 버튼을 숨긴다 (반도격은 강을 지킬 때, 포위는 병력이 두 배일 때만) */
-const hiddenOrder = (tb: TacBattle, t: TacOrder) => (t === 'halfcross' && (tb.playerSide !== 'def' || tb.terrain.road !== 'river' || tb.phase >= BALANCE.tactical.halfcrossPhases)) || (t === 'encircle' && sumT(tb[tb.playerSide!].units) < sumT(tb[otherSide(tb.playerSide!)].units) * BALANCE.tactical.encircle.ratio);
+const hiddenOrder = (tb: TacBattle, t: TacOrder) => (t === 'halfcross' && (tb.playerSide !== 'def' || !isRiver(tb) || tb.phase >= BALANCE.tactical.halfcrossPhases)) || (t === 'encircle' && sumT(tb[tb.playerSide!].units) < sumT(tb[otherSide(tb.playerSide!)].units) * BALANCE.tactical.encircle.ratio);
 const ONE_SHOT: TacOrder[] = ['ambush', 'feint', 'fire', 'night', 'decoy', 'flood', 'raid', 'provoke', 'rest'];
 const HORSE: UnitKind[] = ['cavalry', 'chariot'];
 
@@ -130,6 +131,10 @@ export function BattleWindow({ state, onOrder, onAuto, onRetreat, onClose }: {
   const bal = balanceOf(tb, road ? { road, city: to, weather: state.weather[to.id] } : undefined);
   const mineShare = side === 'atk' ? bal / (1 + bal) : 1 / (1 + bal);
   const kinds = UNIT_KINDS.filter((k) => (me.units[k] ?? 0) > 0);
+  // v4.4.1 고유 기술 (전투당 한 번)
+  const myTechs = tb.done ? [] : techOptions(tb, side);
+  const foeTechs = tb.done ? [] : techOptions(tb, foeSide).filter((t) => !t.blocked?.includes('이미'));
+  const chosenTech = orders.tech ? myTechs.find((t) => t.id === orders.tech) : undefined;
   /** 아군 특기가 밀어 주는 전술이면 특기 이름 */
   const boostOf = (t: TacOrder) => (me.skills ?? []).filter((a) => { const e = SKILLS[a.id]?.effect; return !!e?.orders?.includes(t) && (!!e.strike && e.strike > 1 || !!e.chance || !!e.unlock); }).map((a) => `${a.owner}「${SKILLS[a.id].name}」`).join(' · ');
   const set = (k: UnitKind, patch: Partial<{ troops: number; tactic: TacOrder }>) => setOrders((o) => ({ ...o, [k]: { ...(o[k] ?? { troops: me.units[k] ?? 0, tactic: 'assault' }), ...patch } }));
@@ -164,7 +169,12 @@ export function BattleWindow({ state, onOrder, onAuto, onRetreat, onClose }: {
               const sk = SKILLS[a.id];
               if (!sk) return null;
               const fired = last?.skills?.some((f) => f.side === s && f.id === a.id && f.owner === a.owner);
-              return <span key={i} className={`tb-skill ${sk.general ? 'unique' : ''} ${fired ? 'fired' : ''}`} title={fixJosa(`${a.owner} — ${sk.name}(${sk.hanja}) · ${sk.general ? '고유 특기' : `${STAT_LABEL[sk.stat]} 특기`}\n${sk.desc}\n${sk.story ? `📜 ${sk.story} (${sk.source})` : `📘 손자병법 ${sk.sun}`}\n단계마다 발동 ${pct(a.p)}`)}>✨ {sk.name}<small> {a.owner} {pct(a.p)}</small></span>;
+              const tOpt = techOptions(tb, s).find((t) => t.id === a.id && t.ownerId === a.ownerId);
+              return (
+                <Tip key={i} wide content={<SkillTipBody sk={sk} owner={a.owner} p={a.p} techP={tOpt?.p} />}>
+                  <span className={`tb-skill ${sk.general ? 'unique' : ''} ${fired ? 'fired' : ''}`}>{sk.general ? '🌟' : '✨'} {sk.name}<small> {a.owner} {pct(a.p)}</small>{tOpt ? <small className={tOpt.blocked?.includes('이미') ? 'muted' : ''}> ⭐{tOpt.tech.name}{tOpt.blocked?.includes('이미') ? ' 씀' : ''}</small> : null}</span>
+                </Tip>
+              );
             })}
           </div>
         )}
@@ -177,6 +187,7 @@ export function BattleWindow({ state, onOrder, onAuto, onRetreat, onClose }: {
           {x.fireUsed && <span className="chip">🔥 화공 씀</span>}
           {x.floodUsed && <span className="chip">🌊 수공 씀</span>}
           {x.raidUsed && <span className="chip">🌾 습량 씀</span>}
+          {(x.springMul ?? 1) > 1 && x.hidden.length > 0 && s === side && <span className="chip good">⭐ 대복병 — 이번에 치면 기습 ×{BALANCE.tactical.ambushSpring}×{x.springMul}</span>}
           {s !== side && x.hidden.length > 0 && <span className="chip">❓ 일부 병력이 보이지 않음</span>}
         </div>
       </div>
@@ -198,12 +209,17 @@ export function BattleWindow({ state, onOrder, onAuto, onRetreat, onClose }: {
         </header>
         <div className="tb-terrain small">
           <span>{WEATHER_ICON[state.weather[to.id]]} {WEATHER_LABEL[state.weather[to.id]]}</span>
+          {tb.terrain.route && tb.terrain.label && (
+            <span className="tb-route" title={`${from.name}에서 ${to.name}(으)로 다가가며 싸우는 땅 — 실측 고도(DEM)·하천 자료로 잰 길의 지형 비율 (반대 방향은 다르다)${tb.terrain.climb ? `. 길 중간보다 목표 앞이 ${tb.terrain.climb > 0 ? `${tb.terrain.climb}m 높음` : `${-tb.terrain.climb}m 낮음`}` : ''}`}>
+              🗺 {ROUTE_LABEL[tb.terrain.label].icon} {ROUTE_LABEL[tb.terrain.label].name}길: {routeText(tb.terrain.route)}{climbText(tb.terrain.climb ?? 0) ? ` · ${climbText(tb.terrain.climb ?? 0)}` : ''}
+            </span>
+          )}
           {tb.terrain.walled && <span>🏯 성벽 {tb.terrain.wall}</span>}
           {tb.terrain.valley && <span>⛰️ 골짜기·고갯길 (매복 유리)</span>}
           {tb.terrain.open && <span>🌾 트인 평지 (기병·전차 유리, 매복 불리)</span>}
           {tb.terrain.rough && <span title="隘形者 我先居之 必盈之以待敵 (地形)">🪨 좁은 길 — 수비 방진 강화, 공격 돌격 약화</span>}
-          {tb.terrain.walled && tb.terrain.relief >= BALANCE.tactical.uphillRelief && <span title="高陵勿向 (軍爭)">⛰️ 높은 산성 — 올려 치는 돌격 약화</span>}
-          {tb.terrain.road === 'river' && <span title="客絶水而來 令半濟而擊之利 (行軍)">🌉 강을 건너는 싸움 — 수비 반도격 1~2단계</span>}
+          {isUphill(tb) && <span title="高陵勿向 (軍爭)">⛰️ {tb.terrain.walled && tb.terrain.relief >= BALANCE.tactical.uphillRelief ? '높은 산성' : '오르막'} — 올려 치는 돌격 약화</span>}
+          {isRiver(tb) && <span title="客絶水而來 令半濟而擊之利 (行軍)">🌉 {tb.terrain.road === 'river' ? '강을 건너는 싸움' : '강을 낀 길'} — 수비 반도격 1~2단계</span>}
           <span title="朝氣銳 晝氣惰 暮氣歸 (軍爭)">🌅 공격군 기세 ×{BALANCE.tactical.spirit[Math.min(tb.phase, N - 1)]}</span>
           <span>산악도 {tb.terrain.relief}</span>
           {tb.duel && <span>⚔️ 일기토: {state.generals[tb.duel.winnerId]?.name} 승리</span>}
@@ -226,6 +242,22 @@ export function BattleWindow({ state, onOrder, onAuto, onRetreat, onClose }: {
               <div className="tb-presets">
                 {PRESETS.map((p) => { const o = p.make(tb); return <button key={p.id} disabled={!o} title={p.desc} onClick={() => o && setOrders(o)}>{p.name}</button>; })}
               </div>
+              {myTechs.length > 0 && (
+                <div className="tb-techs">
+                  {myTechs.map((t) => {
+                    const sk = SKILLS[t.id];
+                    const on = orders.tech === t.id;
+                    return (
+                      <Tip key={t.id + t.ownerId} wide content={<SkillTipBody sk={sk} owner={t.owner} techP={t.p} />}>
+                        <button className={`tb-tech ${on ? 'on' : ''}`} disabled={!!t.blocked} onClick={() => setOrders((o) => ({ ...o, tech: on ? undefined : t.id }))}>
+                          ⭐ {t.tech.name} <b>{t.blocked ? '' : pct(t.p)}</b>
+                          <small>{t.owner} 고유 기술{t.blocked ? ` · ${t.blocked}` : on ? ' · 이번 단계에 씀 (다시 누르면 취소)' : ' · 누르면 이번 단계에 씀'}</small>
+                        </button>
+                      </Tip>
+                    );
+                  })}
+                </div>
+              )}
               {kinds.map((k) => {
                 const o = orders[k] ?? { troops: me.units[k] ?? 0, tactic: 'assault' as TacOrder };
                 const u = unitName(k);
@@ -270,6 +302,9 @@ export function BattleWindow({ state, onOrder, onAuto, onRetreat, onClose }: {
                   <div className="tb-fc-row"><span>단계 뒤 사기</span><b>{Math.round(ev.morale[side])}</b><small className="muted">적 {Math.round(ev.morale[foeSide])}</small></div>
                 </>
               )}
+              {chosenTech && (
+                <p className="small tb-tech-fc">⭐ 고유 기술 「{chosenTech.tech.name}({chosenTech.tech.hanja})」 성공률 <b>{pct(chosenTech.p)}</b> — {chosenTech.tech.desc}<br /><span className="muted">위 예상은 성공률만큼 섞은 값입니다. 성공하면 훨씬 크게, 실패하면 사기만 조금 잃습니다.</span></p>
+              )}
               {ev && ev.skills.length > 0 && (
                 <>
                   <h4>✨ 이번 단계 특기 (발동 확률)</h4>
@@ -281,6 +316,11 @@ export function BattleWindow({ state, onOrder, onAuto, onRetreat, onClose }: {
               <h4>🔭 척후 보고 — 적의 움직임 (예상)</h4>
               <p className="small">{preview ? ordersText(preview.enemy) : '—'}</p>
               <p className="small muted">적장도 단계마다 전술을 바꿉니다. 보고와 다르게 움직일 수 있습니다.</p>
+              {foeTechs.length > 0 && (
+                <p className="small bad">⚠️ 적장의 고유 기술: {foeTechs.map((t, i) => (
+                  <Tip key={i} wide content={<SkillTipBody sk={SKILLS[t.id]} owner={t.owner} techP={t.p} />}><span className="tb-skill unique">⭐ {t.owner}「{t.tech.name}」 {pct(t.p)}{t.blocked ? ` (${t.blocked})` : ''}</span></Tip>
+                ))} — 전투당 한 번, 언제 쓸지 모름</p>
+              )}
               {(foe.lured || me.lured || me.hidden.length > 0 || foe.provoked || me.provoked || foe.tired || (me.rested ?? []).length > 0 || foe.starved) && <h4>지난 단계에서 이어지는 것</h4>}
               {(me.rested ?? []).length > 0 && <p className="small good">⛺ {(me.rested ?? []).map((k) => unitName(k).name).join('·')} 쉬어 힘을 모았습니다 — 이번에 치면 공격 ×{BALANCE.tactical.restBonus}</p>}
               {foe.tired && <p className="small good">💦 쳐들어오던 적이 지쳤습니다 — 이번 단계 적 피해 ×{BALANCE.tactical.tiredExpose}</p>}
@@ -305,7 +345,8 @@ export function BattleWindow({ state, onOrder, onAuto, onRetreat, onClose }: {
                   <li>⭕ 포위(十則圍之) → 병력 {BALANCE.tactical.encircle.ratio}배 이상 · 갇힌 적은 사지라 더 사나움 · 😤 도발(忿速可侮) → 적장이 성나 버티지 못함</li>
                   <li>🌉 반도격(半濟而擊) → 강을 건너오는 적을 1~2단계에 · 🪨 좁은 길(隘形)은 지키는 방진이 강함 · 🌅 공격군은 처음 기세가 날카롭고 갈수록 무뎌짐(朝氣銳 暮氣歸)</li>
                   <li>☠️ 사지(死地) → 적의 1/3 이하로 몰린 쪽은 덜 무너지고 더 사납게 싸움 · 지력 {BALANCE.tactical.wiseCap.int}+ 장수는 거짓 퇴각·도발에 잘 안 속음(佯北勿從)</li>
-                  <li>✨ 장수 특기 → 단계마다 능력치만큼 발동, 맞는 전술의 공격·성공률이 오름 (장수 정보 창에서 확인)</li>
+                  <li>✨ 장수 특기 → 단계마다 능력치만큼 발동, 맞는 전술의 공격·성공률이 오름 (특기에 마우스를 올리면 설명)</li>
+                  <li>⭐ 고유 기술 → 고유 특기를 가진 명장만 전투당 한 번 쓰는 필살기 (주유 대화공은 적 병력 25%를 한꺼번에 태움, 장합 대복병은 전군이 숨었다가 기습 등)</li>
                   <li>투입하지 않은 병력은 뒤에서 대기 (피해·공격 모두 적음)</li>
                 </ul>
               </details>

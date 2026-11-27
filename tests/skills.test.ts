@@ -204,14 +204,20 @@ describe('장수 특기 효과 (v4.4)', () => {
     expect(run()).toBe(run());
   });
 
-  it('자동 전투에는 정면 싸움 특기만 작게 반영된다 (최대 autoCap)', () => {
+  it('자동 전투에는 정면 싸움 특기만 작게 반영된다 (특기 최대 autoCap × 고유 기술 최대 techAutoCap)', () => {
     const ctx = { atk: false, walled: false, outnumbered: true, water: false, fog: false, rough: false };
     const zy = autoSkillMul([{ g: G('zhao_yun'), deputy: false }], ctx);
     expect(zy.mul).toBeGreaterThan(1);
-    expect(zy.mul).toBeLessThanOrEqual(BALANCE.skills.autoCap);
+    expect(zy.mul).toBeLessThanOrEqual(BALANCE.skills.autoCap * BALANCE.skills.techAutoCap + 1e-9);
     expect(autoSkillMul([{ g: plain(60), deputy: false }], ctx).mul).toBe(1);
-    // 계략 전용 특기(주유 적벽)는 자동 전투에 들어가지 않는다
+    // 계략 전용 특기(주유 적벽)는 자동 전투에 들어가지 않는다 (고유 기술 대화공의 기대값만 들어간다)
+    const S = BALANCE.skills as unknown as { tech: boolean };
+    S.tech = false;
     expect(autoSkillMul([{ g: { ...G('zhou_yu'), stats: { leadership: 60, war: 60, intellect: 60, politics: 60, charm: 60 } }, deputy: false }], ctx).mul).toBe(1);
+    S.tech = true;
+    expect(autoSkillMul([{ g: G('zhou_yu'), deputy: false }], ctx).mul).toBeGreaterThan(1);
+    // 비가 오면 대화공은 빠진다
+    expect(autoSkillMul([{ g: { ...G('zhou_yu'), stats: { leadership: 60, war: 60, intellect: 96, politics: 60, charm: 60 } }, deputy: false }], { ...ctx, wet: true }).mul).toBe(1);
   });
 
   it('적은 병력도 좁은 길에서 전술을 쓰면 정면 공격만 할 때보다 훨씬 잘 버틴다', () => {

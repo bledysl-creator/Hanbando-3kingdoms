@@ -418,10 +418,14 @@ export const BALANCE = {
     narrowHold: { s: 1.2, e: 0.9 }, narrowCharge: 0.85,
     /** 고릉물향(高陵勿向): 높은 산의 성을 향한 돌격 배율 */
     uphillCharge: 0.85, uphillRelief: 60,
+    /** v4.4.1 길 지형: 목표가 uphillClimb(m) 이상 높으면 성벽이 없어도 올려 치는 돌격이 약하다 */
+    uphillClimb: 80,
     /** 사지(死地則戰): 병력이 적의 ratio 이하로 몰린 쪽은 덜 무너지고 공격 ×strike */
     deathGround: { ratio: 0.34, rally: 10, strike: 1.1 },
     /** 양배물종(佯北勿從): 지력 int 이상의 장수에게는 거짓 퇴각·도발이 cap 이상 통하지 않는다 */
     wiseCap: { int: 85, cap: 0.35 },
+    /** v4.4.1 고유 기술: 대복병으로 숨은 병력이 받는 피해, 한 번에 없앨 수 있는 적 병력 상한 */
+    techHideExpose: 0.05, techKillCap: 0.4,
   },
   /** v4.4 장수 특기 (data/skills.json) */
   skills: {
@@ -436,5 +440,24 @@ export const BALANCE = {
     countMax: 2, countWithUnique: 1,
     /** 자동 전투에서의 특기 반영 (기대값 × autoWeight, 최대 autoCap) */
     autoWeight: 0.5, autoCap: 1.12, auto: true,
+    /** v4.4.1 고유 기술 성공률 [techMin, techMax], 계략형 적 지력 차 /techWitsDiv, 부장 ×techDeputyMul, 실패하면 아군 사기 −techFailMorale */
+    techMin: 0.3, techMax: 0.92, techWitsDiv: 250, techDeputyMul: 0.85, techFailMorale: 6, tech: true,
+    /** 고유 기술의 사기 효과(적 사기 −, 아군 사기 +) 배율 */
+    techMoraleMul: 0.5,
+    /** 자동 전투(AI끼리)에서 고유 기술 기대값 반영 비율 (최대 techAutoCap) */
+    techAutoWeight: 0.35, techAutoCap: 1.15,
+  },
+  /** v4.4.1 길별·방향별 전투 지형 (data/geo/road_terrain.json, src/core/battle/ground.ts) */
+  ground: {
+    enabled: true,
+    /** 전투 산악도 = 도시 산악도 × (1 − w) + 길 기복 × w */
+    routeReliefWeight: 0.5,
+    /** 트인 들판: 평지 비율 openPlain 이상이고 산악도 openRelief 미만 / 험한 땅: 산악+계곡 roughShare 이상 / 골짜기: 계곡 valleyShare 이상 */
+    openPlain: 0.5, openRelief: 35, roughShare: 0.45, valleyShare: 0.3,
+    /** 공격 배율 = 1 + plainBonus×(평지 − plainRef) − valleyPenalty×계곡 − mountainPenalty×산악 − 오르막, [min, max] */
+    plainBonus: 0.1, plainRef: 0.35, valleyPenalty: 0.1, mountainPenalty: 0.05,
+    /** 오르막: climbFrom(m)을 넘는 높이 climbDiv m마다 −1 (최대 climbCap), 내리막은 그 절반 (최대 descendCap) */
+    climbFrom: 40, climbDiv: 2000, climbCap: 0.06, descendCap: 0.03,
+    min: 0.85, max: 1.06,
   },
 } as const;
