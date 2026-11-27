@@ -38,7 +38,15 @@ export function CityTraitCard({ state, cityId }: { state: GameState; cityId: str
   return (
     <div className="city-trait-card panel">
       <div className="ct-head"><b>{c.name}</b> <small className="muted">{c.owner ? state.factions[c.owner]?.name : '중립'} · 쌀 {c.agriculture} · 상업 {c.commerce} · 철 {c.iron} · 목재 {c.wood}{c.horses ? ` · 말 ${c.horses}` : ''}</small></div>
-      {ts.map((t) => <div key={t.label} className="ct-row" title={t.desc}><span>{t.icon}</span> <b>{t.label}</b> <small>{t.desc}</small></div>)}
+      {/* 특징은 둥근 배지로만 보이고, 마우스를 올리거나 눌러 초점을 주면 설명이 뜬다 */}
+      <div className="ct-chips">
+        {ts.map((t) => (
+          <span key={t.label} className="ct-chip" tabIndex={0} aria-label={`${t.label}: ${t.desc}`}>
+            <span className="ct-ico">{t.icon}</span>{t.label}
+            <span className="ct-tip" role="tooltip"><b>{t.icon} {t.label}</b>{t.desc}</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
