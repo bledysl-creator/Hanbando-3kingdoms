@@ -9,7 +9,7 @@ import { foundFaction } from './found';
 import { spreadGenerals } from './spread';
 import { isBigCity } from '../battle/formation';
 
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 
 /** 시나리오와 고정 데이터로 새 게임 상태를 만든다. */
 export interface CreateOptions {

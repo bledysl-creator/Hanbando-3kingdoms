@@ -106,6 +106,9 @@ export interface General {
   alive: boolean;
   memories?: Memory[]; // 기억 (v0.9)
   debut?: { year: number; city: CityId; faction: FactionId | null }; // 등장 예정 (v1.0)
+  /** v4.2 성장: 능력치별 쌓인 경험, 지금까지 오른 능력치 합 */
+  exp?: Partial<Record<keyof Stats, number>>;
+  grown?: number;
 }
 
 export type MemoryKind = 'rewarded' | 'ignored' | 'defeatedBy' | 'defeated' | 'recruitedBy' | 'refusedOrder';
@@ -267,6 +270,8 @@ export interface Siege {
   formation?: import('../battle/formation').FormationKind;
   /** v4.1 포위군 편제 */
   comp?: import('../battle/formation').Comp;
+  /** v4.2 부장 */
+  deputyId?: GeneralId;
   morale: number;
   training: number;
   ships: number;

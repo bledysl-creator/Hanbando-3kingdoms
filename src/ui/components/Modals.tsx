@@ -1,7 +1,7 @@
 // 목록·보고서 창: 장수, 도시, 연표, 세력 정보, 전투 보고, 설정/저장, 도움말
 import { useEffect, useState, type ReactNode } from 'react';
 import type { BattleReport, GameState } from '../../core';
-import { BALANCE, compText, TACTICS, MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
+import { BALANCE, compText, TACTICS, MEMORY_LABEL, armyReport, SEASONS, visibleTroops, writeChronicle, STAT_KEYS, STAT_ROLE, statGrade, expNeed, citiesOf, factionPower, generalsOf, obedience, statusOf, totalTroops } from '../../core';
 import { exportJson, indexedDbRepo, migrate, type SaveMeta } from '../../save/saveRepository';
 import { Portrait } from './Portrait';
 
@@ -40,7 +40,7 @@ export function GeneralDetail({ state, id, onBack, onPickCity }: { state: GameSt
         </div>
       </div>
       <div className="gd-cols">
-        <div><h4>능력</h4>{S.map(([k, v]) => <div key={k} className="gd-bar"><span>{k}</span><div className="bar"><div style={{ width: `${v}%` }} /><em>{v}</em></div></div>)}</div>
+        <div><h4>능력 <small className="muted">{g.grown ? `· 공적으로 +${g.grown} 성장` : ''}</small></h4>{S.map(([k, v], i) => { const key = STAT_KEYS[i]; const e = g.exp?.[key] ?? 0; return <div key={k} className="gd-bar" title={`${STAT_ROLE[key]}\n다음 성장까지 경험 ${Math.round(e)}/${expNeed(v)}`}><span>{k} <b className={`grade g${statGrade(v)}`}>{statGrade(v)}</b></span><div className="bar"><div style={{ width: `${v}%` }} /><i className="exp" style={{ width: `${Math.min(100, (e / expNeed(v)) * 100)}%` }} /><em>{v}</em></div></div>; })}</div>
         <div><h4>성격</h4>{P.map(([k, v]) => <div key={k} className="gd-bar"><span>{k}</span><div className="bar persona"><div style={{ width: `${v}%` }} /><em>{v}</em></div></div>)}</div>
       </div>
       <h4>인간관계</h4>

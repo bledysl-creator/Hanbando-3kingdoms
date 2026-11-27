@@ -298,6 +298,42 @@ export const BALANCE = {
   aiStudyGold: 4000, aiHorseGold: 6000, aiHorseKeep: 1500, aiOrganizeGap: 0.25, aiBreedGold: 1500,
   captiveRecruitBase: 0.25, captiveExecuteLoyalty: 3, captiveExpire: 8,
 
+  // v4.2 능력치 체계 (docs/design/stats-v4.2.md)
+  /** 통솔: 지휘 한도 = 통솔×commandPerLead (+부장·다른 수비 장수 통솔×deputyCommandPer), 넘는 병력은 overCommandEff 효율 */
+  commandPerLead: 500, deputyCommandPer: 200, overCommandEff: 0.5, defenseHelpers: 3,
+  /** 무력·통솔 접전: 진 쪽 접전 손실 × (clashWarBase + 이긴 쪽 무력/clashWarDiv) × (clashLeadBase − 진 쪽 통솔/clashLeadDiv) */
+  clashWarBase: 0.85, clashWarDiv: 400, clashLeadBase: 1.1, clashLeadDiv: 500,
+  /** 무력 추격: × (pursuitWarBase + 추격하는 쪽 무력/pursuitWarDiv) */
+  pursuitWarBase: 0.75, pursuitWarDiv: 300,
+  /** 지력: 불리한 전장의 변수를 (내 지력 − 상대 지력)/fortuneIntDiv 확률로 간파해 막는다 */
+  fortuneIntDiv: 120,
+  /** 정치 병참: 출진 군량 × (supplyPolBase − 최고 정치/supplyPolDiv) */
+  supplyPolBase: 1.15, supplyPolDiv: 400,
+  /** 정치 재상: 세력 최고 정치 ≥ chancellorFrom → 금·수확 × (1 + (정치−from)/chancellorDiv) */
+  chancellorFrom: 70, chancellorDiv: 300,
+  /** 무력 치안: 태수 무력이 이 이상이면 민심 + */
+  governorWarOrder: 75,
+  /** 매력 징병: 민심 하락 × (conscriptCharmBase − 매력/conscriptCharmDiv), 신병 사기 + (매력−50)/recruitMoraleDiv */
+  conscriptCharmBase: 1.3, conscriptCharmDiv: 200, recruitMoraleDiv: 5,
+  /** 군주 매력: 충성 변화 계절마다 + (매력−rulerCharmRef)/rulerCharmDiv, 포상 + (매력−60)/rewardCharmDiv */
+  rulerCharmRef: 75, rulerCharmDiv: 60, rewardCharmDiv: 8,
+  /** 매력: 패배 사기 하락 × (1.2 − 매력/defeatCharmDiv) */
+  defeatCharmDiv: 250,
+  /** AI 부장: 이만큼 이상 보탬이 될 때만 붙인다 */
+  aiDeputyMinGain: 8,
+  /** 부장 궁합: 의형제·신뢰 공격 배율 (원수끼리는 함께 출진하지 않음) */
+  bondSworn: 1.08, bondTrust: 1.04,
+  /** 성장: 능력치 1 오르는 데 드는 경험 (70 미만 / 70~89 / 90+), 나이 배율 */
+  growNeed: 40, growNeedB: 70, growNeedS: 140, growYoungAge: 30, growYoungMul: 1.5, growOldAge: 55, growOldMul: 0.5, growAptBase: 0.4,
+  /** 성장 경험: 명령 하나마다 */
+  growExp: {
+    develop: { politics: 8 }, wall: { politics: 5, intellect: 3 }, conscript: { charm: 4 }, train: { leadership: 8, war: 3 },
+    recruitOk: { charm: 14 }, recruitFail: { charm: 4 }, diplomacy: { charm: 6, intellect: 4 }, intrigue: { intellect: 8 },
+    study: {}, governor: { politics: 0.5 }, breedHorses: { politics: 4 }, relief: { charm: 5, politics: 3 },
+  } as Record<string, Partial<Record<'leadership' | 'war' | 'intellect' | 'politics' | 'charm', number>>>,
+  /** 전투 경험: 주장 통솔, 부장 무력, 수비 대장 통솔, 일기토, 계책 성공 */
+  growBattleLeadWin: 14, growBattleLeadLose: 6, growDeputyWar: 8, growDefLead: 8, growDuelWin: 20, growDuelLose: 6, growTactic: 14,
+
   // AI
   failedAttackAttrition: 0.45, // 공격 실패 시에도 수비 측이 입는 소모 비율
   aiAttackRatio: 0.95,

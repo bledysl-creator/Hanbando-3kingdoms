@@ -30,3 +30,4 @@ export { fixJosa } from './josa';
 export * from './systems/wildfire';
 export * from './systems/rebellion';
 export { setSiegeResponse, siegeForecast, siegesOf, SIEGE_LABEL, pincerSources, evacuateTargets, parleyGold, type SiegeForecast, type SiegeKind } from './systems/siege';
+export * from './systems/stats';

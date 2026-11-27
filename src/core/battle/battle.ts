@@ -6,6 +6,7 @@ import type { City, General, Road } from '../state/types';
 import { weatherAttackModifier } from '../systems/weather';
 import { tacticChance, TACTICS, type TacticKind } from './tactics';
 import { landmarksOfCity, landmarksOnRoad } from '../data';
+import { commandCap, defenseCap, effectiveTroops, unitStats } from '../systems/stats';
 import { compEffect, compFromFormation, compText, normComp, reliefOf, type Comp, type FormationKind } from './formation';
 
 export interface BattleInput {
@@ -44,6 +45,10 @@ export interface BattleInput {
   /** v4.1 공격군·수비군 편제 (병종 비율). 없으면 formation/defForm 또는 처음 편제 */
   attackerComp?: Comp;
   defenderComp?: Comp;
+  /** v4.2 부장: 무력·지력은 주장과 부장 중 높은 쪽, 지휘 한도에 부장 통솔이 더해진다 */
+  attackerDeputy?: General | null;
+  /** v4.2 주장과 부장의 사이 (의형제·신뢰면 공격 +) */
+  bond?: 'sworn' | 'trust' | 'enmity';
 }
 
 /** v3.9 일기토 결과 */
@@ -96,7 +101,19 @@ export const qualityFactor = (morale: number, training: number) => moraleFactor(
 export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   const reasons: string[] = [];
   const g = b.attackerGeneral;
-  let atk = b.attackerTroops * commandFactor(g.stats.leadership, g.stats.war);
+  const dep = b.attackerDeputy && b.attackerDeputy.alive ? b.attackerDeputy : null;
+  const us = unitStats(g, dep);
+  // v4.2 통솔 지휘 한도: 장수가 거느릴 수 있는 병력을 넘으면 넘는 병력은 절반만 제 몫을 한다
+  const aCap = commandCap(g.stats.leadership, dep ? [dep.stats.leadership] : []);
+  const aEff = effectiveTroops(b.attackerTroops, aCap);
+  let atk = aEff * commandFactor(g.stats.leadership, us.war);
+  if (dep && (b.bond === 'sworn' || b.bond === 'trust')) {
+    const m = b.bond === 'sworn' ? BALANCE.bondSworn : BALANCE.bondTrust;
+    atk *= m;
+    reasons.push(`🤝 ${b.bond === 'sworn' ? '의형제' : '서로 믿는 사이'}인 ${g.name}과(와) ${dep.name}이(가) 손발을 맞춤 +${Math.round((m - 1) * 100)}%`);
+  }
+  if (dep) reasons.push(`부장 ${dep.name} 동행 (무력 ${us.war} · 지력 ${us.intellect} · 지휘 한도 +${(dep.stats.leadership * BALANCE.deputyCommandPer).toLocaleString()})`);
+  if (aEff < b.attackerTroops) reasons.push(`${g.name}(통솔 ${g.stats.leadership})의 지휘 한도 ${aCap.toLocaleString()}명을 넘는 대군이라 ${Math.round((1 - aEff / b.attackerTroops) * 100)}%가 제 몫을 못 함`);
 
   const aq = qualityFactor(b.attackerMorale ?? 70, b.attackerTraining ?? 55);
   atk *= aq;
@@ -133,13 +150,13 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   }
   const wm = weatherAttackModifier(b.weather, b.road.type);
   if (wm.reason) { atk *= wm.mul; reasons.push(wm.reason); }
-  if (b.weather === 'fog' && b.attackerGeneral.stats.intellect >= 85) { atk *= 1.12; reasons.push(`안개를 이용한 ${b.attackerGeneral.name}의 기습 +12%`); }
+  if (b.weather === 'fog' && us.intellect >= 85) { atk *= 1.12; reasons.push(`안개를 이용한 ${dep && dep.stats.intellect > g.stats.intellect ? dep.name : g.name}의 기습 +12%`); }
 
   if (b.attackMul !== undefined && b.attackMul !== 1) { atk *= b.attackMul; if (b.attackReason) reasons.push(b.attackReason); }
 
   let tactic: BattleOutcome['tactic'];
   if (b.tactic) {
-    const p = tacticChance(b.tactic, { general: b.attackerGeneral, defenders: b.defenderGenerals, weather: b.weather, road: b.road, target: b.defenderCity });
+    const p = tacticChance(b.tactic, { general: dep ? { ...g, stats: us } : g, defenders: b.defenderGenerals, weather: b.weather, road: b.road, target: b.defenderCity });
     const name = TACTICS.find((t) => t.id === b.tactic)!.name;
     if (p > 0) {
       const success = rand(rng) < p;
@@ -172,7 +189,10 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   const dLead = best?.stats.leadership ?? BALANCE.neutralLeadership;
   const dWar = best?.stats.war ?? BALANCE.neutralWar;
   const dq = qualityFactor(city.morale ?? 70, city.training ?? 55);
-  let def = city.troops * commandFactor(dLead, dWar) * dq;
+  const dCap = defenseCap(b.defenderGenerals);
+  const dEff = effectiveTroops(city.troops, dCap);
+  let def = dEff * commandFactor(dLead, dWar) * dq;
+  if (dEff < city.troops) reasons.push(`수비 장수의 지휘 한도 ${dCap.toLocaleString()}명을 넘는 수비병은 ${Math.round((1 - dEff / city.troops) * 100)}%가 제 몫을 못 함`);
   if (dq > 1.07) reasons.push(`수비군의 높은 사기·훈련 (×${dq.toFixed(2)})`);
   else if (dq < 0.93) reasons.push(`수비군 사기·훈련 부족 (×${dq.toFixed(2)})`);
   const wallMul = b.ignoreWalls ? 1 : 1 + (city.wall / 200) * (city.fortress ? BALANCE.fortressWallMultiplier : 1);
@@ -208,16 +228,17 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   // v3.9 일기토: 두 진영에 이름난 맹장이 있으면 진 앞에서 맞붙기도 한다. 이긴 쪽 사기가 오르고 진 쪽은 흔들린다.
   let duel: DuelResult | undefined;
   const champ = b.defenderGenerals.reduce<General | null>((acc, x) => (!acc || x.stats.war > acc.stats.war ? x : acc), null);
-  if (!b.noDuel && champ && g.stats.war >= BALANCE.duelMinWar && champ.stats.war >= BALANCE.duelMinWar) {
-    const pDuel = Math.min(0.8, BALANCE.duelChance * (0.6 + (g.persona.pride + champ.persona.pride) / 250));
+  const ag = dep && dep.stats.war > g.stats.war ? dep : g; // 부장이 더 세면 부장이 나선다
+  if (!b.noDuel && champ && ag.stats.war >= BALANCE.duelMinWar && champ.stats.war >= BALANCE.duelMinWar) {
+    const pDuel = Math.min(0.8, BALANCE.duelChance * (0.6 + (ag.persona.pride + champ.persona.pride) / 250));
     if (rand(rng) < pDuel) {
-      const pWin = 1 / (1 + Math.exp(-(g.stats.war - champ.stats.war) / BALANCE.duelSpread));
+      const pWin = 1 / (1 + Math.exp(-(ag.stats.war - champ.stats.war) / BALANCE.duelSpread));
       const aWins = rand(rng) < pWin;
       const slain = rand(rng) < BALANCE.duelSlainChance;
-      const winner = aWins ? g : champ, loser = aWins ? champ : g;
-      duel = { attackerId: g.id, defenderId: champ.id, winnerId: winner.id, slain, chance: aWins ? pWin : 1 - pWin };
+      const winner = aWins ? ag : champ, loser = aWins ? champ : ag;
+      duel = { attackerId: ag.id, defenderId: champ.id, winnerId: winner.id, slain, chance: aWins ? pWin : 1 - pWin };
       if (aWins) { atk *= BALANCE.duelWinMul; def *= BALANCE.duelLoseMul; } else { def *= BALANCE.duelWinMul; atk *= BALANCE.duelLoseMul; }
-      reasons.push(`⚔️ 일기토! ${g.name}(무력 ${g.stats.war}) 대 ${champ.name}(무력 ${champ.stats.war}) — ${winner.name}이(가) ${slain ? `${loser.name}을(를) 베었다` : '이겼다'}! ${aWins ? '공격군' : '수비군'} 사기 충천, 상대 −${Math.round((1 - BALANCE.duelLoseMul) * 100)}%`);
+      reasons.push(`⚔️ 일기토! ${ag.name}(무력 ${ag.stats.war}) 대 ${champ.name}(무력 ${champ.stats.war}) — ${winner.name}이(가) ${slain ? `${loser.name}을(를) 베었다` : '이겼다'}! ${aWins ? '공격군' : '수비군'} 사기 충천, 상대 −${Math.round((1 - BALANCE.duelLoseMul) * 100)}%`);
     }
   }
 
@@ -225,9 +246,16 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   let fortune: string | undefined;
   if (rand(rng) < BALANCE.fortuneChance) {
     const f = FORTUNES[Math.floor(rand(rng) * FORTUNES.length)];
-    if (f.side === 'atk') atk *= f.mul; else def *= f.mul;
-    fortune = f.text;
-    reasons.push(`🎲 전장의 변수: ${f.text} (${f.side === 'atk' ? '공격' : '수비'} +${Math.round((f.mul - 1) * 100)}%)`);
+    // v4.2 지력: 손해 보는 쪽의 지력이 더 높으면 미리 꿰뚫어 막아낼 수 있다
+    const dInt = Math.max(BALANCE.neutralLeadership, ...b.defenderGenerals.map((x) => x.stats.intellect));
+    const victimInt = f.side === 'atk' ? dInt : us.intellect, otherInt = f.side === 'atk' ? us.intellect : dInt;
+    if (victimInt > otherInt && rand(rng) < (victimInt - otherInt) / BALANCE.fortuneIntDiv) {
+      reasons.push(`🧠 ${f.side === 'atk' ? '수비' : '공격'} 측이 미리 꿰뚫어 봄 — 「${f.text}」을(를) 막아냄 (지력 ${victimInt} 대 ${otherInt})`);
+    } else {
+      if (f.side === 'atk') atk *= f.mul; else def *= f.mul;
+      fortune = f.text;
+      reasons.push(`🎲 전장의 변수: ${f.text} (${f.side === 'atk' ? '공격' : '수비'} +${Math.round((f.mul - 1) * 100)}%)`);
+    }
   }
 
   atk *= randRange(rng, 0.88, 1.12);
@@ -240,8 +268,12 @@ export function resolveBattle(rng: RngHolder, b: BattleInput): BattleOutcome {
   const q = won ? ratio : 1 / Math.max(0.01, ratio);
   const rough = b.road.type === 'pass' || rel >= 45 ? BALANCE.pursuitRoughMul : 1;
   const winnerRate = Math.max(BALANCE.clashWinnerMin, BALANCE.clashLoss / q);
-  const loserRate = Math.min(BALANCE.clashLoserCap, BALANCE.clashLoss * Math.sqrt(q));
-  const pursuitRate = BALANCE.pursuitLoss * rough * Math.min(BALANCE.pursuitRatioCap, Math.sqrt(q));
+  // v4.2 무력(칼끝)은 진 쪽 접전 손실을 키우고, 진 쪽 통솔(질서 있는 후퇴)은 줄인다. 추격은 쫓는 쪽 무력이 좌우
+  const dChampWar = champ?.stats.war ?? BALANCE.neutralWar;
+  const winWar = won ? us.war : dChampWar, loseLead = won ? dLead : g.stats.leadership;
+  const blade = (BALANCE.clashWarBase + winWar / BALANCE.clashWarDiv) * (BALANCE.clashLeadBase - loseLead / BALANCE.clashLeadDiv);
+  const loserRate = Math.min(BALANCE.clashLoserCap, BALANCE.clashLoss * Math.sqrt(q) * blade);
+  const pursuitRate = BALANCE.pursuitLoss * rough * Math.min(BALANCE.pursuitRatioCap, Math.sqrt(q)) * (BALANCE.pursuitWarBase + winWar / BALANCE.pursuitWarDiv);
   const walled = !b.ignoreWalls && city.wall >= 50;
   let attackerLoss: number;
   let defenderLoss: number;
